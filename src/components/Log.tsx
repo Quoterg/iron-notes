@@ -39,14 +39,15 @@ export function Log() {
       await navigator.clipboard.writeText(text);
       toast(t('shared'));
     } catch {
-      // No clipboard either (old browser, no permission): nothing more to do.
+      toast(t('shareFailed')); // no share sheet and no clipboard (old browser, no permission)
     }
   }
 
   async function remove() {
     if (!confirm(t('deleteWorkoutQ', { n: sets.length }))) return;
     setReordering(false);
-    await deleteWorkout(d);
+    const undo = await deleteWorkout(d);
+    toast(t('workoutDeleted'), { label: t('undo'), run: () => void undo() });
   }
 
   return (

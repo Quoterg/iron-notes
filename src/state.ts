@@ -111,7 +111,7 @@ export async function loadRecords(ids: string[]): Promise<void> {
       const stored = await db.getRecords(id);
       if (stored) return [id, new Set(stored.ids)] as const;
       const r = recordIds(await allSetsOf(id), exById.value.get(id)!.type, true);
-      void db.putRecords({ exerciseId: id, ids: [...r] });
+      void db.putRecordsIfAbsent({ exerciseId: id, ids: [...r] }); // never over a fresher refresh
       return [id, r] as const;
     }),
   );
@@ -146,22 +146,25 @@ export function upsertSorted(list: readonly WorkoutSet[], s: WorkoutSet, remove:
   return out;
 }
 
-async function afterSetWrite(s: WorkoutSet, removed = false) {
-  const c = cache.get(s.exerciseId);
-  if (c) cache.set(s.exerciseId, c.then((a) => upsertSorted(a, s, removed)));
-  await refreshRecords(s.exerciseId);
-  setsVersion.value++;
-  if (s.date === date.value) await loadDay(s.date);
+/** Applies written (or removed) sets to the cached histories that are loaded: no re-read, no re-sort. */
+function applyToCache(changed: readonly WorkoutSet[], removed: boolean) {
+  const byEx = new Map<string, WorkoutSet[]>();
+  for (const s of changed) byEx.get(s.exerciseId)?.push(s) ?? byEx.set(s.exerciseId, [s]);
+  for (const [id, list] of byEx) {
+    const c = cache.get(id);
+    if (c) cache.set(id, c.then((a) => list.reduce((acc, s) => upsertSorted(acc, s, removed), a)));
+  }
+  return [...byEx.keys()];
 }
 
-/** After a batch write: drop the touched exercises' cached histories and refresh their records. */
-async function afterBatch(exerciseIds: Iterable<string>) {
-  const ids = [...new Set(exerciseIds)];
-  for (const id of ids) cache.delete(id);
-  await Promise.all(ids.map(refreshRecords));
+/** After writes: the screen first (day, open exercise), then the touched exercises' records. */
+async function afterWrite(changed: readonly WorkoutSet[], removed = false) {
+  const ids = applyToCache(changed, removed);
   setsVersion.value++;
-  await loadDay(date.value);
+  if (changed.some((s) => s.date === date.value)) await loadDay(date.value);
+  await Promise.all(ids.map(refreshRecords));
 }
+const afterSetWrite = (s: WorkoutSet, removed = false) => afterWrite([s], removed);
 
 /** Copies sets to `to` (new ids, in their order, after anything already logged there; comments not copied). */
 export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
@@ -169,7 +172,7 @@ export async function copySets(sets: readonly WorkoutSet[], to: string): Promise
     (s): WorkoutSet => ({ ...s, id: uid(), date: to, order: nextOrder(), comment: undefined, done: settings.value.markDone ? false : undefined }),
   );
   await db.putSets(copies);
-  await afterBatch(copies.map((s) => s.exerciseId));
+  await afterWrite(copies);
 }
 
 /**
@@ -187,16 +190,21 @@ export async function moveExercise(exerciseId: string, dir: -1 | 1): Promise<voi
   const base = daySets.value[0].order; // reuse the day's own key range: other days are unaffected
   const moved = ids.flatMap((id) => groups.get(id)!).map((s, k) => ({ ...s, order: base + k }));
   await db.putSets(moved);
-  for (const id of ids) cache.delete(id);
+  applyToCache(moved, false); // order within each exercise is unchanged: records stay as they are
   setsVersion.value++;
   await loadDay(date.value);
 }
 
-/** Deletes a whole day: its sets and comment. */
-export async function deleteWorkout(d: string): Promise<void> {
+/** Deletes a whole day (sets and comment); returns an undo. */
+export async function deleteWorkout(d: string): Promise<() => Promise<void>> {
   const gone = await db.deleteDay(d);
   if (d === date.value) dayComment.value = '';
-  await afterBatch(gone.map((s) => s.exerciseId));
+  await afterWrite(gone.sets, true);
+  return async () => {
+    await db.restoreDay(gone.sets, gone.comment);
+    if (d === date.value) dayComment.value = gone.comment?.text ?? '';
+    await afterWrite(gone.sets);
+  };
 }
 
 export async function saveSet(s: WorkoutSet): Promise<void> {
@@ -248,16 +256,22 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   if (!sets.length) return;
   await db.putSets(sets);
   if (d !== date.value) date.value = d;
-  await afterBatch(sets.map((s) => s.exerciseId));
+  await afterWrite(sets);
 }
 
 // ---- Toast ----
 export const toastText = signal('');
+/** Optional button on the toast (e.g. Undo); it stays a little longer then. */
+export const toastAction = signal<{ label: string; run: () => void } | null>(null);
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-export function toast(text: string): void {
+export function toast(text: string, action?: { label: string; run: () => void }): void {
   toastText.value = text;
+  toastAction.value = action ?? null;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (toastText.value = ''), 2500);
+  toastTimer = setTimeout(() => {
+    toastText.value = '';
+    toastAction.value = null;
+  }, action ? 6000 : 2500);
 }
 
 /** After a restore: everything from storage again. */

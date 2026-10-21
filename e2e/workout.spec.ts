@@ -42,7 +42,12 @@ test('copy, reorder and delete a workout', async ({ page }) => {
   await page.reload();
   await expect(page.locator('main .ex-card').nth(0)).toContainText('Barbell Squat');
 
-  // Delete the workout.
+  // Delete the workout, undo, delete again.
+  page.once('dialog', (d) => void d.accept());
+  await page.getByRole('button', { name: 'Delete workout' }).click();
+  await expect(page.getByText('Nothing logged on this day.')).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('main .ex-card')).toHaveCount(2);
   page.once('dialog', (d) => void d.accept());
   await page.getByRole('button', { name: 'Delete workout' }).click();
   await expect(page.getByText('Nothing logged on this day.')).toBeVisible();

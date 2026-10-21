@@ -176,6 +176,10 @@ const en = {
   timePlan: 'Time (min)',
   removeFromDay: 'Remove',
   planned: 'planned',
+  workoutDeleted: 'Workout deleted.',
+  undo: 'Undo',
+  shareFailed: "Couldn't share on this device.",
+  dbBlocked: 'Iron Notes is open in another tab or window. Close it to finish updating.',
   about: 'About',
   aboutText: 'Iron Notes is open source (AGPL-3.0) and works offline.',
 } as const;

@@ -314,3 +314,5 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .plan-editor .btn { margin-bottom: 14px; }
 .day-open { padding: 0; }
 .title-row .move { flex: none; }
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast-action { border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; min-height: 36px; padding: 0 4px; cursor: pointer; }
