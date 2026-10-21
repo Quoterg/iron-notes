@@ -186,6 +186,8 @@ const en = {
   pickForSuperset: 'Pick the exercises to do in rotation.',
   selectExercise: 'Select',
   nextInSuperset: 'Next: {name}',
+  oneSet: '1 set',
+  nSets: '{n} sets',
   about: 'About',
   aboutText: 'Iron Notes is open source (AGPL-3.0) and works offline.',
 } as const;

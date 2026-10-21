@@ -29,6 +29,8 @@ describe('v1 → v2 upgrade', () => {
     await v1.put('sets', { id: 'old', date: '2025-12-01', exerciseId: 'x', order: 1, weight: 50, reps: 5 });
     v1.close();
     expect((await db.setsOn('2025-12-01')).map((s) => s.id)).toEqual(['old']);
+    // v3's index is built over the existing sets too.
+    expect((await db.lastDoneSet('x'))?.id).toBe('old');
     await db.putRecords({ exerciseId: 'x', ids: ['old'] });
     expect(await db.getRecords('x')).toEqual({ exerciseId: 'x', ids: ['old'] });
   });

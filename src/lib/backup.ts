@@ -11,7 +11,10 @@ export interface Backup {
   sets: WorkoutSet[];
   comments: DayComment[];
   settings: Settings;
-  /** Added with M5b; older backups have none. */
+  /**
+   * Added with M5b; older backups have none. The format stays `version: 1` while changes are additive
+   * (new optional fields/arrays that older files simply lack); bump it only for breaking changes.
+   */
   routines: Routine[];
 }
 
@@ -35,7 +38,7 @@ const validExercise = (e: Exercise) =>
 const validSet = (s: WorkoutSet) =>
   isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
   optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) && optStr(s.group) &&
-  (s.done === undefined || typeof s.done === 'boolean');
+  (s.done === undefined || typeof s.done === 'boolean') && (s.planned === undefined || s.planned === true);
 const validPlanned = (p: Routine['days'][number]['items'][number]['sets'][number]) =>
   !!p && typeof p === 'object' && optNum(p.weight) && optNum(p.reps) && optNum(p.distance) && optNum(p.time);
 const validRoutine = (r: Routine) =>

@@ -4,7 +4,7 @@ import { dayLabel } from '../app';
 import { uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
-import { back, open } from '../nav';
+import { back, open, stack } from '../nav';
 import { date, exById, logRoutineDay, removeRoutine, routines, saveRoutine, toast, view } from '../state';
 import { Sheet } from './Sheet';
 
@@ -25,8 +25,8 @@ export default function RoutineSheet({ id }: { id: string }) {
     await logRoutineDay(r!.days.find((d) => d.id === dayId)!, date.value);
     view.value = 'log';
     toast(t('routineLogged'));
-    // Close the routine sheets: back to the log.
-    history.go(-1);
+    // Close every sheet (however deep): back to the log.
+    history.go(-stack.value.length);
   }
 
   return (
