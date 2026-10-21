@@ -35,6 +35,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # Fails harmlessly once the project exists. A bad token also fails here silently, but then
+      # surfaces in the Deploy step below.
       - name: Create the Pages project (first deploy only)
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         continue-on-error: true
