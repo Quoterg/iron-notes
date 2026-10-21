@@ -2,8 +2,8 @@
 
 ## Next up
 
-- **Merging:** owner's rule — wait for a reviewer before any merge. Iron Notes has no reviewer routine
-  yet (Iron Log's only watches iron-log); owner to decide how reviews happen. Never merge yourself.
+- **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
+  Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - **Owner action for deploys:** Cloudflare API token (Account → Cloudflare Pages → Edit) and account id
   as repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
