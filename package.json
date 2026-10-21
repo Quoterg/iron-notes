@@ -1,0 +1,33 @@
+{
+  "name": "iron-notes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source, local-first strength and cardio training log. Fast on old phones.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/check-size.mjs",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "lighthouse": "lhci autorun",
+    "icons": "node scripts/make-icons.mjs"
+  },
+  "dependencies": {
+    "@preact/signals": "1",
+    "idb": "8",
+    "preact": "10"
+  },
+  "devDependencies": {
+    "@lhci/cli": "0.15.1",
+    "@playwright/test": "1.55",
+    "@preact/preset-vite": "2",
+    "@types/node": "22",
+    "fake-indexeddb": "6",
+    "typescript": "5",
+    "vite": "6",
+    "vitest": "3"
+  }
+}

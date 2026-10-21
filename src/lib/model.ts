@@ -1,0 +1,89 @@
+// The data the app stores. Weights are kept in kg, distances in km and times in seconds,
+// whatever units the user sees (lib/units.ts converts).
+
+export type Field = 'weight' | 'reps' | 'distance' | 'time';
+
+/** What a set of an exercise records, in display order. */
+export type ExerciseType =
+  | 'weight,reps'
+  | 'weight,distance'
+  | 'weight,time'
+  | 'reps,distance'
+  | 'reps,time'
+  | 'distance,time'
+  | 'weight'
+  | 'reps'
+  | 'distance'
+  | 'time';
+
+export const TYPES: ExerciseType[] = [
+  'weight,reps', 'weight,distance', 'weight,time', 'reps,distance', 'reps,time', 'distance,time',
+  'weight', 'reps', 'distance', 'time',
+];
+
+export const fieldsOf = (type: ExerciseType): Field[] => type.split(',') as Field[];
+
+export interface Category {
+  id: string;
+  name: string;
+  /** #rrggbb */
+  color: string;
+  order: number;
+}
+
+export interface Exercise {
+  id: string;
+  name: string;
+  categoryId: string;
+  type: ExerciseType;
+  notes?: string;
+  /** Weight step for the +/- buttons, in the user's weight unit. Default: 2.5 kg / 5 lb. */
+  increment?: number;
+  /** Rest timer length in seconds. Default: the setting. */
+  rest?: number;
+}
+
+export interface WorkoutSet {
+  id: string;
+  /** Local date, YYYY-MM-DD. */
+  date: string;
+  exerciseId: string;
+  /** Creation order (ms timestamp, made unique): sets and exercises of a day sort by it. */
+  order: number;
+  weight?: number;
+  reps?: number;
+  distance?: number;
+  time?: number;
+  comment?: string;
+  /** Ticked off (only shown when "Mark sets complete" is on). */
+  done?: boolean;
+}
+
+export interface DayComment {
+  date: string;
+  text: string;
+}
+
+export type WeightUnit = 'kg' | 'lb';
+export type DistUnit = 'km' | 'mi' | 'm';
+
+export interface Settings {
+  unit: WeightUnit;
+  dist: DistUnit;
+  /** Default rest timer, seconds. */
+  rest: number;
+  autoTimer: boolean;
+  timerSound: boolean;
+  markDone: boolean;
+  formula: 'epley' | 'brzycki';
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  unit: 'kg',
+  dist: 'km',
+  rest: 90,
+  autoTimer: true,
+  timerSound: true,
+  markDone: false,
+  formula: 'epley',
+};
