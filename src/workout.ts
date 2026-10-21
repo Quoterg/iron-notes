@@ -3,7 +3,7 @@
 import { byOrder, uid } from './lib/calc';
 import * as db from './lib/db';
 import type { RoutineDay, Routine, WorkoutSet } from './lib/model';
-import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, settings, setsVersion } from './state';
+import { afterWrite, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, settings, setsVersion } from './state';
 
 /** Copies sets to `to` (new ids, in their order, after anything already logged there; comments not copied). */
 export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
@@ -93,16 +93,9 @@ export async function removeRoutine(id: string): Promise<void> {
 export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   const { plannedSets } = await import('./lib/routines');
   const items = day.items.filter((i) => exById.value.has(i.exerciseId));
-  // Last done set per exercise: fills in weights the plan leaves open (e.g. "3 × 8" at last time's weight).
+  // Last done set per exercise (one indexed read each): fills in weights the plan leaves open.
   const last = new Map<string, WorkoutSet | undefined>();
-  await Promise.all(
-    items.map(async (i) => {
-      const all = await allSetsOf(i.exerciseId);
-      let s: WorkoutSet | undefined;
-      for (let k = all.length - 1; k >= 0 && !s; k--) if (all[k].done !== false) s = all[k];
-      last.set(i.exerciseId, s);
-    }),
-  );
+  await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastDoneSet(i.exerciseId))));
   const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder);
   if (!sets.length) return;
   await db.putSets(sets);

@@ -6,10 +6,18 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M6b Lean start** (initial JS 20.9 KB), then M7 Body tracker.
-- Perf follow-up: initial JS is 19.3 KB, mostly UI strings; split later screens' strings into a lazy
-  chunk like Iron Log's `strings-later` before it nears the 30 KB budget.
+- Next build milestone: **M7 Body tracker**.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M6b Lean start
+
+- Later screens' strings are a lazy chunk (`lib/strings-later.ts`, 1.9 KB) loaded with any lazy screen
+  (`lazy.tsx`); `i18n.test.ts` fails if first-paint code uses a string that isn't in the core table.
+- Workout operations (copy, reorder, supersets, delete, routines) moved from `state.ts` to a lazy
+  `workout.ts`; the log loads it on the first tap (it's also prefetched with the screens that use it).
+- The day's tools bar is a quiet lazy part (`DayTools.tsx`; `lazyView(…, { quiet: true })` renders
+  nothing until loaded).
+- Initial JS 20.9 → 18.3 KB gzip. Lighthouse 100/100/100.
 
 ## 2026-10-21 — M6 Supersets
 

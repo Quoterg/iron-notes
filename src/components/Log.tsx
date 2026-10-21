@@ -113,7 +113,7 @@ export function Log() {
                 </div>
                 <ol class="setlist">
                   {groups.get(id)!.map((set) => (
-                    <li key={set.id} class={set.done === false || (s.markDone && !set.done) ? 'undone' : undefined}>
+                    <li key={set.id} class={set.planned || (s.markDone && !set.done) ? 'undone' : undefined}>
                       <span>{setText(set, ex.type, s)}</span>
                       {rec?.has(set.id) && <Trophy />}
                       {set.comment && <span class="note-line">{set.comment}</span>}

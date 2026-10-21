@@ -5,8 +5,8 @@ import { t } from '../lib/i18n';
 import type { Exercise } from '../lib/model';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
-import { catById, categories, exercises, routines } from '../state';
-import { saveRoutine } from '../workout';
+import { catById, categories, exercises } from '../state';
+import { loadRoutines, saveRoutine } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
@@ -95,7 +95,7 @@ function ExerciseList({ list, onPick, showCat }: { list: Exercise[]; onPick: (e:
 
 /** Adds an exercise (once) to a routine day with a default plan, then closes the picker. */
 async function addToRoutine(e: Exercise, routineId: string, dayId: string) {
-  const r = routines.value?.find((x) => x.id === routineId);
+  const r = (await loadRoutines()).find((x) => x.id === routineId);
   if (r) {
     const days = r.days.map((d) =>
       d.id !== dayId || d.items.some((i) => i.exerciseId === e.id) ? d : { ...d, items: [...d.items, { exerciseId: e.id, sets: defaultPlan(e) }] },

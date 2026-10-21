@@ -39,7 +39,7 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
   (reps/weight/time), log a routine day into the shown date (planned sets unticked, ticked off as done).
 - [x] **M6 Supersets / groups** — Group exercises in a workout (coloured bar); the rest timer runs
   after the last exercise of a round; jump to the next exercise of the group after saving.
-- [ ] **M6b Lean start** — Keep first paint lean as features grow: later screens' strings in a lazy
+- [x] **M6b Lean start** — Keep first paint lean as features grow: later screens' strings in a lazy
   chunk (like Iron Log's `strings-later`), the day log's tools (copy/reorder/superset/share/delete) as a
   lazy component. Target: initial JS back under ~17 KB.
 - [ ] **M7 Body tracker** — Body weight, body fat %, measurements (waist, chest, arms, thighs, neck,

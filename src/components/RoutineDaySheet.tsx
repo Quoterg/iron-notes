@@ -6,7 +6,7 @@ import { t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type PlannedSet, type Routine, type RoutineDay, type RoutineItem } from '../lib/model';
 import { planSummary } from '../lib/routines';
 import { dFromUser, dToUser, num, wFromUser, wToUser } from '../lib/units';
-import { open } from '../nav';
+import { open, stack } from '../nav';
 import { catById, date, exById, routines, settings, toast, view } from '../state';
 import { logRoutineDay, saveRoutine } from '../workout';
 import { Dot } from './icons';
@@ -38,7 +38,7 @@ export default function RoutineDaySheet({ routineId, dayId }: { routineId: strin
     await logRoutineDay(day!, date.value);
     view.value = 'log';
     toast(t('routineLogged'));
-    history.go(-2); // this day and its routine: back to the log
+    history.go(-stack.value.length); // every sheet: back to the log
   }
 
   return (

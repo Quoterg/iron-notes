@@ -154,6 +154,8 @@ export const later = {
   undo: 'Undo',
   makeSuperset: 'Make superset ({n})',
   done: 'Done',
+  oneSet: '1 set',
+  nSets: '{n} sets',
 } as const;
 
 setLater(later);
