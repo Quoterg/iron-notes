@@ -304,3 +304,13 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .copy-head { padding: 0 0 4px; justify-content: space-between; }
 .copy-names { margin: 0; }
 .form .check .dot { margin-left: 2px; }
+
+/* Routines (M5b). */
+.routine-list { padding: 4px 16px; }
+.new-row { align-items: flex-end; margin-top: 12px; }
+.new-row .btn { flex: none; }
+.plan-line { margin: 0 16px 10px 36px; }
+.plan-editor { padding: 0 16px 12px; align-items: end; }
+.plan-editor .btn { margin-bottom: 14px; }
+.day-open { padding: 0; }
+.title-row .move { flex: none; }

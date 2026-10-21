@@ -79,6 +79,22 @@ describe('restore validation', () => {
     expect(b.settings.autoTimer).toBe(false);
   });
 
+  it('round-trips routines and rejects malformed ones; older backups without routines restore', async () => {
+    const routine = { id: 'r1', name: 'Push', order: 0, days: [{ id: 'd1', name: 'Day 1', items: [{ exerciseId: 'x', sets: [{ reps: 8 }, { reps: 8, weight: 60 }] }] }] };
+    await db.putRoutine(routine);
+    const b = await good();
+    expect(b.routines).toEqual([routine]);
+    const bad = await good();
+    bad.routines[0].days[0].items[0].sets[0].reps = 'eight';
+    await expect(backup.importAll(bad)).rejects.toThrow();
+    const old = await good();
+    delete old.routines;
+    await backup.importAll(old);
+    expect(await db.getRoutines()).toEqual([]);
+    await backup.importAll(b);
+    expect(await db.getRoutines()).toEqual([routine]);
+  });
+
   it('marks the library as seeded after a restore, even an empty one', async () => {
     await backup.importAll({ app: 'iron-notes', version: 1, categories: [], exercises: [], sets: [] });
     expect(await db.isSeeded()).toBe(true);

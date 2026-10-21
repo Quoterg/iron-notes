@@ -8,6 +8,7 @@ import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
 import { open } from '../nav';
 import { allSetsOf, catById, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
+import { isDone } from '../lib/routines';
 import { Graph, History, Records } from './ExerciseProgress';
 import { Dot, Trophy } from './icons';
 import { Sheet } from './Sheet';
@@ -84,14 +85,17 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   }, [id, ver]);
 
   const today = all?.filter((s) => s.date === date) ?? [];
-  const prev = all ? previousWorkout(all, date) : [];
+  // "Last time" means sets actually done (not a routine's planned ones).
+  const prev = all ? previousWorkout(all.filter(isDone), date) : [];
+  /** The next planned set of a routine logged today: Save fills it in. */
+  const planned = today.find((s) => s.done === false);
 
   // Start from the last set logged (today, else last time), like a paper log.
   const [filled, setFilled] = useState(false);
   // Runs once, when the history first arrives (deliberately only on `all`; `filled` stops repeats).
   useEffect(() => {
     if (filled || !all) return;
-    const last = today[today.length - 1] ?? prev[0];
+    const last = planned ?? today[today.length - 1] ?? prev[0];
     // Only into empty fields: on a slow phone the user may have typed before the history arrived.
     if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec']));
     setFilled(true);
@@ -110,12 +114,16 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     if (!values || !ex || !all) return;
     const comment = form.comment.trim() || undefined;
     if (selected) {
-      await saveSet({ ...selected, ...values, comment });
+      // Editing a planned set means it was done.
+      await saveSet({ ...selected, ...values, comment, done: selected.done === false ? true : selected.done });
       setSel(null);
     } else {
-      const s: WorkoutSet = { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined };
+      // A routine's next planned set is filled in (and done); otherwise a new set.
+      const s: WorkoutSet = planned
+        ? { ...planned, ...values, comment, done: true }
+        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
-      if (all.length && recordIds([...all, s], ex.type).has(s.id)) toast(t('newRecord'));
+      if (all.some((x) => isDone(x) && x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
       if (st.autoTimer) startTimer(ex.rest ?? st.rest, st.timerSound);
     }
@@ -224,7 +232,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                         </span>
                         {rec?.has(s.id) && <Trophy />}
                       </button>
-                      {st.markDone && (
+                      {(st.markDone || s.done === false) && (
                         <input
                           type="checkbox"
                           class="tick"

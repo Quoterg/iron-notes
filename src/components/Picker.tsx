@@ -4,19 +4,21 @@ import { useState } from 'preact/hooks';
 import { t } from '../lib/i18n';
 import type { Exercise } from '../lib/model';
 import { open, replaceTop } from '../nav';
-import { catById, categories, exercises } from '../state';
+import { defaultPlan } from '../lib/routines';
+import { catById, categories, exercises, routines, saveRoutine } from '../state';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
 /** Lower case without accents, so "presse" finds "Pressé". */
-const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-export default function Picker({ date, manage }: { date?: string; manage?: boolean }) {
+export default function Picker({ date, manage, routine }: { date?: string; manage?: boolean; routine?: { routineId: string; dayId: string } }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
   const query = fold(q.trim());
 
   const pick = (e: Exercise) => {
+    if (routine) return void addToRoutine(e, routine.routineId, routine.dayId);
     if (manage || !date) open({ kind: 'editExercise', id: e.id });
     else replaceTop({ kind: 'exercise', id: e.id, date });
   };
@@ -58,11 +60,11 @@ export default function Picker({ date, manage }: { date?: string; manage?: boole
   }
 
   return (
-    <Sheet title={manage ? t('manageExercises') : t('addExercise')}>
+    <Sheet title={manage ? t('manageExercises') : routine ? `${t('addExercise')} · ${t('routines')}` : t('addExercise')}>
       <input class="search" type="search" placeholder={t('searchExercises')} aria-label={t('searchExercises')} value={q} onInput={(e) => setQ(e.currentTarget.value)} />
       {body}
       <div class="pad actions">
-        <button class="btn primary" onClick={() => open({ kind: 'editExercise', categoryId: cat ?? undefined, date: manage ? undefined : date })}>
+        <button class="btn primary" onClick={() => open({ kind: 'editExercise', categoryId: cat ?? undefined, date: manage || routine ? undefined : date })}>
           + {t('newExercise')}
         </button>
         {manage && !query && (
@@ -88,4 +90,16 @@ function ExerciseList({ list, onPick, showCat }: { list: Exercise[]; onPick: (e:
       ))}
     </ul>
   );
+}
+
+/** Adds an exercise (once) to a routine day with a default plan, then closes the picker. */
+async function addToRoutine(e: Exercise, routineId: string, dayId: string) {
+  const r = routines.value?.find((x) => x.id === routineId);
+  if (r) {
+    const days = r.days.map((d) =>
+      d.id !== dayId || d.items.some((i) => i.exerciseId === e.id) ? d : { ...d, items: [...d.items, { exerciseId: e.id, sets: defaultPlan(e) }] },
+    );
+    await saveRoutine({ ...r, days });
+  }
+  history.back();
 }

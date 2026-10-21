@@ -6,6 +6,7 @@ import { t, type Key } from '../lib/i18n';
 import type { Exercise, Settings, WorkoutSet } from '../lib/model';
 import { bestOrm, bests, dailySeries, METRICS, metricsFor, rangeStart, repMaxTable, workouts, type Kind, type Metric, type Range } from '../lib/progress';
 import { distance, dToUser, KM_PER_MI, num, setText, weight, wToUser } from '../lib/units';
+import { isDone } from '../lib/routines';
 import { open } from '../nav';
 import { Trophy } from './icons';
 import { LineChart } from './LineChart';
@@ -30,7 +31,8 @@ const PAGE = 20;
 
 export function History({ ex, all, rec, st }: { ex: Exercise; all: WorkoutSet[]; rec?: ReadonlySet<string>; st: Settings }) {
   const [shown, setShown] = useState(PAGE);
-  const list = useMemo(() => workouts(all), [all]);
+  // Planned (routine) sets not done yet aren't history.
+  const list = useMemo(() => workouts(all.filter(isDone)), [all]);
   if (!list.length) return <p class="muted center">{t('noHistory')}</p>;
   return (
     <>
@@ -71,7 +73,7 @@ export function Graph({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Se
     const since = rangeStart(range, isoDate(new Date()));
     const conv = (v: number) =>
       kind === 'weight' ? wToUser(v, st.unit) : kind === 'distance' ? dToUser(v, st.dist) : kind === 'pace' ? pacePerUnit(v, st) : v;
-    return dailySeries(all, metric, st.formula, since).map((p) => ({ date: p.date, value: conv(p.value) }));
+    return dailySeries(all.filter(isDone), metric, st.formula, since).map((p) => ({ date: p.date, value: conv(p.value) }));
   }, [all, metric, range, st.unit, st.dist, st.formula]);
   const fmt = (v: number) =>
     kind === 'weight' ? `${num(v, 1)}` : kind === 'distance' ? num(v, 2) : kind === 'time' || kind === 'pace' ? fmtTime(v) : num(v, 0);
@@ -106,7 +108,8 @@ export function Graph({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Se
   );
 }
 
-export function Records({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Settings }) {
+export function Records({ ex, all: everything, st }: { ex: Exercise; all: WorkoutSet[]; st: Settings }) {
+  const all = useMemo(() => everything.filter(isDone), [everything]);
   const strength = ex.type === 'weight,reps';
   const orm = useMemo(() => (strength ? bestOrm(all, st.formula) : null), [all, st.formula, strength]);
   const table = useMemo(() => (strength ? repMaxTable(all, 15).filter((r) => r.set) : []), [all, strength]);

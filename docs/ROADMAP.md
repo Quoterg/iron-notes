@@ -35,7 +35,7 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 - [x] **M5a Workout tools** — Copy a workout (or some of its exercises) from another day; reorder
   exercises in a day; delete a whole workout; share a workout as text. Stored per-exercise records
   (DB v2) so opening a day doesn't read each exercise's whole history.
-- [ ] **M5b Routines** — Named routines with days, exercises per day with planned sets
+- [x] **M5b Routines** — Named routines with days, exercises per day with planned sets
   (reps/weight/time), log a routine day into the shown date (planned sets unticked, ticked off as done).
 - [ ] **M6 Supersets / groups** — Group exercises in a workout (coloured bar); the rest timer runs
   after the last exercise of a round; jump to the next exercise of the group after saving.

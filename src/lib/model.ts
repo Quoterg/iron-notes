@@ -55,8 +55,34 @@ export interface WorkoutSet {
   distance?: number;
   time?: number;
   comment?: string;
-  /** Ticked off (only shown when "Mark sets complete" is on). */
+  /**
+   * Ticked off. `false` = planned but not done yet (logged from a routine): shown greyed with a tick
+   * box and left out of records and progress until done. `undefined`/`true` = a done set.
+   */
   done?: boolean;
+}
+
+/** A planned set of a routine (values in stored units; missing values are filled in when logging). */
+export interface PlannedSet {
+  weight?: number;
+  reps?: number;
+  distance?: number;
+  time?: number;
+}
+export interface RoutineItem {
+  exerciseId: string;
+  sets: PlannedSet[];
+}
+export interface RoutineDay {
+  id: string;
+  name: string;
+  items: RoutineItem[];
+}
+export interface Routine {
+  id: string;
+  name: string;
+  order: number;
+  days: RoutineDay[];
 }
 
 export interface DayComment {

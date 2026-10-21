@@ -48,7 +48,9 @@ export const byOrder = (a: WorkoutSet, b: WorkoutSet): number =>
  */
 export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType, sorted = false): Set<string> {
   const out = new Set<string>();
-  const chrono = sorted ? sets : [...sets].sort(byOrder); // `sorted`: already in byOrder order (the cache is)
+  // Planned-but-not-done sets (from a routine) never hold records. `sorted`: already in byOrder order.
+  const done = sets.filter((s) => s.done !== false);
+  const chrono = sorted ? done : done.sort(byOrder);
   if (type === 'weight,reps') {
     const best = new Map<number, WorkoutSet>();
     for (const s of chrono) {

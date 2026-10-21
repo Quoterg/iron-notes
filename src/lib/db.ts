@@ -1,6 +1,6 @@
 // User data lives on the device, in IndexedDB. Nothing is sent anywhere.
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { DEFAULT_SETTINGS, type Category, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
+import { DEFAULT_SETTINGS, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
 interface Schema extends DBSchema {
   categories: { key: string; value: Category };
@@ -10,6 +10,8 @@ interface Schema extends DBSchema {
   kv: { key: string; value: { key: string; value: unknown } };
   /** Record-holding set ids per exercise (v2): a day opens without reading each exercise's history. */
   records: { key: string; value: StoredRecords };
+  /** v3 */
+  routines: { key: string; value: Routine };
 }
 
 export interface StoredRecords {
@@ -21,7 +23,7 @@ export const DB_NAME = 'iron-notes';
 let dbp: Promise<IDBPDatabase<Schema>> | undefined;
 
 export function db(): Promise<IDBPDatabase<Schema>> {
-  return (dbp ??= openDB<Schema>(DB_NAME, 2, {
+  return (dbp ??= openDB<Schema>(DB_NAME, 3, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore('categories', { keyPath: 'id' });
@@ -34,6 +36,7 @@ export function db(): Promise<IDBPDatabase<Schema>> {
       }
       // v2: a cache only — filled lazily from the sets, so existing installs need no data migration.
       if (oldVersion < 2) d.createObjectStore('records', { keyPath: 'exerciseId' });
+      if (oldVersion < 3) d.createObjectStore('routines', { keyPath: 'id' });
     },
   }));
 }
@@ -140,6 +143,17 @@ export async function recentWorkoutDates(limit: number, except?: string): Promis
     cur = await cur.continue();
   }
   return out;
+}
+
+// ---- Routines ----
+export async function getRoutines(): Promise<Routine[]> {
+  return (await db()).getAll('routines');
+}
+export async function putRoutine(r: Routine): Promise<void> {
+  await (await db()).put('routines', r);
+}
+export async function deleteRoutine(id: string): Promise<void> {
+  await (await db()).delete('routines', id);
 }
 
 // ---- Stored records (a cache of recordIds per exercise) ----
