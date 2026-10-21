@@ -23,6 +23,7 @@ export default function Calendar() {
       if (!live) return;
       const m = new Map<string, string[]>();
       for (const s of sets) {
+        if (s.planned) continue; // a routine day logged but not done isn't a workout
         const cat = exById.value.get(s.exerciseId)?.categoryId;
         if (!cat) continue;
         const list = m.get(s.date);

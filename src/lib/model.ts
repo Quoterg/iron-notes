@@ -55,11 +55,13 @@ export interface WorkoutSet {
   distance?: number;
   time?: number;
   comment?: string;
-  /**
-   * Ticked off. `false` = planned but not done yet (logged from a routine): shown greyed with a tick
-   * box and left out of records and progress until done. `undefined`/`true` = a done set.
-   */
+  /** Ticked off: a display flag only ("Mark sets complete"); unticked sets still count everywhere. */
   done?: boolean;
+  /**
+   * Logged from a routine and not done yet: shown greyed with a tick box, filled in by Save, and left
+   * out of records, history, graphs, "last time", the calendar and copy sources until done.
+   */
+  planned?: true;
 }
 
 /** A planned set of a routine (values in stored units; missing values are filled in when logging). */

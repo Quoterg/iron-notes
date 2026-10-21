@@ -35,7 +35,8 @@ export default function CopySheet({ date }: { date: string }) {
       const sets = shown.length ? await setsBetween(shown[shown.length - 1], shown[0]) : [];
       const byDate = new Map<string, Map<string, WorkoutSet[]>>();
       for (const s of sets.sort(byOrder)) {
-        if (s.date === date || !exById.value.has(s.exerciseId)) continue;
+        // A routine's planned, never done sets aren't a workout to copy.
+        if (s.date === date || s.planned || !exById.value.has(s.exerciseId)) continue;
         const g = byDate.get(s.date) ?? byDate.set(s.date, new Map()).get(s.date)!;
         g.get(s.exerciseId)?.push(s) ?? g.set(s.exerciseId, [s]);
       }
