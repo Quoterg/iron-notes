@@ -7,6 +7,14 @@ what Iron Log does.
 
 ## Session protocol
 
+0. **Review fixes first.** Open `milestone/*` PRs get reviewed by the "Iron Notes milestone review"
+   routine (fires on PR opened / new commits). Read its reviews/comments by `Quoterg` that start with
+   `**Verdict:` (`gh api repos/Quoterg/iron-notes/pulls/<n>/reviews` and `.../issues/<n>/comments`).
+   Fix every **Blocker** and **Should fix** on that PR's branch (with tests), commit
+   `Review fixes: <PR title>`, push, and reply on the PR with one line per item: `n. fixed in <sha>`
+   or `n. not fixed: <reason>`. Cheap performance items too; list the rest in PROGRESS.md. **The
+   reviewer merges** (after re-checking and green CI) — never merge yourself. To ask for a (re-)check
+   without code changes, push an empty commit `review: request`.
 1. Read `PROGRESS.md` (top, "Next up") and the next unchecked milestone in `docs/ROADMAP.md`.
 2. Branch `milestone/mN-short-name`. Do **one milestone**; split it in ROADMAP.md if it's too big.
 3. Commit after each working step (a session may stop at any time — the owner wants work resumed
