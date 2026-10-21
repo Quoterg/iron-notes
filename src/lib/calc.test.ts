@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dayTotals, fmtTime, isComplete, oneRM, previousWorkout, recordIds } from './calc';
+import { addDays, dayTotals, fillEmpty, fmtTime, isComplete, oneRM, previousWorkout, recordIds } from './calc';
 import type { WorkoutSet } from './model';
 
 let n = 0;
@@ -94,5 +94,13 @@ describe('isComplete and dayTotals', () => {
   });
   it('sums sets, reps and volume', () => {
     expect(dayTotals([set('d', 100, 5), set('d', 100, 5), set('d', undefined, 10)])).toEqual({ sets: 3, reps: 20, volume: 1000 });
+  });
+});
+
+describe('fillEmpty', () => {
+  it('fills only empty fields (typed input wins over a late prefill)', () => {
+    const typed = { weight: '90', reps: '', comment: '' };
+    const last = { weight: '80', reps: '6', comment: 'x' };
+    expect(fillEmpty(typed, last, ['weight', 'reps'])).toEqual({ weight: '90', reps: '6', comment: '' });
   });
 });

@@ -1,13 +1,14 @@
 // Log sets of one exercise on one day: fields for the exercise type with +/- steppers, Save/Clear
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
 import { useEffect, useState } from 'preact/hooks';
-import { fmtTime, previousWorkout, recordIds, round, uid } from '../lib/calc';
+import { fillEmpty, fmtTime, isoDate, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
 import { open } from '../nav';
 import { allSetsOf, catById, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
+import { Graph, History, Records } from './ExerciseProgress';
 import { Dot, Trophy } from './icons';
 import { Sheet } from './Sheet';
 
@@ -19,6 +20,9 @@ interface Form {
   sec: string;
   comment: string;
 }
+type Tab = 'track' | 'history' | 'graph' | 'records';
+const TABS: Tab[] = ['track', 'history', 'graph', 'records'];
+
 const EMPTY: Form = { weight: '', reps: '', distance: '', min: '', sec: '', comment: '' };
 
 /** Accepts "82,5" as well as "82.5". Empty or invalid → null. */
@@ -67,6 +71,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const [form, setForm] = useState<Form>(EMPTY);
   const [sel, setSel] = useState<string | null>(null);
   const [showComment, setShowComment] = useState(false);
+  const [tab, setTab] = useState<Tab>('track');
   const ver = setsVersion.value;
 
   useEffect(() => {
@@ -87,7 +92,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   useEffect(() => {
     if (filled || !all) return;
     const last = today[today.length - 1] ?? prev[0];
-    if (last) setForm(toForm(last, st));
+    // Only into empty fields: on a slow phone the user may have typed before the history arrived.
+    if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec']));
     setFilled(true);
   }, [all]);
 
@@ -155,8 +161,21 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       <div class="pad">
         <p class="muted small">
           <Dot color={cat?.color} /> {cat?.name}
+          {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
         </p>
         {ex.notes && <p class="ex-notes muted small">{ex.notes}</p>}
+        <div class="chips" role="group" aria-label={ex.name}>
+          {TABS.map((k) => (
+            <button key={k} class={k === tab ? 'chip on' : 'chip'} aria-pressed={k === tab} onClick={() => setTab(k)}>
+              {t(k)}
+            </button>
+          ))}
+        </div>
+        {tab === 'history' && all && <History ex={ex} all={all} rec={rec} st={st} />}
+        {tab === 'graph' && all && <Graph ex={ex} all={all} st={st} />}
+        {tab === 'records' && all && <Records ex={ex} all={all} st={st} />}
+        {tab === 'track' && (
+        <>
         <form
           class="card"
           onSubmit={(e) => {
@@ -237,6 +256,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
               ))}
             </ol>
           </div>
+        )}
+        </>
         )}
       </div>
     </Sheet>
