@@ -1,0 +1,77 @@
+// Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
+import { db, getSettings } from './db';
+import { DEFAULT_SETTINGS, TYPES, type Category, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
+
+export interface Backup {
+  app: 'iron-notes';
+  version: 1;
+  exported: string;
+  categories: Category[];
+  exercises: Exercise[];
+  sets: WorkoutSet[];
+  comments: DayComment[];
+  settings: Settings;
+}
+
+export async function exportAll(): Promise<Backup> {
+  const d = await db();
+  const [categories, exercises, sets, comments, settings] = await Promise.all([
+    d.getAll('categories'), d.getAll('exercises'), d.getAll('sets'), d.getAll('comments'), getSettings(),
+  ]);
+  return { app: 'iron-notes', version: 1, exported: new Date().toISOString(), categories, exercises, sets, comments, settings };
+}
+
+const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const optNum = (v: unknown) => v === undefined || (isNum(v) && v >= 0);
+const optStr = (v: unknown) => v === undefined || typeof v === 'string';
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const validCategory = (c: Category) => isStr(c?.id) && isStr(c.name) && typeof c.color === 'string' && /^#[0-9a-f]{6}$/i.test(c.color) && isNum(c.order);
+const validExercise = (e: Exercise) =>
+  isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest);
+const validSet = (s: WorkoutSet) =>
+  isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
+  optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) &&
+  (s.done === undefined || typeof s.done === 'boolean');
+const validComment = (c: DayComment) => typeof c?.date === 'string' && DATE.test(c.date) && typeof c.text === 'string';
+
+/** Checks a parsed backup file row by row. Throws on anything malformed: nothing is imported then. */
+export function validateBackup(b: unknown): Backup {
+  const x = b as Partial<Backup> | null;
+  if (!x || typeof x !== 'object' || x.app !== 'iron-notes') throw new Error('Not an Iron Notes backup');
+  if (x.version !== 1) throw new Error(`Unsupported backup version ${String(x.version)}`);
+  if (!Array.isArray(x.categories) || !x.categories.every(validCategory)) throw new Error('Invalid categories');
+  if (!Array.isArray(x.exercises) || !x.exercises.every(validExercise)) throw new Error('Invalid exercises');
+  if (!Array.isArray(x.sets) || !x.sets.every(validSet)) throw new Error('Invalid sets');
+  if (x.comments !== undefined && (!Array.isArray(x.comments) || !x.comments.every(validComment))) throw new Error('Invalid comments');
+  const st = x.settings as Partial<Settings> | undefined;
+  if (st !== undefined && (typeof st !== 'object' || st === null)) throw new Error('Invalid settings');
+  const settings: Settings = { ...DEFAULT_SETTINGS };
+  if (st) {
+    if (st.unit === 'kg' || st.unit === 'lb') settings.unit = st.unit;
+    if (st.dist === 'km' || st.dist === 'mi' || st.dist === 'm') settings.dist = st.dist;
+    if (isNum(st.rest) && st.rest > 0) settings.rest = st.rest;
+    if (st.formula === 'epley' || st.formula === 'brzycki') settings.formula = st.formula;
+    for (const k of ['autoTimer', 'timerSound', 'markDone'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
+  }
+  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings };
+}
+
+/** Replaces all data with a backup. Throws (and changes nothing) if the file isn't a valid one. */
+export async function importAll(b: unknown): Promise<void> {
+  const x = validateBackup(b);
+  const d = await db();
+  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv'] as const;
+  const tx = d.transaction(stores, 'readwrite');
+  await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
+  const ops: Promise<unknown>[] = [];
+  for (const c of x.categories) ops.push(tx.objectStore('categories').put(c));
+  for (const e of x.exercises) ops.push(tx.objectStore('exercises').put(e));
+  for (const s of x.sets) ops.push(tx.objectStore('sets').put(s));
+  for (const c of x.comments) ops.push(tx.objectStore('comments').put(c));
+  ops.push(tx.objectStore('kv').put({ key: 'settings', value: x.settings }));
+  // A restored library counts as seeded, even an empty one: never re-seed over the user's choice.
+  ops.push(tx.objectStore('kv').put({ key: 'seeded', value: true }));
+  await Promise.all([...ops, tx.done]);
+}

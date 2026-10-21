@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
+import * as backup from './backup';
 import * as db from './db';
 import { starterLibrary } from './seed';
 
@@ -36,14 +37,51 @@ describe('db', () => {
   it('round-trips a backup and rejects other files', async () => {
     const lib = starterLibrary();
     await db.putLibrary(lib.categories, lib.exercises);
-    const b = await db.exportAll();
-    await expect(db.importAll({ foo: 1 })).rejects.toThrow();
+    const b = await backup.exportAll();
+    await expect(backup.importAll({ foo: 1 })).rejects.toThrow();
     await db.putSet({ id: 'z', date: '2026-02-01', exerciseId: 'squat', order: 9, weight: 1, reps: 1 });
-    await db.importAll(JSON.parse(JSON.stringify(b)));
-    const after = await db.exportAll();
+    await backup.importAll(JSON.parse(JSON.stringify(b)));
+    const after = await backup.exportAll();
     expect(after.sets.map((s) => s.id).sort()).toEqual(b.sets.map((s) => s.id).sort());
     expect(after.exercises.length).toBe(lib.exercises.length);
     expect(after.settings.unit).toBe('lb');
+  });
+});
+
+describe('restore validation', () => {
+  type Any = any;
+  const good = async (): Promise<Any> => JSON.parse(JSON.stringify(await backup.exportAll()));
+
+  it('rejects malformed rows and leaves the current data untouched', async () => {
+    const before = (await backup.exportAll()).sets.length;
+    const bad: ((b: Any) => void)[] = [
+      (b) => (b.sets[0] = { ...b.sets[0], date: 20260101 }),
+      (b) => (b.sets[0] = { ...b.sets[0], id: undefined }),
+      (b) => (b.sets[0] = { ...b.sets[0], weight: 'heavy' }),
+      (b) => (b.sets[0] = { ...b.sets[0], order: null }),
+      (b) => (b.exercises[0] = { ...b.exercises[0], type: 'weight,banana' }),
+      (b) => (b.categories[0] = { ...b.categories[0], color: 'red' }),
+      (b) => (b.comments = [{ date: 'yesterday', text: 'x' }]),
+      (b) => (b.version = 2),
+    ];
+    for (const spoil of bad) {
+      const b = await good();
+      spoil(b);
+      await expect(backup.importAll(b)).rejects.toThrow();
+    }
+    expect((await backup.exportAll()).sets.length).toBe(before);
+  });
+
+  it('keeps only known settings values', () => {
+    const b = backup.validateBackup({ app: 'iron-notes', version: 1, categories: [], exercises: [], sets: [], settings: { unit: 'stone', rest: -5, autoTimer: false } });
+    expect(b.settings.unit).toBe('kg');
+    expect(b.settings.rest).toBe(90);
+    expect(b.settings.autoTimer).toBe(false);
+  });
+
+  it('marks the library as seeded after a restore, even an empty one', async () => {
+    await backup.importAll({ app: 'iron-notes', version: 1, categories: [], exercises: [], sets: [] });
+    expect(await db.isSeeded()).toBe(true);
   });
 });
 

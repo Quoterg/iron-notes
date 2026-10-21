@@ -46,9 +46,9 @@ export const byOrder = (a: WorkoutSet, b: WorkoutSet): number =>
  * count, and no set with more reps was at least as heavy (a rep max nothing beats).
  * Other types: the first set with the best value of the type's first field (e.g. longest distance).
  */
-export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType): Set<string> {
+export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType, sorted = false): Set<string> {
   const out = new Set<string>();
-  const chrono = [...sets].sort(byOrder);
+  const chrono = sorted ? sets : [...sets].sort(byOrder); // `sorted`: already in byOrder order (the cache is)
   if (type === 'weight,reps') {
     const best = new Map<number, WorkoutSet>();
     for (const s of chrono) {

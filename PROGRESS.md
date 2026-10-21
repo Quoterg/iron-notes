@@ -29,6 +29,13 @@ Checks (all passing locally):
   offline; new exercise of another type + search; theme + units; no CSP violations).
 - `pnpm lighthouse`: performance 100, accessibility 100, best practices 100 (3 runs).
 
+Review fixes (PR #1): seed the starter library only once (`kv.seeded`); per-row backup validation
+before anything is written (version, ids, ISO dates, numbers, known types/units) with tests; set count
+in the delete confirm; the current data is downloaded before a restore; the exercise history cache is
+updated in place after a save (no re-read/re-sort); backup code moved out of the first-paint bundle.
+Deferred performance items (for M3): persist per-exercise rep maxes so opening a heavy day doesn't
+read every exercise's full history; `Log` re-renders all groups on any signal change.
+
 Notes:
 - Stack, CSS tokens, service worker, nav stack, lazy screens and CSP setup are taken from Iron Log
   so both apps look and behave alike.
