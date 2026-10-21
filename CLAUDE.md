@@ -17,6 +17,10 @@ what Iron Log does.
    without code changes, push an empty commit `review: request`.
 1. Read `PROGRESS.md` (top, "Next up") and the next unchecked milestone in `docs/ROADMAP.md`.
 2. Branch `milestone/mN-short-name`. Do **one milestone**; split it in ROADMAP.md if it's too big.
+   If the previous milestone's PR is still open, branch from it and open the new PR with **base =
+   that milestone branch** (the reviewer only merges PRs based on `main`, so it can't merge early).
+   After the base PR merges: `git merge origin/main`, push, then retarget
+   (`gh api -X PATCH repos/Quoterg/iron-notes/pulls/<n> -f base=main`) and push `review: request`.
 3. Commit after each working step (a session may stop at any time — the owner wants work resumed
    from where it stopped, so never leave large uncommitted changes).
 4. Before finishing, all must pass: `pnpm test`, `pnpm build` (size budget), `pnpm e2e`, `pnpm lighthouse`.
