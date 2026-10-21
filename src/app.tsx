@@ -4,7 +4,7 @@ import { Log } from './components/Log';
 import { RestTimer } from './components/RestTimer';
 import { lazyView } from './lazy';
 import { stack, top, type Screen } from './nav';
-import { date, loadDay, toastText, updateReady, view, type View } from './state';
+import { date, loadDay, toastAction, toastText, updateReady, view, type View } from './state';
 
 const TABS: View[] = ['log', 'calendar', 'settings'];
 
@@ -61,6 +61,19 @@ export function App() {
       {toastText.value && (
         <p class="toast" role="status">
           {toastText.value}
+          {toastAction.value && (
+            <button
+              class="toast-action"
+              onClick={() => {
+                const a = toastAction.value!;
+                toastText.value = '';
+                toastAction.value = null;
+                a.run();
+              }}
+            >
+              {toastAction.value.label}
+            </button>
+          )}
         </p>
       )}
     </>

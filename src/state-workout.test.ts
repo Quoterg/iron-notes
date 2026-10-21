@@ -70,6 +70,12 @@ describe('workout tools', () => {
   it('deletes a whole workout and updates stored records', async () => {
     await loadDay(D1);
     await db.putComment(D1, 'heavy day');
+    // Undo puts everything back.
+    const undo = await deleteWorkout(D1);
+    expect(daySets.value).toEqual([]);
+    await undo();
+    expect(daySets.value.length).toBe(3);
+    expect(await db.getComment(D1)).toBe('heavy day');
     await deleteWorkout(D1);
     expect(daySets.value).toEqual([]);
     expect(await db.getComment(D1)).toBe('');

@@ -153,6 +153,10 @@ const en = {
   shared: 'Workout copied to the clipboard.',
   deleteWorkout: 'Delete workout',
   deleteWorkoutQ: 'Delete this workout: {n} sets and the comment? This cannot be undone.',
+  workoutDeleted: 'Workout deleted.',
+  undo: 'Undo',
+  shareFailed: "Couldn't share on this device.",
+  dbBlocked: 'Iron Notes is open in another tab or window. Close it to finish updating.',
   about: 'About',
   aboutText: 'Iron Notes is open source (AGPL-3.0) and works offline.',
 } as const;

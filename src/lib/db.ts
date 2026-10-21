@@ -20,6 +20,15 @@ export interface StoredRecords {
 export const DB_NAME = 'iron-notes';
 let dbp: Promise<IDBPDatabase<Schema>> | undefined;
 
+/**
+ * Another tab (or the installed app) still has an older version of the database open, so this one
+ * can't upgrade until it closes. The app shows a notice; set by main.tsx.
+ */
+let onBlocked: () => void = () => {};
+export function setBlockedHandler(fn: () => void): void {
+  onBlocked = fn;
+}
+
 export function db(): Promise<IDBPDatabase<Schema>> {
   return (dbp ??= openDB<Schema>(DB_NAME, 2, {
     upgrade(d, oldVersion) {
@@ -34,6 +43,17 @@ export function db(): Promise<IDBPDatabase<Schema>> {
       }
       // v2: a cache only — filled lazily from the sets, so existing installs need no data migration.
       if (oldVersion < 2) d.createObjectStore('records', { keyPath: 'exerciseId' });
+    },
+    // A newer version opened elsewhere: step aside so it can upgrade, then start the new version here too.
+    blocking(_current, _next, event) {
+      dbp = undefined;
+      (event.target as IDBDatabase).close();
+      if (typeof location !== 'undefined' && typeof document !== 'undefined') location.reload();
+    },
+    blocked: () => onBlocked(),
+    // The browser closed the connection (storage cleared, crash): reopen on next use.
+    terminated() {
+      dbp = undefined;
     },
   }));
 }
@@ -123,12 +143,17 @@ export async function putSets(sets: WorkoutSet[]): Promise<void> {
   const tx = (await db()).transaction('sets', 'readwrite');
   await Promise.all([...sets.map((s) => tx.store.put(s)), tx.done]);
 }
-/** Deletes a day's sets and comment in one transaction; returns the deleted sets. */
-export async function deleteDay(date: string): Promise<WorkoutSet[]> {
+/** Deletes a day's sets and comment in one transaction; returns them (for undo). */
+export async function deleteDay(date: string): Promise<{ sets: WorkoutSet[]; comment?: DayComment }> {
   const tx = (await db()).transaction(['sets', 'comments'], 'readwrite');
-  const sets = await tx.objectStore('sets').index('date').getAll(date);
+  const [sets, comment] = await Promise.all([tx.objectStore('sets').index('date').getAll(date), tx.objectStore('comments').get(date)]);
   await Promise.all([...sets.map((s) => tx.objectStore('sets').delete(s.id)), tx.objectStore('comments').delete(date), tx.done]);
-  return sets;
+  return { sets, comment };
+}
+/** Puts back what deleteDay removed. */
+export async function restoreDay(sets: WorkoutSet[], comment?: DayComment): Promise<void> {
+  const tx = (await db()).transaction(['sets', 'comments'], 'readwrite');
+  await Promise.all([...sets.map((s) => tx.objectStore('sets').put(s)), ...(comment ? [tx.objectStore('comments').put(comment)] : []), tx.done]);
 }
 /** The latest `limit` dates with sets, newest first, other than `except` (one key cursor, no set reads). */
 export async function recentWorkoutDates(limit: number, except?: string): Promise<string[]> {
@@ -148,6 +173,12 @@ export async function getRecords(exerciseId: string): Promise<StoredRecords | un
 }
 export async function putRecords(r: StoredRecords): Promise<void> {
   await (await db()).put('records', r);
+}
+/** Stores records only if none are stored yet (a lazy fill must never overwrite a fresher write). */
+export async function putRecordsIfAbsent(r: StoredRecords): Promise<void> {
+  const tx = (await db()).transaction('records', 'readwrite');
+  if (!(await tx.store.get(r.exerciseId))) await tx.store.put(r);
+  await tx.done;
 }
 export async function deleteRecords(exerciseId: string): Promise<void> {
   await (await db()).delete('records', exerciseId);
