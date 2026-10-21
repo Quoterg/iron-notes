@@ -5,7 +5,8 @@ import { t } from '../lib/i18n';
 import type { Exercise } from '../lib/model';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
-import { catById, categories, exercises, routines, saveRoutine } from '../state';
+import { catById, categories, exercises, routines } from '../state';
+import { saveRoutine } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 

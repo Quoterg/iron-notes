@@ -5,13 +5,15 @@ import { signal } from '@preact/signals';
 import type { ComponentType } from 'preact';
 import { t } from './lib/i18n';
 
-export function lazyView<P extends object>(load: () => Promise<{ default: ComponentType<P> }>) {
+/** `quiet`: render nothing (not "Loading…") until loaded — for parts below a screen that's already shown. */
+export function lazyView<P extends object>(load: () => Promise<{ default: ComponentType<P> }>, { quiet = false } = {}) {
   const comp = signal<ComponentType<P> | null>(null);
   const failed = signal(false);
   let pending: Promise<void> | undefined;
+  // The later screens' strings come with any of them (one shared chunk, cached after the first).
   const prefetch = () =>
-    (pending ??= load().then(
-      (m) => {
+    (pending ??= Promise.all([load(), import('./lib/strings-later')]).then(
+      ([m]) => {
         failed.value = false;
         comp.value = m.default;
       },
@@ -23,6 +25,7 @@ export function lazyView<P extends object>(load: () => Promise<{ default: Compon
   function Lazy(props: P) {
     const C = comp.value;
     if (C) return <C {...props} />;
+    if (failed.value && quiet) return null; // a part, not a screen: no error UI
     if (failed.value) {
       reloadOnce();
       return (
@@ -41,7 +44,7 @@ export function lazyView<P extends object>(load: () => Promise<{ default: Compon
       );
     }
     void prefetch();
-    return <p class="muted center">{t('loading')}</p>;
+    return quiet ? null : <p class="muted center">{t('loading')}</p>;
   }
   return { Lazy, prefetch };
 }

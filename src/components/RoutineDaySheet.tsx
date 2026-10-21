@@ -7,7 +7,8 @@ import { fieldsOf, type Exercise, type PlannedSet, type Routine, type RoutineDay
 import { planSummary } from '../lib/routines';
 import { dFromUser, dToUser, num, wFromUser, wToUser } from '../lib/units';
 import { open } from '../nav';
-import { catById, date, exById, logRoutineDay, routines, saveRoutine, settings, toast, view } from '../state';
+import { catById, date, exById, routines, settings, toast, view } from '../state';
+import { logRoutineDay, saveRoutine } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 

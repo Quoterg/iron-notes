@@ -5,7 +5,8 @@ import { recentWorkoutDates, setsBetween } from '../lib/db';
 import { t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { back } from '../nav';
-import { catById, copySets, exById, toast } from '../state';
+import { catById, exById, toast } from '../state';
+import { copySets } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
