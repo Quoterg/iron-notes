@@ -1,4 +1,4 @@
-import { exportAll, importAll } from '../lib/db';
+import { exportAll, importAll, validateBackup } from '../lib/backup';
 import { t, type Key } from '../lib/i18n';
 import type { DistUnit, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
@@ -114,8 +114,16 @@ async function restore(input: HTMLInputElement) {
   const file = input.files?.[0];
   input.value = '';
   if (!file || !confirm(t('importQ'))) return;
+  let data: unknown;
   try {
-    await importAll(JSON.parse(await file.text()));
+    data = validateBackup(JSON.parse(await file.text()));
+  } catch {
+    toast(t('notBackup'));
+    return;
+  }
+  await backup(); // the current data first: a restore can't be undone otherwise
+  try {
+    await importAll(data);
   } catch {
     toast(t('notBackup'));
     return;

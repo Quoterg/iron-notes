@@ -18,7 +18,7 @@ export function Log() {
     if (g) g.push(set);
     else groups.set(set.exerciseId, [set]);
   }
-  const totals = dayTotals(sets);
+  const totals = dayTotals([...groups.values()].flat()); // only sets of exercises that still exist
   const addExercise = () => open({ kind: 'pick', date: d });
 
   return (
