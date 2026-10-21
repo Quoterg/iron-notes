@@ -74,6 +74,12 @@ export default function Settings() {
       <section class="card">
         <h2>{t('logging')}</h2>
         <Check label="markDone" checked={s.markDone} onChange={(markDone) => void saveSettings({ markDone })} />
+        <Choice<'1' | '0'>
+          label={t('weekStart')}
+          options={[['1', t('monday')], ['0', t('sunday')]]}
+          value={String(s.weekStart) as '1' | '0'}
+          onPick={(v) => void saveSettings({ weekStart: v === '0' ? 0 : 1 })}
+        />
         <Choice<'epley' | 'brzycki'>
           label={t('formula')}
           options={[['epley', 'Epley'], ['brzycki', 'Brzycki']]}

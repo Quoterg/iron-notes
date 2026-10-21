@@ -151,8 +151,11 @@ export function workouts(sets: readonly WorkoutSet[]): { date: string; sets: Wor
   return out.reverse();
 }
 
-/** Round axis bounds and 3–5 ticks covering [min, max]. */
-export function niceScale(min: number, max: number): { lo: number; hi: number; ticks: number[] } {
+/** Whole-second steps for time and pace axes (so labels never round to duplicates). */
+export const TIME_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200];
+
+/** Round axis bounds and 3–5 ticks covering [min, max]; `steps` restricts the tick step (e.g. TIME_STEPS). */
+export function niceScale(min: number, max: number, steps?: number[]): { lo: number; hi: number; ticks: number[] } {
   if (!Number.isFinite(min) || !Number.isFinite(max)) return { lo: 0, hi: 1, ticks: [0, 1] };
   if (min === max) {
     const pad = Math.abs(min) > 1 ? Math.abs(min) * 0.05 : 1;
@@ -161,7 +164,7 @@ export function niceScale(min: number, max: number): { lo: number; hi: number; t
   }
   const raw = (max - min) / 4;
   const mag = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw)!;
+  const step = steps ? steps.find((s) => s >= raw) ?? steps[steps.length - 1] : [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw)!;
   const lo = Math.floor(min / step) * step;
   const hi = Math.ceil(max / step) * step;
   const ticks: number[] = [];

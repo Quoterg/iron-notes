@@ -53,6 +53,7 @@ export function validateBackup(b: unknown): Backup {
     if (st.dist === 'km' || st.dist === 'mi' || st.dist === 'm') settings.dist = st.dist;
     if (isNum(st.rest) && st.rest > 0) settings.rest = st.rest;
     if (st.formula === 'epley' || st.formula === 'brzycki') settings.formula = st.formula;
+    if (st.weekStart === 0 || st.weekStart === 1) settings.weekStart = st.weekStart;
     for (const k of ['autoTimer', 'timerSound', 'markDone'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
   }
   return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings };

@@ -84,9 +84,9 @@ test('a new exercise of another type, found by search', async ({ page }) => {
 test('theme and units in settings', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Night' }).click();
+  await page.getByRole('button', { name: 'Night', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
-  await page.getByRole('button', { name: 'Day' }).click();
+  await page.getByRole('button', { name: 'Day', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
   await page.getByRole('button', { name: 'lb', exact: true }).click();
   await page.reload();

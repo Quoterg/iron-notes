@@ -5,7 +5,7 @@ import { byOrder, isoDate, recordIds } from './lib/calc';
 import * as db from './lib/db';
 import { DEFAULT_SETTINGS, type Category, type Exercise, type Settings, type WorkoutSet } from './lib/model';
 
-export type View = 'log' | 'settings';
+export type View = 'log' | 'calendar' | 'settings';
 export const view = signal<View>('log');
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);

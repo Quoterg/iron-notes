@@ -2,7 +2,7 @@
 // line, crosshair + readout on pointer and keyboard, and every value also as a table.
 import { useState } from 'preact/hooks';
 import { t } from '../lib/i18n';
-import { niceScale, type Point } from '../lib/progress';
+import { niceScale, TIME_STEPS, type Point } from '../lib/progress';
 
 const W = 320;
 const H = 160;
@@ -34,7 +34,7 @@ function decimate(points: Point[]): number[] {
 }
 
 /** `points` are in display units, sorted by date; `fmt` formats a value (axis and readout). */
-export function LineChart({ title, points, fmt }: { title: string; points: Point[]; fmt: (v: number) => string }) {
+export function LineChart({ title, points, fmt, timeAxis }: { title: string; points: Point[]; fmt: (v: number) => string; timeAxis?: boolean }) {
   const [active, setActive] = useState<number | null>(null);
   const [tableOpen, setTableOpen] = useState(false);
   if (points.length === 0) return null;
@@ -44,12 +44,13 @@ export function LineChart({ title, points, fmt }: { title: string; points: Point
   let vmin = Infinity;
   let vmax = -Infinity;
   for (const p of points) (vmin = Math.min(vmin, p.value)), (vmax = Math.max(vmax, p.value));
-  const { lo, hi, ticks } = niceScale(vmin, vmax);
+  const { lo, hi, ticks } = niceScale(vmin, vmax, timeAxis ? TIME_STEPS : undefined);
   const longSpan = t1 - t0 > 300 * DAY;
   const x = (d: string) => PAD.left + ((time(d) - t0) / (t1 - t0)) * (W - PAD.left - PAD.right);
   const y = (v: number) => PAD.top + (1 - (v - lo) / (hi - lo)) * (H - PAD.top - PAD.bottom);
   const xs = points.map((p) => x(p.date));
   const dots = decimate(points);
+  const drawn = new Set(dots);
   const path = dots.map((i, k) => `${k ? 'L' : 'M'}${xs[i].toFixed(1)},${y(points[i].value).toFixed(1)}`).join('');
 
   /** Nearest point by x: binary search (points are sorted by date). */
@@ -106,7 +107,7 @@ export function LineChart({ title, points, fmt }: { title: string; points: Point
         {dots.map((i) => (
           <circle key={points[i].date} class={i === active ? 'point on' : 'point'} cx={xs[i]} cy={y(points[i].value)} r={3.5} />
         ))}
-        {a && !dots.includes(active!) && <circle class="point on" cx={xs[active!]} cy={y(a.value)} r={3.5} />}
+        {a && !drawn.has(active!) && <circle class="point on" cx={xs[active!]} cy={y(a.value)} r={3.5} />}
       </svg>
       <p class="chart-tip num" aria-live="polite">
         {a ? (

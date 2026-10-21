@@ -6,7 +6,7 @@ import { lazyView } from './lazy';
 import { stack, top, type Screen } from './nav';
 import { date, loadDay, toastText, updateReady, view, type View } from './state';
 
-const TABS: View[] = ['log', 'settings'];
+const TABS: View[] = ['log', 'calendar', 'settings'];
 
 // Not needed for the first screen: split out and prefetched when idle (main.tsx).
 export const pickView = lazyView(() => import('./components/Picker'));
@@ -15,9 +15,11 @@ export const editExerciseView = lazyView(() => import('./components/ExerciseEdit
 export const categoryView = lazyView(() => import('./components/CategoryEditor'));
 export const commentView = lazyView(() => import('./components/CommentSheet'));
 export const settingsView = lazyView(() => import('./components/Settings'));
+export const calendarView = lazyView(() => import('./components/Calendar'));
 
 const PREFETCH: Partial<Record<View, () => void>> = {
   settings: () => void settingsView.prefetch(),
+  calendar: () => void calendarView.prefetch(),
 };
 
 export function App() {
@@ -37,6 +39,7 @@ export function App() {
         )}
         <main onTouchStart={view.value === 'log' ? swipeStart : undefined} onTouchEnd={view.value === 'log' ? swipeEnd : undefined}>
           {view.value === 'log' && <Log />}
+          {view.value === 'calendar' && <calendarView.Lazy />}
           {view.value === 'settings' && <settingsView.Lazy />}
         </main>
         <nav class="tabs">
