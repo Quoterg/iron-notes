@@ -1,0 +1,50 @@
+// Full-screen sheets as a stack, mirrored in browser history so the Android back
+// button (and back gesture) closes the top sheet instead of leaving the app. Same as Iron Log.
+import { computed, signal } from '@preact/signals';
+
+export type Screen =
+  /** Pick an exercise to log on `date`. */
+  | { kind: 'pick'; date: string }
+  /** Log sets of an exercise on `date`. */
+  | { kind: 'exercise'; id: string; date: string }
+  /** Create (no id) or edit an exercise. With `date`, a new exercise opens for logging afterwards. */
+  | { kind: 'editExercise'; id?: string; categoryId?: string; date?: string }
+  /** Browse and manage all exercises and categories. */
+  | { kind: 'library' }
+  /** Create (no id) or edit a category. */
+  | { kind: 'category'; id?: string }
+  /** The workout comment of `date`. */
+  | { kind: 'comment'; date: string };
+
+export const stack = signal<Screen[]>([]);
+export const top = computed(() => stack.value[stack.value.length - 1]);
+
+export function open(s: Screen): void {
+  stack.value = [...stack.value, s];
+  history.pushState({ depth: stack.value.length }, '');
+}
+
+/** Swap the top sheet without adding a history step. */
+export function replaceTop(s: Screen): void {
+  stack.value = [...stack.value.slice(0, -1), s];
+}
+
+/** Replace the top two sheets by one (e.g. picker + new-exercise editor → logging screen). */
+export function replaceTopTwo(s: Screen): void {
+  if (stack.value.length < 2) return replaceTop(s);
+  // The popstate of history.back() then trims the stack to the new depth: already that long.
+  stack.value = [...stack.value.slice(0, -2), s];
+  history.back();
+}
+
+export function back(): void {
+  if (stack.value.length) history.back();
+}
+
+export function initNav(): void {
+  history.replaceState({ depth: 0 }, '');
+  window.addEventListener('popstate', (e: PopStateEvent) => {
+    const depth = (e.state as { depth?: number } | null)?.depth ?? 0;
+    stack.value = stack.value.slice(0, depth);
+  });
+}

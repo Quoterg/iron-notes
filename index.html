@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eef1f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#050912" media="(prefers-color-scheme: dark)" />
+    <!-- Theme before first paint: THEME_BOOT in src/csp.ts (allowed by its hash; keep identical). -->
+    <script>(function(){var t;try{t=localStorage.getItem('iron-notes-theme')}catch(e){}var n=t==='night'||(t!=='day'&&!!window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var d=document;d.documentElement.setAttribute('data-theme',n?'night':'day');if(t){var m=d.querySelectorAll('meta[name=theme-color]');for(var i=0;i<m.length;i++)m[i].content=n?'#050912':'#eef1f8'}})()</script>
+    <meta name="description" content="Open-source training log: sets, reps, records and progress. Works offline, fast on old phones." />
+    <title>Iron Notes</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>Iron Notes needs JavaScript.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
