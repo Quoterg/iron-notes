@@ -223,7 +223,7 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .card .col select { color: var(--text); }
 
 /* ---- Iron Notes ---- */
-.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; background: var(--muted); }
 .summary { margin: 0 4px 10px; }
 .ex-card { padding: 0; overflow: hidden; }
 .ex-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px 6px; background: none; border: 0; text-align: left; cursor: pointer; }

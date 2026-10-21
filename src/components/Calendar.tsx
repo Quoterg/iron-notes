@@ -38,11 +38,13 @@ export default function Calendar() {
 
   const today = isoDate(new Date());
   const grid = monthGrid(month, weekStart);
+  const cats = catById.value;
   const title = parseIso(`${month}-01`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const weekdays = grid.slice(0, 7).map((d) => parseIso(d).toLocaleDateString(undefined, { weekday: 'narrow' }));
-  const count = days ? [...days.keys()].length : 0;
-  const pick = (d: string) => {
-    void loadDay(d);
+  const count = days?.size ?? 0;
+  // Switch once the day is loaded: the log never flashes the previous day.
+  const pick = async (d: string) => {
+    await loadDay(d);
     view.value = 'log';
   };
 
@@ -69,18 +71,19 @@ export default function Calendar() {
           {Array.from({ length: grid.length / 7 }, (_, r) => (
             <div class="cal-row" key={r}>
               {grid.slice(r * 7, r * 7 + 7).map((d) => {
-                const cats = days?.get(d) ?? [];
-                const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === today && 'today', d === date.value && 'cur', cats.length && 'has']
+                const dayCats = days?.get(d) ?? [];
+                const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === today && 'today', d === date.value && 'cur', dayCats.length && 'has']
                   .filter(Boolean)
                   .join(' ');
                 const label = parseIso(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-                const names = cats.map((c) => catById.value.get(c)?.name).filter(Boolean).join(', ');
+                const names = dayCats.map((c) => cats.get(c)?.name).filter(Boolean).join(', ');
                 return (
-                  <button key={d} class={cls} aria-label={names ? `${label}: ${names}` : label} onClick={() => pick(d)}>
+                  <button key={d} class={cls} aria-label={names ? `${label}: ${names}` : label} onClick={() => void pick(d)}>
                     <span class="num">{Number(d.slice(8))}</span>
                     <span class="cal-dots" aria-hidden="true">
-                      {cats.slice(0, MAX_DOTS).map((c) => (
-                        <span key={c} class="dot" style={{ background: catById.value.get(c)?.color ?? '#888' }} />
+                      {dayCats.slice(0, MAX_DOTS).map((c) => (
+                        // No colour (category deleted): the .dot's own themed background shows.
+                        <span key={c} class="dot" style={cats.get(c) ? { background: cats.get(c)!.color } : undefined} />
                       ))}
                     </span>
                   </button>
