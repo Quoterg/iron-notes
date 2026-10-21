@@ -55,6 +55,8 @@ export interface WorkoutSet {
   distance?: number;
   time?: number;
   comment?: string;
+  /** Superset id: every set of the exercises done in rotation on that day shares it. */
+  group?: string;
   /**
    * Ticked off. `false` = planned but not done yet (logged from a routine): shown greyed with a tick
    * box and left out of records and progress until done. `undefined`/`true` = a done set.

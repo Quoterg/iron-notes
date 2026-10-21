@@ -6,8 +6,9 @@ import { t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
-import { open } from '../nav';
-import { allSetsOf, catById, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
+import { groupColors, groupMembers, nextInGroup } from '../lib/groups';
+import { open, replaceTop } from '../nav';
+import { allSetsOf, catById, date as shownDate, daySets, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
 import { isDone } from '../lib/routines';
 import { Graph, History, Records } from './ExerciseProgress';
 import { Dot, Trophy } from './icons';
@@ -104,6 +105,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   if (!ex) return <Sheet title="">{null}</Sheet>;
   const fields = fieldsOf(ex.type);
   const rec = records.value.get(id);
+  // The exercise's superset on the shown day (in rotation order), if any.
+  const members = date === shownDate.value ? groupMembers(daySets.value, id) : [];
   const selected = sel ? today.find((s) => s.id === sel) : undefined;
   const values = fromForm(form, ex, st);
   const set = (k: keyof Form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -121,11 +124,17 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       // A routine's next planned set is filled in (and done); otherwise a new set.
       const s: WorkoutSet = planned
         ? { ...planned, ...values, comment, done: true }
-        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined };
+        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: today[0]?.group };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
       if (all.some((x) => isDone(x) && x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
-      if (st.autoTimer) startTimer(ex.rest ?? st.rest, st.timerSound);
+      // In a superset: on to the next exercise; rest only after the round's last one.
+      const step = nextInGroup(members, id);
+      if (st.autoTimer && (!step || step.endOfRound)) startTimer(ex.rest ?? st.rest, st.timerSound);
+      if (step) {
+        replaceTop({ kind: 'exercise', id: step.next, date });
+        return;
+      }
     }
     setForm((f) => ({ ...f, comment: '' }));
     setShowComment(false);
@@ -152,6 +161,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   }
 
   const cat = catById.value.get(ex.categoryId);
+  const colors = members.length ? groupColors(daySets.value) : null;
   return (
     <Sheet
       title={ex.name}
@@ -172,6 +182,15 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
           {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
         </p>
         {ex.notes && <p class="ex-notes muted small">{ex.notes}</p>}
+        {members.length > 1 && (
+          <div class="chips superset-bar" role="group" aria-label={t('superset')} style={{ borderColor: colors?.get(today[0]?.group ?? '') }}>
+            {members.map((m) => (
+              <button key={m} class={m === id ? 'chip on' : 'chip'} aria-pressed={m === id} onClick={() => m !== id && replaceTop({ kind: 'exercise', id: m, date })}>
+                {exById.value.get(m)?.name}
+              </button>
+            ))}
+          </div>
+        )}
         <div class="chips" role="group" aria-label={ex.name}>
           {TABS.map((k) => (
             <button key={k} class={k === tab ? 'chip on' : 'chip'} aria-pressed={k === tab} onClick={() => setTab(k)}>

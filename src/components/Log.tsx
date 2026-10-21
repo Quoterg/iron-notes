@@ -6,7 +6,8 @@ import { t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { setText, weight } from '../lib/units';
 import { open } from '../nav';
-import { catById, date, dayComment, daySets, deleteWorkout, exById, moveExercise, records, settings, toast } from '../state';
+import { groupColors } from '../lib/groups';
+import { catById, date, dayComment, daySets, deleteWorkout, exById, groupExercises, moveExercise, records, settings, toast, ungroupExercise } from '../state';
 import { Dot, Trophy } from './icons';
 
 export function Log() {
@@ -14,6 +15,9 @@ export function Log() {
   const sets = daySets.value;
   const s = settings.value;
   const [reordering, setReordering] = useState(false);
+  const [grouping, setGrouping] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const colors = groupColors(sets);
   const groups = new Map<string, WorkoutSet[]>();
   for (const set of sets) {
     if (!exById.value.has(set.exerciseId)) continue;
@@ -76,16 +80,43 @@ export function Log() {
             {groups.size} {t('exercises').toLowerCase()} · {totals.sets} {t('sets')}
             {totals.volume > 0 && ` · ${weight(totals.volume, s)} ${t('volume')}`}
           </p>
+          {grouping && <p class="muted small center">{t('pickForSuperset')}</p>}
           {ids.map((id, i) => {
             const ex = exById.value.get(id)!;
             const rec = records.value.get(id);
+            const g = groups.get(id)![0].group;
+            const color = g ? colors.get(g) : undefined;
             return (
-              <section class="card ex-card" key={id}>
+              <section class={color ? 'card ex-card grouped' : 'card ex-card'} key={id} style={color ? { borderLeftColor: color } : undefined}>
+                {color && (
+                  <span class="group-tag" style={{ color }}>
+                    {t('superset')}
+                  </span>
+                )}
                 <div class="ex-row">
+                  {grouping && (
+                    <input
+                      type="checkbox"
+                      class="tick"
+                      aria-label={`${t('selectExercise')}: ${ex.name}`}
+                      checked={picked.has(id)}
+                      onChange={(e) => {
+                        const p = new Set(picked);
+                        if (e.currentTarget.checked) p.add(id);
+                        else p.delete(id);
+                        setPicked(p);
+                      }}
+                    />
+                  )}
                   <button class="ex-head" onClick={() => open({ kind: 'exercise', id, date: d })}>
                     <Dot color={catById.value.get(ex.categoryId)?.color} />
                     <h2>{ex.name}</h2>
                   </button>
+                  {grouping && g && (
+                    <button class="btn small" onClick={() => void ungroupExercise(id)}>
+                      {t('ungroup')}
+                    </button>
+                  )}
                   {reordering && (
                     <span class="move">
                       <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => void moveExercise(id, -1)}>
@@ -111,6 +142,18 @@ export function Log() {
           })}
         </>
       )}
+      {grouping && picked.size >= 2 && (
+        <button
+          class="btn primary wide"
+          onClick={async () => {
+            await groupExercises([...picked]);
+            setPicked(new Set());
+            setGrouping(false);
+          }}
+        >
+          {t('makeSuperset', { n: picked.size })}
+        </button>
+      )}
       <div class="actions">
         {groups.size > 0 && (
           <button class="btn primary" onClick={addExercise}>
@@ -128,9 +171,21 @@ export function Log() {
           <button class="chip" onClick={copy}>
             {t('copyWorkout')}
           </button>
-          {groups.size > 1 && (
+          {groups.size > 1 && !grouping && (
             <button class={reordering ? 'chip on' : 'chip'} aria-pressed={reordering} onClick={() => setReordering(!reordering)}>
               {reordering ? t('done') : t('reorder')}
+            </button>
+          )}
+          {groups.size > 1 && !reordering && (
+            <button
+              class={grouping ? 'chip on' : 'chip'}
+              aria-pressed={grouping}
+              onClick={() => {
+                setGrouping(!grouping);
+                setPicked(new Set());
+              }}
+            >
+              {grouping ? t('done') : t('superset')}
             </button>
           )}
           <button class="chip" onClick={() => void share()}>

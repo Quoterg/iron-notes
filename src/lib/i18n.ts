@@ -180,6 +180,12 @@ const en = {
   undo: 'Undo',
   shareFailed: "Couldn't share on this device.",
   dbBlocked: 'Iron Notes is open in another tab or window. Close it to finish updating.',
+  superset: 'Superset',
+  makeSuperset: 'Make superset ({n})',
+  ungroup: 'Ungroup',
+  pickForSuperset: 'Pick the exercises to do in rotation.',
+  selectExercise: 'Select',
+  nextInSuperset: 'Next: {name}',
   about: 'About',
   aboutText: 'Iron Notes is open source (AGPL-3.0) and works offline.',
 } as const;
