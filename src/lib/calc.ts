@@ -95,3 +95,10 @@ export function dayTotals(sets: readonly WorkoutSet[]) {
   }
   return { sets: sets.length, reps, volume };
 }
+
+/** `f` with its empty (`''`) `keys` taken from `from`: a late prefill never overwrites typed input. */
+export function fillEmpty<T extends { [K in keyof T]: string }>(f: T, from: T, keys: (keyof T)[]): T {
+  const out = { ...f };
+  for (const k of keys) if (out[k] === '') out[k] = from[k];
+  return out;
+}

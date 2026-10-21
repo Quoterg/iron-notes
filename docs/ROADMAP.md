@@ -24,7 +24,7 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
   it later, data is per origin). Deploy only after CI passes on `main`. Real security headers
   (`_headers`: CSP incl. `frame-ancestors 'none'`, nosniff, caching). Needs the owner's Cloudflare
   secrets (see PROGRESS.md).
-- [ ] **M3 Exercise history, graphs & records** — Exercise screen tabs: Track | History | Graph |
+- [x] **M3 Exercise history, graphs & records** — Exercise screen tabs: Track | History | Graph |
   Records. History: every workout of the exercise, newest first, tap to open that day. Graph (tiny
   hand-written SVG, like Iron Log's LineChart): estimated 1RM, max weight, max reps, workout volume,
   workout reps, max/total distance, max/total time, best pace; ranges 1 m / 3 m / 6 m / 1 y / all;

@@ -18,5 +18,6 @@ describe('CSP', () => {
     const h = headersFile();
     expect(h).toContain(`Content-Security-Policy: ${CSP}; frame-ancestors 'none'`);
     expect(h).toMatch(/\/sw\.js\n {2}Cache-Control: no-cache/);
+    expect(h).toMatch(/\n\/\n {2}Cache-Control: no-cache/);
   });
 });

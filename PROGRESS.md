@@ -2,13 +2,31 @@
 
 ## Next up
 
-- **Merging:** owner's rule — wait for a reviewer before any merge. Iron Notes has no reviewer routine
-  yet (Iron Log's only watches iron-log); owner to decide how reviews happen. Never merge yourself.
+- **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
+  Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - **Owner action for deploys:** Cloudflare API token (Account → Cloudflare Pages → Edit) and account id
   as repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M3 Exercise history, graphs & records**.
+- Next build milestone: **M4 Calendar**.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M3 Exercise history, graphs & records
+
+- Exercise screen tabs Track · History · Graph · Records (segmented control, Iron Log style).
+- History: workouts newest first (20 at a time), trophies and comments, tap a day to open it.
+- Graph: 10 measures by type (est. 1RM, max weight/reps, workout volume/reps, max/total distance and
+  time, best pace) × 1 m / 3 m / 6 m / 1 y / all; hand-written SVG like Iron Log's LineChart
+  (≤ 120 dots drawn, nearest-point readout on touch/keyboard, table view).
+- Records: best estimated 1RM (Epley/Brzycki — new setting), rep maxes 1–15, best values per field
+  incl. fastest pace.
+- `src/lib/progress.ts`: single-pass functions over the cached, sorted history; 11 unit tests.
+- Bug fix (from M1): the late "start from last time" prefill overwrote what the user had already typed
+  when the history loaded slowly — it now fills only empty fields (`fillEmpty`, tested). Found via
+  screenshots: 90 × 5 was saved as 80 × 5.
+- Checks: 44 unit tests, 5 e2e (new: history/graph/records), Lighthouse 100/100/100, initial JS
+  17.2 KB (new strings; tab code is in the lazy exercise chunk, 6.3 KB).
+- Still open (perf, from the M1 review): persist per-exercise rep maxes so a heavy day doesn't read
+  every exercise's full history on open.
 
 ## 2026-10-21 — M2 CI & hosting
 

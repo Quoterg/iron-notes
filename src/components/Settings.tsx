@@ -74,6 +74,12 @@ export default function Settings() {
       <section class="card">
         <h2>{t('logging')}</h2>
         <Check label="markDone" checked={s.markDone} onChange={(markDone) => void saveSettings({ markDone })} />
+        <Choice<'epley' | 'brzycki'>
+          label={t('formula')}
+          options={[['epley', 'Epley'], ['brzycki', 'Brzycki']]}
+          value={s.formula}
+          onPick={(formula) => void saveSettings({ formula })}
+        />
         <button class="btn wide" onClick={() => open({ kind: 'library' })}>
           {t('manageExercises')}
         </button>

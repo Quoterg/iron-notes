@@ -46,6 +46,14 @@ export function headersFile(): string {
     '  Cache-Control: public, max-age=31536000, immutable',
     '/sw.js',
     '  Cache-Control: no-cache',
+    // The app page and manifest revalidate every time: first loads without the service worker get the
+    // current version (hashed assets above stay immutable).
+    '/',
+    '  Cache-Control: no-cache',
+    '/index.html',
+    '  Cache-Control: no-cache',
+    '/manifest.webmanifest',
+    '  Cache-Control: no-cache',
     '',
   ].join('\n');
 }
