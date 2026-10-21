@@ -4,11 +4,23 @@
 
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
-- **Owner action for deploys:** Cloudflare API token (Account → Cloudflare Pages → Edit) and account id
-  as repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+- Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M5 Workouts & routines** (with persisted per-exercise rep maxes).
+- Next build milestone: **M5b Routines**.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M5a Workout tools
+
+- Copy a previous workout (or chosen exercises) into the shown day: recent workout dates from one
+  `prevunique` key cursor, their sets from one range read; copies get new ids and order, no comments.
+- Reorder exercises in a day (↑ ↓): the day's sets get new order keys in the day's own key range,
+  each exercise keeps its set order, so records don't change.
+- Delete a whole workout (sets + comment, one transaction, set count in the confirm).
+- Share a workout as text (`navigator.share`, else clipboard).
+- Performance (open since the M1 review): DB v2 `records` store caches record-holding set ids per
+  exercise; opening a day reads those instead of each exercise's whole history. Recomputed after every
+  write, cleared by restores, deleted with the exercise; filled lazily for older installs.
+- Checks: 54 unit tests (incl. a v1 → v2 upgrade test), 7 e2e, initial JS 18.5 KB.
 
 ## 2026-10-21 — M4 Calendar
 

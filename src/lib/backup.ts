@@ -63,7 +63,8 @@ export function validateBackup(b: unknown): Backup {
 export async function importAll(b: unknown): Promise<void> {
   const x = validateBackup(b);
   const d = await db();
-  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv'] as const;
+  // `records` is a cache of the sets: cleared, refilled lazily.
+  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records'] as const;
   const tx = d.transaction(stores, 'readwrite');
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
   const ops: Promise<unknown>[] = [];

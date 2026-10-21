@@ -4,7 +4,7 @@ import { Log } from './components/Log';
 import { RestTimer } from './components/RestTimer';
 import { lazyView } from './lazy';
 import { stack, top, type Screen } from './nav';
-import { date, loadDay, toastText, updateReady, view, type View } from './state';
+import { date, loadDay, toastAction, toastText, updateReady, view, type View } from './state';
 
 const TABS: View[] = ['log', 'calendar', 'settings'];
 
@@ -14,6 +14,7 @@ export const exerciseView = lazyView(() => import('./components/ExerciseScreen')
 export const editExerciseView = lazyView(() => import('./components/ExerciseEditor'));
 export const categoryView = lazyView(() => import('./components/CategoryEditor'));
 export const commentView = lazyView(() => import('./components/CommentSheet'));
+export const copyView = lazyView(() => import('./components/CopySheet'));
 export const settingsView = lazyView(() => import('./components/Settings'));
 export const calendarView = lazyView(() => import('./components/Calendar'));
 
@@ -60,6 +61,19 @@ export function App() {
       {toastText.value && (
         <p class="toast" role="status">
           {toastText.value}
+          {toastAction.value && (
+            <button
+              class="toast-action"
+              onClick={() => {
+                const a = toastAction.value!;
+                toastText.value = '';
+                toastAction.value = null;
+                a.run();
+              }}
+            >
+              {toastAction.value.label}
+            </button>
+          )}
         </p>
       )}
     </>
@@ -80,6 +94,8 @@ function ScreenView({ screen: s }: { screen: Screen }) {
       return <categoryView.Lazy id={s.id} />;
     case 'comment':
       return <commentView.Lazy date={s.date} />;
+    case 'copy':
+      return <copyView.Lazy date={s.date} />;
   }
 }
 

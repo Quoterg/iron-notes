@@ -1,17 +1,31 @@
 import { render } from 'preact';
-import { App, calendarView, commentView, editExerciseView, exerciseView, pickView, settingsView } from './app';
+import { App, calendarView, commentView, copyView, editExerciseView, exerciseView, pickView, settingsView } from './app';
 import { isoDate } from './lib/calc';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { initNav, open } from './nav';
+import { setBlockedHandler } from './lib/db';
+import { t } from './lib/i18n';
 import { date, loadDay, loadLibrary, loadSettings, updateReady } from './state';
 import './styles.css';
 
 async function start() {
   initNav();
+  // An older version open in another tab blocks a database upgrade, and with it the first render: a
+  // plain-DOM notice (the app isn't rendered yet), removed once the database opens.
+  setBlockedHandler(() => {
+    if (document.getElementById('db-blocked')) return;
+    const p = document.createElement('p');
+    p.id = 'db-blocked';
+    p.className = 'update-bar';
+    p.setAttribute('role', 'alert');
+    p.textContent = t('dbBlocked');
+    document.body.prepend(p);
+  });
   applyTheme(); // the boot script already set it; this also sets the bar colour
   watchSystemTheme();
   performance.mark('in:start');
   await Promise.all([loadSettings(), loadLibrary()]);
+  document.getElementById('db-blocked')?.remove();
   performance.mark('in:library');
   render(<App />, document.getElementById('app')!);
   performance.mark('in:render'); // measured by e2e tests
@@ -27,7 +41,7 @@ async function start() {
     shownToday = today;
   });
   // The other screens when idle, one at a time, so they open instantly and work offline.
-  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, settingsView]));
+  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, copyView, settingsView]));
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
     navigator.serviceWorker.addEventListener('message', (e) => {
