@@ -30,3 +30,22 @@ export const CSP_DIRECTIVES: [directive: string, sources: string][] = [
 ];
 
 export const CSP = CSP_DIRECTIVES.map(([d, s]) => `${d} ${s}`).join('; ');
+
+/**
+ * Cloudflare Pages `_headers` (written to dist/ by vite.config.ts). Real headers can do what the meta
+ * tag can't: frame-ancestors (no framing → no clickjacking). The meta tag stays for other hosts.
+ */
+export function headersFile(): string {
+  return [
+    '/*',
+    `  Content-Security-Policy: ${CSP}; frame-ancestors 'none'`,
+    '  X-Content-Type-Options: nosniff',
+    '  Referrer-Policy: no-referrer',
+    '  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    '/assets/*',
+    '  Cache-Control: public, max-age=31536000, immutable',
+    '/sw.js',
+    '  Cache-Control: no-cache',
+    '',
+  ].join('\n');
+}

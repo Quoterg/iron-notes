@@ -2,10 +2,21 @@
 
 ## Next up
 
-- **Owner decisions needed** before M2: where to host (not GitHub Pages on Quoterg — see ROADMAP M2),
-  and creating the GitHub repo (`Quoterg/iron-notes`?) for CI and PRs.
-- Then **M3 Exercise history, graphs & records** (doesn't depend on hosting).
-- Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` (see README).
+- **Merging:** owner's rule — wait for a reviewer before any merge. Iron Notes has no reviewer routine
+  yet (Iron Log's only watches iron-log); owner to decide how reviews happen. Never merge yourself.
+- **Owner action for deploys:** Cloudflare API token (Account → Cloudflare Pages → Edit) and account id
+  as repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
+- **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
+- Next build milestone: **M3 Exercise history, graphs & records**.
+- Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M2 CI & hosting
+
+- Repo `Quoterg/iron-notes` (private; creating a public repo was blocked by the permission check —
+  the owner can switch: `gh repo edit Quoterg/iron-notes --visibility public --accept-visibility-change-consequences`).
+- CI (`.github/workflows/ci.yml`) green on PR #1. Deploy workflow for Cloudflare Pages after CI on main.
+- `_headers` generated from `src/csp.ts` at build (tested): CSP as a real header with `frame-ancestors 'none'`.
+- Research + design draft for the HIT modes: docs/TRAINING-MODES.md.
 
 ## 2026-10-21 — M1 Foundation
 

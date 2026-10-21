@@ -2,7 +2,7 @@ import preact from '@preact/preset-vite';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defineConfig } from 'vitest/config';
-import { CSP } from './src/csp';
+import { CSP, headersFile } from './src/csp';
 
 export default defineConfig({
   // Relative base: the same build works at a domain root or under a sub-path.
@@ -17,6 +17,14 @@ export default defineConfig({
       transformIndexHtml: () => [
         { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP }, injectTo: 'head-prepend' },
       ],
+    },
+    {
+      // Cloudflare Pages headers (CSP with frame-ancestors, caching), from the same policy as the meta tag.
+      name: 'iron-notes-headers',
+      apply: 'build',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: '_headers', source: headersFile() });
+      },
     },
     {
       // Every script and style of this build, listed in the page: the service worker caches a new

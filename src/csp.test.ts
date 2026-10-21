@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CSP, THEME_BOOT, THEME_BOOT_HASH } from './csp';
+import { CSP, THEME_BOOT, THEME_BOOT_HASH, headersFile } from './csp';
 
 describe('CSP', () => {
   it('allows the inline theme boot script by its hash, and nothing else inline', () => {
@@ -12,5 +12,11 @@ describe('CSP', () => {
     expect(inline).toEqual([THEME_BOOT]);
     expect(CSP).not.toContain('unsafe-inline');
     expect(CSP).not.toContain('unsafe-eval');
+  });
+
+  it('sends the same policy as a header, with framing forbidden', () => {
+    const h = headersFile();
+    expect(h).toContain(`Content-Security-Policy: ${CSP}; frame-ancestors 'none'`);
+    expect(h).toMatch(/\/sw\.js\n {2}Cache-Control: no-cache/);
   });
 });
