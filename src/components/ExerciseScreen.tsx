@@ -1,7 +1,7 @@
 // Log sets of one exercise on one day: fields for the exercise type with +/- steppers, Save/Clear
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
 import { useEffect, useState } from 'preact/hooks';
-import { fmtTime, previousWorkout, recordIds, uid } from '../lib/calc';
+import { fmtTime, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
@@ -50,8 +50,9 @@ function fromForm(f: Form, ex: Exercise, st: Settings): Partial<WorkoutSet> | nu
     } else {
       const v = parse(f[field]);
       if (v == null) return null;
-      if (field === 'weight') out.weight = wFromUser(v, st.unit);
-      else if (field === 'distance') out.distance = dFromUser(v, st.dist);
+      // Rounded so lb/mi entries don't store float noise (61.235 kg, not 61.23496…).
+      if (field === 'weight') out.weight = round(wFromUser(v, st.unit), 3);
+      else if (field === 'distance') out.distance = round(dFromUser(v, st.dist), 4);
       else out.reps = Math.round(v);
     }
   }
@@ -82,6 +83,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
 
   // Start from the last set logged (today, else last time), like a paper log.
   const [filled, setFilled] = useState(false);
+  // Runs once, when the history first arrives (deliberately only on `all`; `filled` stops repeats).
   useEffect(() => {
     if (filled || !all) return;
     const last = today[today.length - 1] ?? prev[0];

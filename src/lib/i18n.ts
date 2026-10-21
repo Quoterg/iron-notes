@@ -61,7 +61,8 @@ const en = {
   nameTaken: 'An exercise with this name already exists.',
   nameRequired: 'Enter a name.',
   typeLocked: "The type can't change once sets are logged.",
-  deleteExerciseQ: 'Delete this exercise and all its logged sets?',
+  deleteExerciseQ: 'Delete this exercise?',
+  deleteExerciseSetsQ: 'Delete this exercise and its {n} logged sets? This cannot be undone.',
   deleteCategoryQ: 'Delete this category?',
   categoryInUse: 'Move or delete its exercises first.',
   noMatches: 'No exercises match.',
@@ -86,7 +87,7 @@ const en = {
   yourData: 'Your data',
   exportBackup: 'Export backup (JSON)',
   importBackup: 'Restore backup',
-  importQ: 'Replace all data on this device with the backup?',
+  importQ: 'Replace all data on this device with the backup? A backup of the current data is downloaded first.',
   restored: 'Backup restored.',
   notBackup: "That file isn't an Iron Notes backup.",
   storedOnDevice: 'Everything is stored on this device only. Export a backup now and then.',
@@ -96,8 +97,10 @@ const en = {
 
 export type Key = keyof typeof en;
 
-export function t(key: Key): string {
-  return en[key];
+export function t(key: Key, vars?: Record<string, string | number>): string {
+  let s: string = en[key];
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
+  return s;
 }
 
 const TYPE_NAMES: Record<ExerciseType, string> = {

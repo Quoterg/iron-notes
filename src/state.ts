@@ -36,11 +36,13 @@ const byName = (a: Exercise, b: Exercise) => a.name.localeCompare(b.name);
 
 export async function loadLibrary(): Promise<void> {
   let lib = await db.getLibrary();
-  if (!lib.categories.length) {
+  // Seed once per device: a user who deleted every exercise and category keeps an empty library.
+  if (!lib.categories.length && !(await db.isSeeded())) {
     const { starterLibrary } = await import('./lib/seed');
     lib = starterLibrary();
     await db.putLibrary(lib.categories, lib.exercises);
-  }
+    await db.markSeeded();
+  } else if (lib.categories.length) void db.isSeeded().then((s) => (s ? undefined : db.markSeeded())); // installs from before the flag
   categories.value = lib.categories.sort(byCatOrder);
   exercises.value = lib.exercises.sort(byName);
 }
@@ -101,7 +103,7 @@ function dropRecords(exerciseId: string) {
 export async function loadRecords(ids: string[]): Promise<void> {
   const todo = ids.filter((id) => !records.value.has(id) && exById.value.has(id));
   if (!todo.length) return;
-  const found = await Promise.all(todo.map(async (id) => [id, recordIds(await allSetsOf(id), exById.value.get(id)!.type)] as const));
+  const found = await Promise.all(todo.map(async (id) => [id, recordIds(await allSetsOf(id), exById.value.get(id)!.type, true)] as const));
   const m = new Map(records.value);
   for (const [id, r] of found) m.set(id, r);
   records.value = m;
@@ -114,8 +116,19 @@ export function nextOrder(): number {
   return orderSeq;
 }
 
-async function afterSetWrite(s: WorkoutSet) {
-  cache.delete(s.exerciseId);
+/** The cached history with one set inserted/replaced (kept in order) or removed: no re-read, no re-sort. */
+export function upsertSorted(list: readonly WorkoutSet[], s: WorkoutSet, remove: boolean): WorkoutSet[] {
+  const out = list.filter((x) => x.id !== s.id);
+  if (remove) return out;
+  let i = out.length;
+  while (i > 0 && byOrder(out[i - 1], s) > 0) i--; // new sets usually go last: O(1)
+  out.splice(i, 0, s);
+  return out;
+}
+
+async function afterSetWrite(s: WorkoutSet, removed = false) {
+  const c = cache.get(s.exerciseId);
+  if (c) cache.set(s.exerciseId, c.then((a) => upsertSorted(a, s, removed)));
   dropRecords(s.exerciseId);
   setsVersion.value++;
   if (s.date === date.value) await loadDay(s.date);
@@ -128,7 +141,7 @@ export async function saveSet(s: WorkoutSet): Promise<void> {
 }
 export async function removeSet(s: WorkoutSet): Promise<void> {
   await db.deleteSet(s.id);
-  await afterSetWrite(s);
+  await afterSetWrite(s, true);
 }
 
 export async function saveComment(d: string, text: string): Promise<void> {

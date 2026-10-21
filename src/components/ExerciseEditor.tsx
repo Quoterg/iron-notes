@@ -53,7 +53,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   }
 
   async function remove() {
-    if (!id || !confirm(t('deleteExerciseQ'))) return;
+    if (!id || !confirm(used ? t('deleteExerciseSetsQ', { n: used }) : t('deleteExerciseQ'))) return;
     await removeExercise(id);
     // Close this editor and the exercise's own screen under it, if any.
     let n = 1;

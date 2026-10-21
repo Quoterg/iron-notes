@@ -42,6 +42,14 @@ export async function putSettings(s: Settings): Promise<void> {
 }
 
 // ---- Library ----
+/** Whether the starter library was ever written (or a backup restored): seed only once per device. */
+export async function isSeeded(): Promise<boolean> {
+  return !!(await (await db()).get('kv', 'seeded'));
+}
+export async function markSeeded(): Promise<void> {
+  await (await db()).put('kv', { key: 'seeded', value: true });
+}
+
 export async function getLibrary(): Promise<{ categories: Category[]; exercises: Exercise[] }> {
   const d = await db();
   const tx = d.transaction(['categories', 'exercises']);
@@ -99,43 +107,4 @@ export async function putComment(date: string, text: string): Promise<void> {
   const d = await db();
   if (text.trim()) await d.put('comments', { date, text: text.trim() });
   else await d.delete('comments', date);
-}
-
-// ---- Backup ----
-export interface Backup {
-  app: 'iron-notes';
-  version: 1;
-  exported: string;
-  categories: Category[];
-  exercises: Exercise[];
-  sets: WorkoutSet[];
-  comments: DayComment[];
-  settings: Settings;
-}
-
-export async function exportAll(): Promise<Backup> {
-  const d = await db();
-  const [categories, exercises, sets, comments, settings] = await Promise.all([
-    d.getAll('categories'), d.getAll('exercises'), d.getAll('sets'), d.getAll('comments'), getSettings(),
-  ]);
-  return { app: 'iron-notes', version: 1, exported: new Date().toISOString(), categories, exercises, sets, comments, settings };
-}
-
-/** Replaces all data with a backup. Throws (and changes nothing) if the file isn't one. */
-export async function importAll(b: unknown): Promise<void> {
-  const x = b as Partial<Backup> | null;
-  if (!x || x.app !== 'iron-notes' || !Array.isArray(x.sets) || !Array.isArray(x.exercises) || !Array.isArray(x.categories)) {
-    throw new Error('Not an Iron Notes backup');
-  }
-  const d = await db();
-  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv'] as const;
-  const tx = d.transaction(stores, 'readwrite');
-  await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
-  const ops: Promise<unknown>[] = [];
-  for (const c of x.categories) ops.push(tx.objectStore('categories').put(c));
-  for (const e of x.exercises) ops.push(tx.objectStore('exercises').put(e));
-  for (const s of x.sets) ops.push(tx.objectStore('sets').put(s));
-  for (const c of x.comments ?? []) ops.push(tx.objectStore('comments').put(c));
-  ops.push(tx.objectStore('kv').put({ key: 'settings', value: { ...DEFAULT_SETTINGS, ...x.settings } }));
-  await Promise.all([...ops, tx.done]);
 }
