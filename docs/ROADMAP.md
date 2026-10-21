@@ -30,7 +30,7 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
   workout reps, max/total distance, max/total time, best pace; ranges 1 m / 3 m / 6 m / 1 y / all;
   tap a point for its value and date. Records: estimated 1RM (Epley/Brzycki setting), rep-max table
   (1–15 reps, date, actual reps), best per field for other types.
-- [ ] **M4 Calendar** — Month view, coloured dots per category trained, tap a day to open it, jump
+- [x] **M4 Calendar** — Month view, coloured dots per category trained, tap a day to open it, jump
   to today, week starts Monday/Sunday setting; workout count per month.
 - [ ] **M5 Workouts & routines** — Copy a workout (or one exercise) from another day; reorder
   exercises in a day; delete a whole workout; share a workout as text. Routines: named routines with

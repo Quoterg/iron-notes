@@ -76,6 +76,8 @@ export interface Settings {
   timerSound: boolean;
   markDone: boolean;
   formula: 'epley' | 'brzycki';
+  /** First day of the week in the calendar: 0 Sunday, 1 Monday. */
+  weekStart: 0 | 1;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -86,4 +88,5 @@ export const DEFAULT_SETTINGS: Settings = {
   timerSound: true,
   markDone: false,
   formula: 'epley',
+  weekStart: 1,
 };

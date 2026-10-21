@@ -89,6 +89,10 @@ export async function setsOn(date: string): Promise<WorkoutSet[]> {
 export async function setsOf(exerciseId: string): Promise<WorkoutSet[]> {
   return (await db()).getAllFromIndex('sets', 'exercise', exerciseId);
 }
+/** Sets from `from` to `to` (inclusive), one index range read: a month for the calendar. */
+export async function setsBetween(from: string, to: string): Promise<WorkoutSet[]> {
+  return (await db()).getAllFromIndex('sets', 'date', IDBKeyRange.bound(from, to));
+}
 export async function countSetsOf(exerciseId: string): Promise<number> {
   return (await db()).countFromIndex('sets', 'exercise', exerciseId);
 }

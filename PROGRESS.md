@@ -7,8 +7,17 @@
 - **Owner action for deploys:** Cloudflare API token (Account → Cloudflare Pages → Edit) and account id
   as repo secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M4 Calendar**.
+- Next build milestone: **M5 Workouts & routines** (with persisted per-exercise rep maxes).
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M4 Calendar
+
+- Calendar tab: month grid (Monday or Sunday first — new setting), up to 4 category-coloured dots per
+  day, today outlined, tap a day to open it in the log, ‹ › months, "This month", workouts count.
+  One IndexedDB index-range read per month (`setsBetween`); lazy chunk 1.3 KB.
+- PR #3 review nits: whole-second steps for time/pace axes (`TIME_STEPS`), Set for drawn dots,
+  indentation. Toasts moved above the rest timer (they covered titles).
+- Checks: 49 unit tests, 6 e2e (new calendar test), initial JS 17.4 KB.
 
 ## 2026-10-21 — M3 Exercise history, graphs & records
 

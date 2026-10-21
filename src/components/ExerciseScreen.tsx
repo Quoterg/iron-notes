@@ -175,89 +175,89 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
         {tab === 'graph' && all && <Graph ex={ex} all={all} st={st} />}
         {tab === 'records' && all && <Records ex={ex} all={all} st={st} />}
         {tab === 'track' && (
-        <>
-        <form
-          class="card"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void save();
-          }}
-        >
-          {fields.includes('weight') && (
-            <Stepper id="f-weight" label={`${t('weight')} (${st.unit})`} value={form.weight} onChange={set('weight')} step={inc} />
-          )}
-          {fields.includes('reps') && <Stepper id="f-reps" label={t('reps')} value={form.reps} onChange={set('reps')} step={1} integer />}
-          {fields.includes('distance') && (
-            <Stepper id="f-distance" label={`${t('distance')} (${st.dist})`} value={form.distance} onChange={set('distance')} step={distStep} />
-          )}
-          {fields.includes('time') && <TimeField form={form} setForm={setForm} />}
-          {showComment ? (
-            <div class="field">
-              <label for="f-comment">{t('setComment')}</label>
-              <input id="f-comment" type="text" value={form.comment} onInput={(e) => set('comment')(e.currentTarget.value)} />
-            </div>
-          ) : (
-            <button type="button" class="link" onClick={() => setShowComment(true)}>
-              + {t('addComment')}
-            </button>
-          )}
-          <div class="actions">
-            <button type="submit" class="btn primary" disabled={!values}>
-              {selected ? t('update') : t('save')}
-            </button>
-            <button type="button" class={selected ? 'btn danger' : 'btn'} onClick={() => void clearOrDelete()}>
-              {selected ? t('delete') : t('clear')}
-            </button>
-          </div>
-        </form>
+          <>
+            <form
+              class="card"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save();
+              }}
+            >
+              {fields.includes('weight') && (
+                <Stepper id="f-weight" label={`${t('weight')} (${st.unit})`} value={form.weight} onChange={set('weight')} step={inc} />
+              )}
+              {fields.includes('reps') && <Stepper id="f-reps" label={t('reps')} value={form.reps} onChange={set('reps')} step={1} integer />}
+              {fields.includes('distance') && (
+                <Stepper id="f-distance" label={`${t('distance')} (${st.dist})`} value={form.distance} onChange={set('distance')} step={distStep} />
+              )}
+              {fields.includes('time') && <TimeField form={form} setForm={setForm} />}
+              {showComment ? (
+                <div class="field">
+                  <label for="f-comment">{t('setComment')}</label>
+                  <input id="f-comment" type="text" value={form.comment} onInput={(e) => set('comment')(e.currentTarget.value)} />
+                </div>
+              ) : (
+                <button type="button" class="link" onClick={() => setShowComment(true)}>
+                  + {t('addComment')}
+                </button>
+              )}
+              <div class="actions">
+                <button type="submit" class="btn primary" disabled={!values}>
+                  {selected ? t('update') : t('save')}
+                </button>
+                <button type="button" class={selected ? 'btn danger' : 'btn'} onClick={() => void clearOrDelete()}>
+                  {selected ? t('delete') : t('clear')}
+                </button>
+              </div>
+            </form>
 
-        {today.length > 0 ? (
-          <div class="card">
-            <ol class="sets">
-              {today.map((s, i) => (
-                <li key={s.id} class={sel === s.id ? 'sel' : undefined}>
-                  <button type="button" class="set-row" onClick={() => select(s)} aria-pressed={sel === s.id}>
-                    <span class="n">{i + 1}</span>
-                    <span class="v">
-                      {setText(s, ex.type, st)}
-                      {s.comment && <span class="c">{s.comment}</span>}
-                    </span>
-                    {rec?.has(s.id) && <Trophy />}
-                  </button>
-                  {st.markDone && (
-                    <input
-                      type="checkbox"
-                      class="tick"
-                      aria-label={`${t('setDone')} ${i + 1}`}
-                      checked={!!s.done}
-                      onChange={(e) => void saveSet({ ...s, done: e.currentTarget.checked })}
-                    />
-                  )}
-                </li>
-              ))}
-            </ol>
-          </div>
-        ) : (
-          all && <p class="muted center">{t('noSetsYet')}</p>
-        )}
+            {today.length > 0 ? (
+              <div class="card">
+                <ol class="sets">
+                  {today.map((s, i) => (
+                    <li key={s.id} class={sel === s.id ? 'sel' : undefined}>
+                      <button type="button" class="set-row" onClick={() => select(s)} aria-pressed={sel === s.id}>
+                        <span class="n">{i + 1}</span>
+                        <span class="v">
+                          {setText(s, ex.type, st)}
+                          {s.comment && <span class="c">{s.comment}</span>}
+                        </span>
+                        {rec?.has(s.id) && <Trophy />}
+                      </button>
+                      {st.markDone && (
+                        <input
+                          type="checkbox"
+                          class="tick"
+                          aria-label={`${t('setDone')} ${i + 1}`}
+                          checked={!!s.done}
+                          onChange={(e) => void saveSet({ ...s, done: e.currentTarget.checked })}
+                        />
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : (
+              all && <p class="muted center">{t('noSetsYet')}</p>
+            )}
 
-        {prev.length > 0 && (
-          <div class="card prev-card">
-            <h2 class="small muted">
-              {t('lastTime')} · {new Date(prev[0].date + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-            </h2>
-            <ol class="setlist prev">
-              {prev.map((s) => (
-                <li key={s.id}>
-                  <span>{setText(s, ex.type, st)}</span>
-                  {rec?.has(s.id) && <Trophy />}
-                  {s.comment && <span class="note-line">{s.comment}</span>}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-        </>
+            {prev.length > 0 && (
+              <div class="card prev-card">
+                <h2 class="small muted">
+                  {t('lastTime')} · {new Date(prev[0].date + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                </h2>
+                <ol class="setlist prev">
+                  {prev.map((s) => (
+                    <li key={s.id}>
+                      <span>{setText(s, ex.type, st)}</span>
+                      {rec?.has(s.id) && <Trophy />}
+                      {s.comment && <span class="note-line">{s.comment}</span>}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Sheet>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkoutSet } from './model';
-import { bestOrm, bests, dailySeries, metricsFor, niceScale, rangeStart, repMaxTable, workouts } from './progress';
+import { bestOrm, bests, dailySeries, metricsFor, niceScale, rangeStart, repMaxTable, TIME_STEPS, workouts } from './progress';
 
 let n = 0;
 const s = (date: string, x: Partial<WorkoutSet>): WorkoutSet => ({ id: `s${++n}`, date, exerciseId: 'x', order: n, ...x });
@@ -71,6 +71,8 @@ describe('workouts and helpers', () => {
   });
   it('makes round axes', () => {
     expect(niceScale(97, 123)).toEqual({ lo: 90, hi: 130, ticks: [90, 100, 110, 120, 130] });
+    expect(niceScale(1500, 1530, TIME_STEPS).ticks).toEqual([1500, 1510, 1520, 1530]);
+    expect(niceScale(290, 301, TIME_STEPS).ticks.every(Number.isInteger)).toBe(true);
     const one = niceScale(100, 100);
     expect(one.lo).toBeLessThan(100);
     expect(one.hi).toBeGreaterThan(100);

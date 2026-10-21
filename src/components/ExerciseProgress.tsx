@@ -101,7 +101,7 @@ export function Graph({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Se
           </button>
         ))}
       </div>
-      {points.length >= 2 ? <LineChart title={title} points={points} fmt={fmt} /> : <p class="muted center">{t('notEnoughData')}</p>}
+      {points.length >= 2 ? <LineChart title={title} points={points} fmt={fmt} timeAxis={kind === 'time' || kind === 'pace'} /> : <p class="muted center">{t('notEnoughData')}</p>}
     </div>
   );
 }
