@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { App, calendarView, commentView, editExerciseView, exerciseView, pickView, settingsView } from './app';
+import { App, calendarView, commentView, copyView, editExerciseView, exerciseView, pickView, settingsView } from './app';
 import { isoDate } from './lib/calc';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { initNav, open } from './nav';
@@ -27,7 +27,7 @@ async function start() {
     shownToday = today;
   });
   // The other screens when idle, one at a time, so they open instantly and work offline.
-  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, settingsView]));
+  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, copyView, settingsView]));
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
     navigator.serviceWorker.addEventListener('message', (e) => {

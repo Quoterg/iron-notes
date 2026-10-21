@@ -14,6 +14,7 @@ export const exerciseView = lazyView(() => import('./components/ExerciseScreen')
 export const editExerciseView = lazyView(() => import('./components/ExerciseEditor'));
 export const categoryView = lazyView(() => import('./components/CategoryEditor'));
 export const commentView = lazyView(() => import('./components/CommentSheet'));
+export const copyView = lazyView(() => import('./components/CopySheet'));
 export const settingsView = lazyView(() => import('./components/Settings'));
 export const calendarView = lazyView(() => import('./components/Calendar'));
 
@@ -80,6 +81,8 @@ function ScreenView({ screen: s }: { screen: Screen }) {
       return <categoryView.Lazy id={s.id} />;
     case 'comment':
       return <commentView.Lazy date={s.date} />;
+    case 'copy':
+      return <copyView.Lazy date={s.date} />;
   }
 }
 

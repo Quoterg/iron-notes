@@ -293,3 +293,14 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .cal-day.cur { background: var(--active); color: var(--active-text); font-weight: 600; }
 .cal-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 30px; min-height: 7px; }
 .cal-dots .dot { width: 7px; height: 7px; }
+
+/* Workout tools (M5a). */
+.ex-row { display: flex; align-items: center; gap: 4px; padding-right: 10px; }
+.ex-row .ex-head { flex: 1; min-width: 0; }
+.move { display: flex; gap: 6px; }
+.btn.icon.small { width: 40px; min-height: 40px; font-size: 1.1rem; }
+.day-tools { justify-content: center; margin-top: 16px; }
+.chip.danger { color: var(--over); }
+.copy-head { padding: 0 0 4px; justify-content: space-between; }
+.copy-names { margin: 0; }
+.form .check .dot { margin-left: 2px; }

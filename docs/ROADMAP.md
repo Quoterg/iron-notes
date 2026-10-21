@@ -32,10 +32,11 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
   (1–15 reps, date, actual reps), best per field for other types.
 - [x] **M4 Calendar** — Month view, coloured dots per category trained, tap a day to open it, jump
   to today, week starts Monday/Sunday setting; workout count per month.
-- [ ] **M5 Workouts & routines** — Copy a workout (or one exercise) from another day; reorder
-  exercises in a day; delete a whole workout; share a workout as text. Routines: named routines with
-  days, exercises per day with planned sets (reps/weight/time), log a routine day into the shown
-  date (planned sets unticked, ticked off as done).
+- [x] **M5a Workout tools** — Copy a workout (or some of its exercises) from another day; reorder
+  exercises in a day; delete a whole workout; share a workout as text. Stored per-exercise records
+  (DB v2) so opening a day doesn't read each exercise's whole history.
+- [ ] **M5b Routines** — Named routines with days, exercises per day with planned sets
+  (reps/weight/time), log a routine day into the shown date (planned sets unticked, ticked off as done).
 - [ ] **M6 Supersets / groups** — Group exercises in a workout (coloured bar); the rest timer runs
   after the last exercise of a round; jump to the next exercise of the group after saving.
 - [ ] **M7 Body tracker** — Body weight, body fat %, measurements (waist, chest, arms, thighs, neck,

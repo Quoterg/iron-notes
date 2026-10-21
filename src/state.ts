@@ -1,7 +1,7 @@
 // Shared app state as Preact signals. Screens read these; writes go through the functions here so the
 // day view, records and the open exercise stay in step.
 import { computed, signal } from '@preact/signals';
-import { byOrder, isoDate, recordIds } from './lib/calc';
+import { byOrder, isoDate, recordIds, uid } from './lib/calc';
 import * as db from './lib/db';
 import { DEFAULT_SETTINGS, type Category, type Exercise, type Settings, type WorkoutSet } from './lib/model';
 
@@ -50,11 +50,10 @@ export async function loadLibrary(): Promise<void> {
 export async function saveExercise(e: Exercise): Promise<void> {
   await db.putExercise(e);
   exercises.value = [...exercises.value.filter((x) => x.id !== e.id), e].sort(byName);
-  dropRecords(e.id); // the type may have changed
-  void loadRecords([e.id]);
+  await refreshRecords(e.id); // the type may have changed
 }
 export async function removeExercise(id: string): Promise<void> {
-  await db.deleteExercise(id);
+  await db.deleteExercise(id); // also its sets and stored records
   exercises.value = exercises.value.filter((x) => x.id !== id);
   cache.delete(id);
   dropRecords(id);
@@ -100,13 +99,34 @@ function dropRecords(exerciseId: string) {
   records.value = m;
 }
 
+/**
+ * Records of exercises not loaded yet: from the stored records (one small read each); only an
+ * exercise without stored records (older installs, after a restore) reads its history, once.
+ */
 export async function loadRecords(ids: string[]): Promise<void> {
   const todo = ids.filter((id) => !records.value.has(id) && exById.value.has(id));
   if (!todo.length) return;
-  const found = await Promise.all(todo.map(async (id) => [id, recordIds(await allSetsOf(id), exById.value.get(id)!.type, true)] as const));
+  const found = await Promise.all(
+    todo.map(async (id) => {
+      const stored = await db.getRecords(id);
+      if (stored) return [id, new Set(stored.ids)] as const;
+      const r = recordIds(await allSetsOf(id), exById.value.get(id)!.type, true);
+      void db.putRecords({ exerciseId: id, ids: [...r] });
+      return [id, r] as const;
+    }),
+  );
   const m = new Map(records.value);
   for (const [id, r] of found) m.set(id, r);
   records.value = m;
+}
+
+/** Recomputes an exercise's records from its (cached) history and stores them: after any write. */
+async function refreshRecords(exerciseId: string): Promise<void> {
+  const ex = exById.value.get(exerciseId);
+  if (!ex) return;
+  const r = recordIds(await allSetsOf(exerciseId), ex.type, true);
+  await db.putRecords({ exerciseId, ids: [...r] });
+  records.value = new Map(records.value).set(exerciseId, r);
 }
 
 let orderSeq = 0;
@@ -129,10 +149,54 @@ export function upsertSorted(list: readonly WorkoutSet[], s: WorkoutSet, remove:
 async function afterSetWrite(s: WorkoutSet, removed = false) {
   const c = cache.get(s.exerciseId);
   if (c) cache.set(s.exerciseId, c.then((a) => upsertSorted(a, s, removed)));
-  dropRecords(s.exerciseId);
+  await refreshRecords(s.exerciseId);
   setsVersion.value++;
   if (s.date === date.value) await loadDay(s.date);
-  else await loadRecords([s.exerciseId]);
+}
+
+/** After a batch write: drop the touched exercises' cached histories and refresh their records. */
+async function afterBatch(exerciseIds: Iterable<string>) {
+  const ids = [...new Set(exerciseIds)];
+  for (const id of ids) cache.delete(id);
+  await Promise.all(ids.map(refreshRecords));
+  setsVersion.value++;
+  await loadDay(date.value);
+}
+
+/** Copies sets to `to` (new ids, in their order, after anything already logged there; comments not copied). */
+export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
+  const copies = [...sets].sort(byOrder).map(
+    (s): WorkoutSet => ({ ...s, id: uid(), date: to, order: nextOrder(), comment: undefined, done: settings.value.markDone ? false : undefined }),
+  );
+  await db.putSets(copies);
+  await afterBatch(copies.map((s) => s.exerciseId));
+}
+
+/**
+ * Moves one exercise of the shown day up (-1) or down (+1): the day's sets get new order keys in the
+ * new exercise order, keeping each exercise's own set order (so records don't change).
+ */
+export async function moveExercise(exerciseId: string, dir: -1 | 1): Promise<void> {
+  const groups = new Map<string, WorkoutSet[]>();
+  for (const s of daySets.value) groups.get(s.exerciseId)?.push(s) ?? groups.set(s.exerciseId, [s]);
+  const ids = [...groups.keys()];
+  const i = ids.indexOf(exerciseId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  const base = daySets.value[0].order; // reuse the day's own key range: other days are unaffected
+  const moved = ids.flatMap((id) => groups.get(id)!).map((s, k) => ({ ...s, order: base + k }));
+  await db.putSets(moved);
+  for (const id of ids) cache.delete(id);
+  setsVersion.value++;
+  await loadDay(date.value);
+}
+
+/** Deletes a whole day: its sets and comment. */
+export async function deleteWorkout(d: string): Promise<void> {
+  const gone = await db.deleteDay(d);
+  if (d === date.value) dayComment.value = '';
+  await afterBatch(gone.map((s) => s.exerciseId));
 }
 
 export async function saveSet(s: WorkoutSet): Promise<void> {

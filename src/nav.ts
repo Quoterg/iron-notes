@@ -14,7 +14,9 @@ export type Screen =
   /** Create (no id) or edit a category. */
   | { kind: 'category'; id?: string }
   /** The workout comment of `date`. */
-  | { kind: 'comment'; date: string };
+  | { kind: 'comment'; date: string }
+  /** Copy (part of) a previous workout into `date`. */
+  | { kind: 'copy'; date: string };
 
 export const stack = signal<Screen[]>([]);
 export const top = computed(() => stack.value[stack.value.length - 1]);
