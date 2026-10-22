@@ -2,7 +2,7 @@
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { t, type Key } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
@@ -201,6 +201,13 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
           <Dot color={cat?.color} /> {cat?.name}
           {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
         </p>
+        {ex.muscles && ex.muscles.primary.length + ex.muscles.secondary.length > 0 && (
+          <p class="muted small">
+            {ex.muscles.primary.map((m) => t(`mu_${m}` as Key)).join(', ')}
+            {ex.muscles.secondary.length > 0 &&
+              `${ex.muscles.primary.length ? ' ' : ''}(+ ${ex.muscles.secondary.map((m) => t(`mu_${m}` as Key)).join(', ')})`}
+          </p>
+        )}
         {ex.notes && <p class="ex-notes muted small">{ex.notes}</p>}
         {members.length > 1 && (
           <div class="chips superset-bar" role="group" aria-label={t('superset')} style={{ borderColor: colors?.get(today[0]?.group ?? '') }}>

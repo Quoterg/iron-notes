@@ -1,5 +1,6 @@
 // The starter exercise library, written once on first start. Split out of the first-paint bundle.
 import { uid } from './calc';
+import { defaultMuscles } from './muscles';
 import type { Category, Exercise, ExerciseType } from './model';
 
 type Item = string | [string, ExerciseType];
@@ -23,7 +24,7 @@ export function starterLibrary(): { categories: Category[]; exercises: Exercise[
     categories.push(c);
     for (const it of items) {
       const [n, type] = typeof it === 'string' ? [it, 'weight,reps' as const] : it;
-      exercises.push({ id: uid(), name: n, categoryId: c.id, type });
+      exercises.push({ id: uid(), name: n, categoryId: c.id, type, muscles: defaultMuscles(n) });
     }
   });
   return { categories, exercises };

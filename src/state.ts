@@ -47,6 +47,20 @@ export async function loadLibrary(): Promise<void> {
   } else if (lib.categories.length) void db.isSeeded().then((s) => (s ? undefined : db.markSeeded())); // installs from before the flag
   categories.value = lib.categories.sort(byCatOrder);
   exercises.value = lib.exercises.sort(byName);
+  void mapMusclesOnce();
+}
+
+/** Installs from before the muscle map: give known exercises their muscles, once (never overwrites). */
+async function mapMusclesOnce() {
+  if (await db.getFlag('musclesMapped')) return;
+  const { withDefaultMuscles } = await import('./lib/muscles');
+  // Written only where the stored exercise still has no muscles (an edit saved meanwhile wins).
+  const mapped = await db.putMusclesIfMissing(withDefaultMuscles(exercises.value));
+  if (mapped.length) {
+    const byId = new Map(mapped.map((e) => [e.id, e]));
+    exercises.value = exercises.value.map((e) => byId.get(e.id) ?? e);
+  }
+  await db.setFlag('musclesMapped');
 }
 
 /** Stars or unstars an exercise: one write, no records refresh (the sets didn't change). */

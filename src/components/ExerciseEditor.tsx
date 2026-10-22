@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
-import { t } from '../lib/i18n';
+import { t, type Key } from '../lib/i18n';
 import { typeName } from '../lib/strings-later';
-import { TYPES, type Exercise, type ExerciseType } from '../lib/model';
+import { TYPES, type Exercise, type ExerciseType, type Muscles } from '../lib/model';
+import { cycle, defaultMuscles, MUSCLES, stateOf } from '../lib/muscles';
 import { defaultIncrement, num } from '../lib/units';
 import { replaceTop, replaceTopTwo, stack } from '../nav';
 import { categories, exById, exercises, removeExercise, saveExercise, settings } from '../state';
@@ -19,6 +20,8 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [notes, setNotes] = useState(old?.notes ?? '');
+  // Edited muscles; until then an existing exercise shows (and keeps) its own, a new one its name's defaults.
+  const [muscles, setMuscles] = useState<Muscles | undefined>(old?.muscles);
   const [used, setUsed] = useState(0);
   const [error, setError] = useState('');
 
@@ -40,6 +43,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       categoryId: cat,
       type: used ? old!.type : type,
       notes: notes.trim() || undefined,
+      muscles: muscles ?? (old ? old.muscles : defaultMuscles(n)),
       increment: inc > 0 ? inc : undefined,
       rest: r > 0 ? r : undefined,
     };
@@ -103,6 +107,26 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
           {t('restTime')}
           <input type="text" inputMode="numeric" placeholder={String(st.rest)} value={rest} onInput={(e) => setRest(e.currentTarget.value)} />
         </label>
+        <fieldset class="muscle-pick">
+          <legend>{t('muscles')}</legend>
+          <p class="muted small">{t('musclesHint')}</p>
+          <div class="chips">
+            {MUSCLES.map((id) => {
+              const state = stateOf(muscles ?? (old ? old.muscles : defaultMuscles(name)), id);
+              return (
+                <button
+                  type="button"
+                  key={id}
+                  class={`chip muscle ${state}`}
+                  aria-label={`${t(`mu_${id}` as Key)}: ${t(`ms_${state}` as Key)}`}
+                  onClick={() => setMuscles(cycle(muscles ?? (old ? old.muscles : defaultMuscles(name)), id))}
+                >
+                  {t(`mu_${id}` as Key)}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
         <label>
           {t('notes')}
           <textarea value={notes} onInput={(e) => setNotes(e.currentTarget.value)} />

@@ -140,6 +140,21 @@ export async function deleteExercise(id: string): Promise<void> {
     tx.done,
   ]);
 }
+/** Gives these exercises their muscles only where the stored record still has none (one transaction). */
+export async function putMusclesIfMissing(list: Exercise[]): Promise<Exercise[]> {
+  const tx = (await db()).transaction('exercises', 'readwrite');
+  const written: Exercise[] = [];
+  for (const e of list) {
+    const cur = await tx.store.get(e.id);
+    if (cur && !cur.muscles && e.muscles) {
+      const next = { ...cur, muscles: e.muscles };
+      await tx.store.put(next);
+      written.push(next);
+    }
+  }
+  await tx.done;
+  return written;
+}
 export async function putLibrary(categories: Category[], exercises: Exercise[]): Promise<void> {
   const d = await db();
   const tx = d.transaction(['categories', 'exercises'], 'readwrite');
