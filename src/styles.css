@@ -357,3 +357,11 @@ input[type='date'] { border: 1px solid var(--line); border-radius: 12px; backgro
   background: var(--active); color: var(--active-text); font-size: 0.8rem; font-weight: 700; }
 .links { display: flex; flex-wrap: wrap; gap: 0 20px; }
 details.card summary { cursor: pointer; color: var(--accent); min-height: 32px; }
+
+/* Picker favourites (M10b). */
+.pick-row { display: flex; align-items: center; }
+.pick-row .result { flex: 1; min-width: 0; }
+.star { flex: none; width: 48px; min-height: 48px; border: 0; background: none; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+.star.on { color: var(--gold); }
+.news { margin: 0 0 12px; padding: 14px 16px 14px 34px; }
+.news li { margin: 6px 0; }

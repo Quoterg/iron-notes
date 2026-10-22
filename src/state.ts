@@ -49,6 +49,13 @@ export async function loadLibrary(): Promise<void> {
   exercises.value = lib.exercises.sort(byName);
 }
 
+/** Stars or unstars an exercise: one write, no records refresh (the sets didn't change). */
+export async function setFavorite(e: Exercise, favorite: boolean): Promise<void> {
+  const next = { ...e, favorite: favorite || undefined };
+  await db.putExercise(next);
+  exercises.value = exercises.value.map((x) => (x.id === e.id ? next : x));
+}
+
 export async function saveExercise(e: Exercise): Promise<void> {
   await db.putExercise(e);
   exercises.value = [...exercises.value.filter((x) => x.id !== e.id), e].sort(byName);

@@ -2,8 +2,9 @@ import { render } from 'preact';
 import { App, calendarView, commentView, copyView, editExerciseView, exerciseView, pickView, routinesView, bodyView, settingsView } from './app';
 import { isoDate } from './lib/calc';
 import { applyTheme, watchSystemTheme } from './lib/theme';
-import { initNav, open } from './nav';
-import { setBlockedHandler } from './lib/db';
+import { initNav, open, stack } from './nav';
+import { LATEST } from './changelog-id';
+import { getNumber, hasAnySets, setBlockedHandler, setNumber } from './lib/db';
 import { t } from './lib/i18n';
 import { date, loadDay, loadLibrary, loadSettings, updateReady } from './state';
 import './styles.css';
@@ -32,6 +33,7 @@ async function start() {
   await loadDay(date.value);
   performance.mark('in:day');
   runShortcut();
+  void showWhatsNew();
   // Back in the foreground on a new day: show today.
   let shownToday = isoDate(new Date());
   document.addEventListener('visibilitychange', () => {
@@ -52,6 +54,18 @@ async function start() {
   }
   // Ask the browser not to evict our local data (matters on iOS/low-storage devices).
   void navigator.storage?.persist?.();
+}
+
+/**
+ * After an update: what's new since the last entry this device saw, once. A first start just records
+ * the latest entry (a new user hasn't missed anything). Lazy: the changelog isn't in the first paint.
+ */
+async function showWhatsNew() {
+  const seen = await getNumber('whatsNewSeen');
+  if (seen === undefined && !(await hasAnySets())) return void setNumber('whatsNewSeen', LATEST);
+  if ((seen ?? 0) >= LATEST || stack.value.length) return;
+  await setNumber('whatsNewSeen', LATEST);
+  open({ kind: 'whatsnew', since: seen ?? 0 });
 }
 
 /** Home-screen shortcut (manifest.webmanifest): `?add` opens the exercise picker for today. */

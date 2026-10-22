@@ -1,14 +1,17 @@
 // Categories → exercises, with search across all. Picks an exercise to log on `date`, or (manage)
 // opens exercises and categories for editing.
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
+import { recentExerciseIds } from '../lib/db';
 import { t } from '../lib/i18n';
 import type { Exercise } from '../lib/model';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
-import { catById, categories, exercises } from '../state';
+import { catById, categories, exById, exercises, setFavorite } from '../state';
 import { loadRoutines, saveRoutine } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
+
+const RECENT = 8;
 
 /** Lower case without accents, so "presse" finds "Pressé". */
 const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -16,6 +19,10 @@ const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').t
 export default function Picker({ date, manage, routine }: { date?: string; manage?: boolean; routine?: { routineId: string; dayId: string } }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>([]);
+  useEffect(() => {
+    if (!manage) void recentExerciseIds(RECENT).then(setRecent);
+  }, [manage]);
   const query = fold(q.trim());
 
   const pick = (e: Exercise) => {
@@ -45,18 +52,35 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
   } else {
     const counts = new Map<string, number>();
     for (const e of exercises.value) counts.set(e.categoryId, (counts.get(e.categoryId) ?? 0) + 1);
+    const favs = exercises.value.filter((e) => e.favorite);
+    const recents = recent.map((id) => exById.value.get(id)).filter((e): e is Exercise => !!e && !e.favorite);
     body = (
-      <ul class="results">
-        {categories.value.map((c) => (
-          <li key={c.id} class="row-li">
-            <button class="result entry" onClick={() => setCat(c.id)}>
-              <Dot color={c.color} />
-              <span class="entry-name">{c.name}</span>
-              <span class="count">{counts.get(c.id) ?? 0}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <>
+        {favs.length > 0 && (
+          <>
+            <h3 class="list-title">{t('favourites')}</h3>
+            <ExerciseList list={favs} onPick={pick} showCat />
+          </>
+        )}
+        {recents.length > 0 && (
+          <>
+            <h3 class="list-title">{t('recent')}</h3>
+            <ExerciseList list={recents} onPick={pick} showCat />
+          </>
+        )}
+        {(favs.length > 0 || recents.length > 0) && <h3 class="list-title">{t('categories')}</h3>}
+        <ul class="results">
+          {categories.value.map((c) => (
+            <li key={c.id} class="row-li">
+              <button class="result entry" onClick={() => setCat(c.id)}>
+                <Dot color={c.color} />
+                <span class="entry-name">{c.name}</span>
+                <span class="count">{counts.get(c.id) ?? 0}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
     );
   }
 
@@ -82,10 +106,18 @@ function ExerciseList({ list, onPick, showCat }: { list: Exercise[]; onPick: (e:
   return (
     <ul class="results">
       {list.map((e) => (
-        <li key={e.id}>
+        <li key={e.id} class="pick-row">
           <button class="result entry" onClick={() => onPick(e)}>
             {showCat && <Dot color={catById.value.get(e.categoryId)?.color} />}
             <span class="entry-name">{e.name}</span>
+          </button>
+          <button
+            class={e.favorite ? 'star on' : 'star'}
+            aria-pressed={!!e.favorite}
+            aria-label={t('favourite')}
+            onClick={() => void setFavorite(e, !e.favorite)}
+          >
+            {e.favorite ? '★' : '☆'}
           </button>
         </li>
       ))}

@@ -41,6 +41,8 @@ export interface Exercise {
   increment?: number;
   /** Rest timer length in seconds. Default: the setting. */
   rest?: number;
+  /** Shown under Favourites at the top of the picker. */
+  favorite?: boolean;
 }
 
 export interface WorkoutSet {
