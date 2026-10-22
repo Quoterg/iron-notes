@@ -89,6 +89,25 @@ export interface Routine {
   days: RoutineDay[];
 }
 
+/** What a body measure records, and so its unit: kg/lb, %, cm/in or a plain number. */
+export type BodyKind = 'weight' | 'percent' | 'length' | 'number';
+export interface BodyMetric {
+  id: string;
+  name: string;
+  kind: BodyKind;
+  order: number;
+}
+export interface BodyEntry {
+  id: string;
+  metricId: string;
+  /** Local date, YYYY-MM-DD. */
+  date: string;
+  /** Stored unit: kg, %, cm or the plain number. */
+  value: number;
+  /** When it was entered (ms): of two entries on one date, the later counts. */
+  at: number;
+}
+
 export interface DayComment {
   date: string;
   text: string;

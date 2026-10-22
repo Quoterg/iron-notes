@@ -141,5 +141,6 @@ async function restore(input: HTMLInputElement) {
     return;
   }
   await reloadAll();
+  (await import('../body-state')).resetBody();
   toast(t('restored'));
 }

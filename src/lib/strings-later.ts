@@ -155,6 +155,18 @@ export const later = {
   done: 'Done',
   oneSet: '1 set',
   nSets: '{n} sets',
+  noEntries: 'No entries yet',
+  newMeasure: 'New measure',
+  measureKind: 'Kind',
+  kind_weight: 'Weight',
+  kind_percent: 'Percent',
+  kind_length: 'Length (girth)',
+  kind_number: 'Number',
+  value: 'Value',
+  trend: 'trend',
+  deleteMeasure: 'Delete measure',
+  deleteMeasureQ: 'Delete this measure and its {n} entries?',
+  entriesCount: 'entries',
 } as const;
 
 setLater(later);

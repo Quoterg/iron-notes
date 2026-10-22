@@ -6,8 +6,21 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M7 Body tracker**.
+- Next build milestone: **M8 Analysis**.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-22 — M7 Body tracker
+
+- Body tab: body weight, body fat, waist, chest, arms, thighs, neck (seeded once; deleting them keeps
+  them deleted) and the user's own measures (weight / percent / length / number). Each shows its latest
+  value, the change since the entry before and its date.
+- Measure screen: add a value for any date (decimal comma ok; the last entry of a date counts), graph
+  with a 7-entry trailing trend for body weight (the chart gained an optional trend line), entries list
+  (30 at a time) with delete, rename, delete the measure with its entries.
+- Units follow the setting: kg/lb, cm/in (with lb), %.
+- DB v4: `metrics` and `body` (index `metric`) stores; lazy `body-state.ts`; included in backups
+  (optional, validated per row).
+- Checks: 88 unit tests, 11 e2e (new body flow), initial JS 18.9 KB (+0.4: the Body tab label and lazy view).
 
 ## 2026-10-21 — M6b Lean start
 

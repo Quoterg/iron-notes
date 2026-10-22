@@ -34,7 +34,9 @@ function decimate(points: Point[]): number[] {
 }
 
 /** `points` are in display units, sorted by date; `fmt` formats a value (axis and readout). */
-export function LineChart({ title, points, fmt, timeAxis }: { title: string; points: Point[]; fmt: (v: number) => string; timeAxis?: boolean }) {
+/** `trend` (same dates as `points`): drawn as the line, the points as dots — e.g. body weight's 7-entry mean. */
+export function LineChart(p: { title: string; points: Point[]; fmt: (v: number) => string; timeAxis?: boolean; trend?: Point[]; countWord?: string }) {
+  const { title, points, fmt, timeAxis, trend } = p;
   const [active, setActive] = useState<number | null>(null);
   const [tableOpen, setTableOpen] = useState(false);
   if (points.length === 0) return null;
@@ -44,6 +46,7 @@ export function LineChart({ title, points, fmt, timeAxis }: { title: string; poi
   let vmin = Infinity;
   let vmax = -Infinity;
   for (const p of points) (vmin = Math.min(vmin, p.value)), (vmax = Math.max(vmax, p.value));
+  for (const p of trend ?? []) (vmin = Math.min(vmin, p.value)), (vmax = Math.max(vmax, p.value));
   const { lo, hi, ticks } = niceScale(vmin, vmax, timeAxis ? TIME_STEPS : undefined);
   const longSpan = t1 - t0 > 300 * DAY;
   const x = (d: string) => PAD.left + ((time(d) - t0) / (t1 - t0)) * (W - PAD.left - PAD.right);
@@ -51,7 +54,8 @@ export function LineChart({ title, points, fmt, timeAxis }: { title: string; poi
   const xs = points.map((p) => x(p.date));
   const dots = decimate(points);
   const drawn = new Set(dots);
-  const path = dots.map((i, k) => `${k ? 'L' : 'M'}${xs[i].toFixed(1)},${y(points[i].value).toFixed(1)}`).join('');
+  const line = trend ?? points;
+  const path = dots.map((i, k) => `${k ? 'L' : 'M'}${xs[i].toFixed(1)},${y(line[i].value).toFixed(1)}`).join('');
 
   /** Nearest point by x: binary search (points are sorted by date). */
   const nearest = (clientX: number, rect: DOMRect) => {
@@ -68,7 +72,7 @@ export function LineChart({ title, points, fmt, timeAxis }: { title: string; poi
 
   const a = active == null ? null : points[active];
   const last = points[points.length - 1];
-  const summary = `${title}: ${points.length} ${t('workoutsCount')}, ${fmt(last.value)} (${shortDate(last.date, true)}).`;
+  const summary = `${title}: ${points.length} ${p.countWord ?? t('workoutsCount')}, ${fmt(last.value)} (${shortDate(last.date, true)}).`;
 
   return (
     <figure class="chart">
@@ -112,7 +116,8 @@ export function LineChart({ title, points, fmt, timeAxis }: { title: string; poi
       <p class="chart-tip num" aria-live="polite">
         {a ? (
           <>
-            <b>{fmt(a.value)}</b> · {shortDate(a.date, true)}
+            <b>{fmt(a.value)}</b>
+            {trend && ` · ${t('trend')} ${fmt(trend[active!].value)}`} · {shortDate(a.date, true)}
           </>
         ) : (
           <span class="muted">{t('chartHint')}</span>

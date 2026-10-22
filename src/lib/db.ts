@@ -1,6 +1,6 @@
 // User data lives on the device, in IndexedDB. Nothing is sent anywhere.
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { DEFAULT_SETTINGS, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
+import { DEFAULT_SETTINGS, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
 interface Schema extends DBSchema {
   categories: { key: string; value: Category };
@@ -12,6 +12,9 @@ interface Schema extends DBSchema {
   records: { key: string; value: StoredRecords };
   /** v3 */
   routines: { key: string; value: Routine };
+  /** v4: body measures and their entries. */
+  metrics: { key: string; value: BodyMetric };
+  body: { key: string; value: BodyEntry; indexes: { metric: string } };
 }
 
 export interface StoredRecords {
@@ -32,7 +35,7 @@ export function setBlockedHandler(fn: () => void): void {
 }
 
 export function db(): Promise<IDBPDatabase<Schema>> {
-  return (dbp ??= openDB<Schema>(DB_NAME, 3, {
+  return (dbp ??= openDB<Schema>(DB_NAME, 4, {
     upgrade(d, oldVersion, _newVersion, tx) {
       if (oldVersion < 1) {
         d.createObjectStore('categories', { keyPath: 'id' });
@@ -49,6 +52,10 @@ export function db(): Promise<IDBPDatabase<Schema>> {
         d.createObjectStore('routines', { keyPath: 'id' });
         // An exercise's sets in date/order: its latest set is one reverse-cursor step away.
         tx.objectStore('sets').createIndex('exerciseOrder', ['exerciseId', 'date', 'order']);
+      }
+      if (oldVersion < 4) {
+        d.createObjectStore('metrics', { keyPath: 'id' });
+        d.createObjectStore('body', { keyPath: 'id' }).createIndex('metric', 'metricId');
       }
     },
     // A newer version opened elsewhere: step aside so it can upgrade, then start the new version here too.
@@ -86,6 +93,13 @@ export async function isSeeded(): Promise<boolean> {
 }
 export async function markSeeded(): Promise<void> {
   await (await db()).put('kv', { key: 'seeded', value: true });
+}
+/** A one-time flag (e.g. "body measures seeded"). */
+export async function getFlag(key: string): Promise<boolean> {
+  return !!(await (await db()).get('kv', key));
+}
+export async function setFlag(key: string): Promise<void> {
+  await (await db()).put('kv', { key, value: true });
 }
 
 export async function getLibrary(): Promise<{ categories: Category[]; exercises: Exercise[] }> {
@@ -192,6 +206,34 @@ export async function putRoutine(r: Routine): Promise<void> {
 }
 export async function deleteRoutine(id: string): Promise<void> {
   await (await db()).delete('routines', id);
+}
+
+// ---- Body measures ----
+export async function getMetrics(): Promise<BodyMetric[]> {
+  return (await db()).getAll('metrics');
+}
+export async function putMetrics(list: BodyMetric[]): Promise<void> {
+  const tx = (await db()).transaction('metrics', 'readwrite');
+  await Promise.all([...list.map((m) => tx.store.put(m)), tx.done]);
+}
+/** Deletes a measure and all its entries. */
+export async function deleteMetric(id: string): Promise<void> {
+  const tx = (await db()).transaction(['metrics', 'body'], 'readwrite');
+  const keys = await tx.objectStore('body').index('metric').getAllKeys(id);
+  await Promise.all([...keys.map((k) => tx.objectStore('body').delete(k)), tx.objectStore('metrics').delete(id), tx.done]);
+}
+export async function entriesOf(metricId: string): Promise<BodyEntry[]> {
+  return (await db()).getAllFromIndex('body', 'metric', metricId);
+}
+/** All entries (the Body list shows each measure's latest; a few hundred rows at most). */
+export async function allEntries(): Promise<BodyEntry[]> {
+  return (await db()).getAll('body');
+}
+export async function putEntry(e: BodyEntry): Promise<void> {
+  await (await db()).put('body', e);
+}
+export async function deleteEntry(id: string): Promise<void> {
+  await (await db()).delete('body', id);
 }
 
 // ---- Stored records (a cache of recordIds per exercise) ----

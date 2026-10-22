@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { App, calendarView, commentView, copyView, editExerciseView, exerciseView, pickView, routinesView, settingsView } from './app';
+import { App, calendarView, commentView, copyView, editExerciseView, exerciseView, pickView, routinesView, bodyView, settingsView } from './app';
 import { isoDate } from './lib/calc';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { initNav, open } from './nav';
@@ -42,7 +42,7 @@ async function start() {
   });
   // The other screens when idle, one at a time, so they open instantly and work offline.
   const workoutChunk = { prefetch: () => import('./workout').then(() => {}) };
-  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, copyView, routinesView, settingsView, workoutChunk]));
+  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, copyView, routinesView, bodyView, settingsView, workoutChunk]));
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
     navigator.serviceWorker.addEventListener('message', (e) => {

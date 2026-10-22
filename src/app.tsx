@@ -6,7 +6,7 @@ import { lazyView } from './lazy';
 import { stack, top, type Screen } from './nav';
 import { date, loadDay, toastAction, toastText, updateReady, view, type View } from './state';
 
-const TABS: View[] = ['log', 'calendar', 'routines', 'settings'];
+const TABS: View[] = ['log', 'calendar', 'routines', 'body', 'settings'];
 
 // Not needed for the first screen: split out and prefetched when idle (main.tsx).
 export const pickView = lazyView(() => import('./components/Picker'));
@@ -16,6 +16,8 @@ export const categoryView = lazyView(() => import('./components/CategoryEditor')
 export const commentView = lazyView(() => import('./components/CommentSheet'));
 export const copyView = lazyView(() => import('./components/CopySheet'));
 export const routinesView = lazyView(() => import('./components/Routines'));
+export const bodyView = lazyView(() => import('./components/Body'));
+export const metricView = lazyView(() => import('./components/MetricSheet'));
 export const routineView = lazyView(() => import('./components/RoutineSheet'));
 export const routineDayView = lazyView(() => import('./components/RoutineDaySheet'));
 export const settingsView = lazyView(() => import('./components/Settings'));
@@ -25,6 +27,7 @@ const PREFETCH: Partial<Record<View, () => void>> = {
   settings: () => void settingsView.prefetch(),
   calendar: () => void calendarView.prefetch(),
   routines: () => void routinesView.prefetch(),
+  body: () => void bodyView.prefetch(),
 };
 
 export function App() {
@@ -46,6 +49,7 @@ export function App() {
           {view.value === 'log' && <Log />}
           {view.value === 'calendar' && <calendarView.Lazy />}
           {view.value === 'routines' && <routinesView.Lazy />}
+          {view.value === 'body' && <bodyView.Lazy />}
           {view.value === 'settings' && <settingsView.Lazy />}
         </main>
         <nav class="tabs">
@@ -89,6 +93,8 @@ function ScreenView({ screen: s }: { screen: Screen }) {
   switch (s.kind) {
     case 'pick':
       return <pickView.Lazy date={s.date} routine={s.routine} />;
+    case 'metric':
+      return <metricView.Lazy id={s.id} />;
     case 'routine':
       return <routineView.Lazy id={s.id} />;
     case 'routineDay':
