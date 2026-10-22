@@ -6,10 +6,21 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M6 Supersets / groups**.
+- Next build milestone: **M6b Lean start** (initial JS 20.9 KB), then M7 Body tracker.
 - Perf follow-up: initial JS is 19.3 KB, mostly UI strings; split later screens' strings into a lazy
   chunk like Iron Log's `strings-later` before it nears the 30 KB budget.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M6 Supersets
+
+- Day tools → "Superset": pick exercises, "Make superset" pulls them together at the first one's place;
+  grouped cards get a coloured edge and label; "Ungroup" (a group with one member left dissolves).
+  Reorder moves a superset as one unit.
+- Exercise screen: a rotation bar of the superset's exercises; Save goes on to the next exercise
+  without a rest timer, the round's last one starts the timer and returns to the first.
+- Data: optional `group` id on the sets (all sets of an exercise on that day); new sets inherit it;
+  copies keep it; validated in backups. Pure helpers in `lib/groups.ts` (tested).
+- Checks: 66 unit tests, 9 e2e (new superset flow). Initial JS 20.9 KB → M6b to slim it.
 
 ## 2026-10-21 — M5b Routines
 

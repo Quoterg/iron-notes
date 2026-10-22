@@ -55,6 +55,8 @@ export interface WorkoutSet {
   distance?: number;
   time?: number;
   comment?: string;
+  /** Superset id: every set of the exercises done in rotation on that day shares it. */
+  group?: string;
   /** Ticked off: a display flag only ("Mark sets complete"); unticked sets still count everywhere. */
   done?: boolean;
   /**

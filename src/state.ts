@@ -175,24 +175,54 @@ export async function copySets(sets: readonly WorkoutSet[], to: string): Promise
   await afterWrite(copies);
 }
 
-/**
- * Moves one exercise of the shown day up (-1) or down (+1): the day's sets get new order keys in the
- * new exercise order, keeping each exercise's own set order (so records don't change).
- */
+/** Moves an exercise (with its whole superset) of the shown day up (-1) or down (+1). */
 export async function moveExercise(exerciseId: string, dir: -1 | 1): Promise<void> {
+  const { dayOrder, moveUnit } = await import('./lib/groups');
+  const current = dayOrder(daySets.value);
+  const order = moveUnit(current, exerciseId, dir);
+  if (order.every((id, i) => id === current[i].exerciseId)) return;
+  const groupOf = new Map(current.map((o) => [o.exerciseId, o.group]));
+  await rewriteDay(order, (id) => groupOf.get(id));
+}
+
+/** Writes the day's sets in a new exercise order (and group ids), keeping each exercise's set order. */
+async function rewriteDay(order: string[], groupOf: (exerciseId: string) => string | undefined) {
   const groups = new Map<string, WorkoutSet[]>();
   for (const s of daySets.value) groups.get(s.exerciseId)?.push(s) ?? groups.set(s.exerciseId, [s]);
-  const ids = [...groups.keys()];
-  const i = ids.indexOf(exerciseId);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= ids.length) return;
-  [ids[i], ids[j]] = [ids[j], ids[i]];
-  const base = daySets.value[0].order; // reuse the day's own key range: other days are unaffected
-  const moved = ids.flatMap((id) => groups.get(id)!).map((s, k) => ({ ...s, order: base + k }));
-  await db.putSets(moved);
-  applyToCache(moved, false); // order within each exercise is unchanged: records stay as they are
+  const base = daySets.value[0].order; // the day's own key range: other days are unaffected
+  const next = order.flatMap((id) => groups.get(id) ?? []).map((s, k) => ({ ...s, order: base + k, group: groupOf(s.exerciseId) }));
+  // Only sets whose order or group changed are written.
+  const before = new Map(daySets.value.map((s) => [s.id, s]));
+  const changed = next.filter((s) => before.get(s.id)!.order !== s.order || before.get(s.id)!.group !== s.group);
+  await db.putSets(changed);
+  applyToCache(changed, false); // order within each exercise is unchanged: records stay as they are
   setsVersion.value++;
   await loadDay(date.value);
+}
+
+/** Groups exercises of the shown day into a superset (pulled next to each other at the first one). */
+export async function groupExercises(ids: string[]): Promise<void> {
+  const { dayOrder, pullTogether } = await import('./lib/groups');
+  if (ids.length < 2) return;
+  const members = new Set(ids);
+  const current = dayOrder(daySets.value);
+  const g = uid();
+  // Joining a group takes an exercise out of its old one; a group left with one member dissolves.
+  const left = new Map<string, number>();
+  for (const o of current) if (o.group && !members.has(o.exerciseId)) left.set(o.group, (left.get(o.group) ?? 0) + 1);
+  const groupOf = new Map(current.map((o) => [o.exerciseId, members.has(o.exerciseId) ? g : o.group && (left.get(o.group) ?? 0) > 1 ? o.group : undefined]));
+  await rewriteDay(pullTogether(current.map((o) => o.exerciseId), members), (id) => groupOf.get(id));
+}
+
+/** Takes an exercise out of its superset (the group dissolves if one member is left). */
+export async function ungroupExercise(exerciseId: string): Promise<void> {
+  const { dayOrder } = await import('./lib/groups');
+  const current = dayOrder(daySets.value);
+  const g = current.find((o) => o.exerciseId === exerciseId)?.group;
+  if (!g) return;
+  const remaining = current.filter((o) => o.group === g && o.exerciseId !== exerciseId).length;
+  const groupOf = new Map(current.map((o) => [o.exerciseId, o.exerciseId === exerciseId || (o.group === g && remaining < 2) ? undefined : o.group]));
+  await rewriteDay(current.map((o) => o.exerciseId), (id) => groupOf.get(id));
 }
 
 /** Deletes a whole day (sets and comment); returns an undo. */
@@ -245,7 +275,10 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   // Last done set per exercise (one indexed read each): fills in weights the plan leaves open.
   const last = new Map<string, WorkoutSet | undefined>();
   await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastDoneSet(i.exerciseId))));
-  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder);
+  const { groupOf } = await import('./lib/groups');
+  const sameDay = d === date.value ? daySets.value : await db.setsOn(d);
+  // Sets of an exercise already in a superset that day join it.
+  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder).map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) }));
   if (!sets.length) return;
   await db.putSets(sets);
   if (d !== date.value) date.value = d;
