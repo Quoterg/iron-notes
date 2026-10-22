@@ -246,6 +246,29 @@ export async function deleteEntry(id: string): Promise<void> {
   await (await db()).delete('body', id);
 }
 
+// ---- Whole-database operations (Settings → Your data) ----
+export async function allSets(): Promise<WorkoutSet[]> {
+  return (await db()).getAll('sets');
+}
+/** Adds imported categories, exercises and sets in one transaction (all or nothing); records are refilled lazily. */
+export async function importRows(categories: Category[], exercises: Exercise[], sets: WorkoutSet[]): Promise<void> {
+  const tx = (await db()).transaction(['categories', 'exercises', 'sets', 'records'], 'readwrite');
+  await Promise.all([
+    ...categories.map((c) => tx.objectStore('categories').put(c)),
+    ...exercises.map((e) => tx.objectStore('exercises').put(e)),
+    tx.objectStore('records').clear(),
+  ]);
+  // In chunks: a big FitNotes history is tens of thousands of puts; the transaction stays open throughout.
+  for (let i = 0; i < sets.length; i += 2000) await Promise.all(sets.slice(i, i + 2000).map((s) => tx.objectStore('sets').put(s)));
+  await tx.done;
+}
+/** Deletes everything (one transaction). The next start is a first start: starter library and measures again. */
+export async function clearAll(): Promise<void> {
+  const names = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines', 'metrics', 'body'] as const;
+  const tx = (await db()).transaction(names, 'readwrite');
+  await Promise.all([...names.map((n) => tx.objectStore(n).clear()), tx.done]);
+}
+
 // ---- Stored records (a cache of recordIds per exercise) ----
 export async function getRecords(exerciseId: string): Promise<StoredRecords | undefined> {
   return (await db()).get('records', exerciseId);

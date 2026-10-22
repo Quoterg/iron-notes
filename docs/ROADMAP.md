@@ -47,7 +47,7 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 - [x] **M8 Analysis** — Period picker (week, month, 3 m, year, all, custom): workouts, sets, reps,
   volume, time; breakdown per category (sets / volume); workouts per week chart; most frequent
   exercises; per-exercise progress summary.
-- [ ] **M9 Data** — CSV export (FitNotes-compatible columns), **FitNotes CSV import** (move your
+- [x] **M9 Data** — CSV export (FitNotes-compatible columns), **FitNotes CSV import** (move your
   history over), "storage is persistent" status, delete all data.
 - [ ] **M10 Tools & polish** — 1RM calculator (% table), plate calculator (bar + available plates),
   warm-up calculator, keep screen on while logging (Wake Lock), favourite / recent exercises in the
