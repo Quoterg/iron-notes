@@ -260,7 +260,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                           class="tick"
                           aria-label={`${t('setDone')} ${i + 1}`}
                           checked={!!s.done}
-                          onChange={(e) => void saveSet({ ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned })}
+                          onChange={(e) => {
+                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned };
+                            // Shown at once: the box mustn't snap back while the write is in flight (slow phones).
+                            setAll((a) => a && a.map((x) => (x.id === s.id ? next : x)));
+                            void saveSet(next);
+                          }}
                         />
                       )}
                     </li>
