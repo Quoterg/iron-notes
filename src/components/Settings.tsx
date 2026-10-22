@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'preact/hooks';
 import { exportAll, importAll, validateBackup } from '../lib/backup';
+import { isoDate } from '../lib/calc';
+import { allSets, clearAll, importRows } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
 import type { DistUnit, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
 import { open } from '../nav';
-import { reloadAll, saveSettings, settings, toast } from '../state';
+import { categories, catById, exById, exercises, reloadAll, reserveOrders, saveSettings, settings, toast } from '../state';
 
 function Choice<T extends string>(p: { label: string; options: [T, string][]; value: T; onPick: (v: T) => void; hideLabel?: boolean }) {
   const { label, options, value, onPick } = p;
@@ -94,6 +97,7 @@ export default function Settings() {
       <section class="card">
         <h2>{t('yourData')}</h2>
         <p class="muted small">{t('storedOnDevice')}</p>
+        <Persistence />
         <div class="actions">
           <button class="btn" onClick={() => void backup()}>
             {t('exportBackup')}
@@ -103,6 +107,19 @@ export default function Settings() {
             <input type="file" accept="application/json,.json" onChange={(e) => void restore(e.currentTarget)} />
           </label>
         </div>
+        <div class="actions">
+          <button class="btn" onClick={() => void exportCsv()}>
+            {t('exportCsv')}
+          </button>
+          <label class="btn file">
+            {t('importFitNotes')}
+            <input type="file" accept="text/csv,.csv" onChange={(e) => void importCsv(e.currentTarget)} />
+          </label>
+        </div>
+        <p class="muted small">{t('fitNotesHint')}</p>
+        <button class="btn danger wide" onClick={() => void deleteAll()}>
+          {t('deleteAll')}
+        </button>
       </section>
 
       <section class="card">
@@ -113,13 +130,78 @@ export default function Settings() {
   );
 }
 
-async function backup() {
-  const data = await exportAll();
+/** Whether the browser keeps the data even when space runs low (it can evict "best effort" storage). */
+function Persistence() {
+  const [kept, setKept] = useState<boolean | null>(null);
+  useEffect(() => {
+    void navigator.storage?.persisted?.().then(setKept, () => setKept(null));
+  }, []);
+  if (kept == null) return null;
+  return (
+    <p class="muted small">
+      {kept ? t('storageKept') : t('storageBestEffort')}{' '}
+      {!kept && (
+        <button class="link inline" onClick={() => void navigator.storage.persist().then(setKept, () => {})}>
+          {t('keepData')}
+        </button>
+      )}
+    </p>
+  );
+}
+
+function download(name: string, text: string, type: string) {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-  a.download = `iron-notes-${data.exported.slice(0, 10)}.json`;
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function exportCsv() {
+  const [{ toCsv }, sets] = await Promise.all([import('../lib/csv'), allSets()]);
+  const text = toCsv(sets, (id) => exById.value.get(id), (id) => catById.value.get(id), settings.value);
+  download(`iron-notes-${isoDate(new Date())}.csv`, text, 'text/csv');
+}
+
+async function importCsv(input: HTMLInputElement) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  const { planImport } = await import('../lib/csv');
+  let plan;
+  try {
+    const text = await file.text();
+    const rows = text.split('\n').length;
+    plan = planImport(text, { categories: categories.value, exercises: exercises.value, sets: await allSets() }, reserveOrders(rows));
+  } catch {
+    toast(t('notFitNotes'));
+    return;
+  }
+  if (!plan.sets.length) {
+    toast(t('nothingToImport', { dup: plan.duplicates }));
+    return;
+  }
+  const summary = t('importSummary', {
+    n: plan.sets.length, from: plan.first!, to: plan.last!, ex: plan.exercises.length, cat: plan.categories.length, dup: plan.duplicates, bad: plan.skipped,
+  });
+  if (!confirm(summary)) return;
+  await importRows(plan.categories, plan.exercises, plan.sets);
+  await reloadAll();
+  toast(t('imported', { n: plan.sets.length }));
+}
+
+async function deleteAll() {
+  if (!confirm(t('deleteAllQ'))) return;
+  await backup(); // the last copy, in case it was a mistake
+  await clearAll();
+  (await import('../body-state')).resetBody();
+  await reloadAll(); // a first start again: the starter library comes back
+  toast(t('deletedAll'));
+}
+
+async function backup() {
+  const data = await exportAll();
+  download(`iron-notes-${data.exported.slice(0, 10)}.json`, JSON.stringify(data), 'application/json');
 }
 
 async function restore(input: HTMLInputElement) {

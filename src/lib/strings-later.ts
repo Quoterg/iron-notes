@@ -183,6 +183,19 @@ export const later = {
   statWorkouts: 'Workouts',
   statSets: 'Sets',
   statVolume: 'Volume',
+  exportCsv: 'Export CSV',
+  importFitNotes: 'Import from FitNotes (CSV)',
+  fitNotesHint: 'FitNotes: Settings → Spreadsheet export → Export workouts, then import the CSV file here. Sets you already have are skipped.',
+  notFitNotes: "That file isn't a FitNotes CSV export.",
+  nothingToImport: 'Nothing new to import ({dup} sets were already here).',
+  importSummary: 'Import {n} sets ({from} to {to})? New: {ex} exercises, {cat} categories. Already here (skipped): {dup}. Unreadable rows: {bad}.',
+  imported: '{n} sets imported.',
+  deleteAll: 'Delete all data',
+  deleteAllQ: 'Delete ALL workouts, exercises, routines and body measures on this device? A backup is downloaded first.',
+  deletedAll: 'All data deleted.',
+  storageKept: 'Storage is persistent: the browser won’t clear it to free space.',
+  storageBestEffort: 'The browser may clear this data when space runs low.',
+  keepData: 'Keep my data',
 } as const;
 
 setLater(later);

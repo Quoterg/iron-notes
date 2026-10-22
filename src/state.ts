@@ -138,6 +138,12 @@ export function nextOrder(): number {
   orderSeq = Math.max(orderSeq + 1, Date.now());
   return orderSeq;
 }
+/** `n` consecutive order keys (an import); returns the first. */
+export function reserveOrders(n: number): number {
+  const start = nextOrder();
+  orderSeq = start + Math.max(0, n - 1);
+  return start;
+}
 
 /** The cached history with one set inserted/replaced (kept in order) or removed: no re-read, no re-sort. */
 export function upsertSorted(list: readonly WorkoutSet[], s: WorkoutSet, remove: boolean): WorkoutSet[] {
