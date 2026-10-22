@@ -7,6 +7,8 @@
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
 - Next build milestone: **M10b Picker & polish**.
+- Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
+  cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
 ## 2026-10-22 — M10a Calculators

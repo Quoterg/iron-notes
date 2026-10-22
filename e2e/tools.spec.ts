@@ -30,9 +30,15 @@ test('calculators: plates and warm-up from the logging screen, 1RM table, own pl
   await sheet.getByRole('button', { name: 'Plates', exact: true }).click();
   await sheet.getByText('Bar and plates').click();
   await sheet.getByLabel('Bar (kg)').fill('15');
-  await sheet.getByLabel('Plates (comma and space between) (kg)').fill('20, 10, 5');
-  await sheet.getByLabel('Plates (comma and space between) (kg)').blur();
+  await sheet.getByLabel('Bar (kg)').blur();
+  for (const p of ['25', '15', '2.5', '1.25']) await sheet.getByRole('button', { name: `Remove plate ${p}`, exact: true }).click();
+  await expect(sheet.getByRole('button', { name: /^Remove plate/ })).toHaveCount(3);
   await sheet.getByLabel('Weight (kg)').fill('62');
   await expect(sheet.locator('.plate')).toHaveText(['20']);
   await expect(sheet).toContainText('7 kg can’t be loaded with these plates');
+
+  // Absurd targets are refused instead of drawing thousands of plates.
+  await sheet.getByLabel('Weight (kg)').fill('99999');
+  await expect(sheet).toContainText('Up to 2000 kg.');
+  await expect(sheet.locator('.plate')).toHaveCount(0);
 });

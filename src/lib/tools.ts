@@ -28,13 +28,29 @@ export function platesPerSide(target: number, bar: number, sizes: readonly numbe
   let side = round((target - bar) / 2, 4);
   if (side <= 0) return { plates: [], rest: round(Math.max(0, target - bar), 3) };
   const out: number[] = [];
-  for (const p of [...sizes].filter((x) => x > 0).sort((a, b) => b - a)) {
-    while (side >= p - 1e-9) {
+  // At most MAX_PLATES per side: no bar holds more, and a huge target can't freeze the screen.
+  for (const p of [...sizes].filter((x) => x >= MIN_PLATE).sort((a, b) => b - a)) {
+    while (side >= p - 1e-9 && out.length < MAX_PLATES) {
       out.push(p);
       side = round(side - p, 4);
     }
   }
   return { plates: out, rest: round(side * 2, 3) };
+}
+
+/** Limits for the plate set (UI and backups) and the calculators' input. */
+export const MIN_PLATE = 0.25;
+export const MAX_PLATE = 100;
+export const MAX_SIZES = 12;
+export const MAX_PLATES = 40;
+export const MAX_BAR = 100;
+export const MAX_TARGET = 2000;
+
+/** A valid plate set: sizes deduped and sorted, within limits; null if unusable. */
+export function cleanPlates(bar: number, sizes: readonly number[]): { bar: number; sizes: number[] } | null {
+  const ok = [...new Set(sizes.filter((x) => Number.isFinite(x) && x >= MIN_PLATE && x <= MAX_PLATE))].sort((a, b) => b - a);
+  if (!Number.isFinite(bar) || bar < 0 || bar > MAX_BAR || !ok.length || ok.length > MAX_SIZES) return null;
+  return { bar, sizes: ok };
 }
 
 /** The smallest weight step the plates allow (two of the smallest plate). */
