@@ -63,7 +63,16 @@ const BY_NAME: Record<string, Muscles> = {
   'ab wheel rollout': m(['abs']),
 };
 
-export const defaultMuscles = (name: string): Muscles | undefined => BY_NAME[name.trim().toLowerCase()];
+export function defaultMuscles(name: string): Muscles | undefined {
+  const d = BY_NAME[name.trim().toLowerCase()];
+  return d && { primary: [...d.primary], secondary: [...d.secondary] }; // a copy: never share the table's arrays
+}
+
+/** Primary wins over secondary, no repeats, canonical order (backups may carry anything). */
+export function normalizeMuscles(ms: Muscles): Muscles {
+  const primary = [...new Set(ms.primary)].sort(canon);
+  return { primary, secondary: [...new Set(ms.secondary)].filter((x) => !primary.includes(x)).sort(canon) };
+}
 
 /** Exercises that have no muscles yet but a known name, with the default muscles (others untouched). */
 export function withDefaultMuscles(list: readonly Exercise[]): Exercise[] {

@@ -59,7 +59,8 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 
 ## Phase 2 — Training modes and effective reps (design: [TRAINING-MODES.md](TRAINING-MODES.md), to settle with the owner first)
 
-- [x] **M13 Muscle map** — Muscle groups per exercise (primary 1.0, secondary 0.5); starter library
+- [x] **M13 Muscle map** — Muscle groups per exercise (primary and secondary; how much a secondary
+  muscle counts is decided with the HIT milestones); starter library
   mapped; editable per exercise.
 - [ ] **M14 Training modes & effort input** — Settings: Standard · Failure-HIT (Dorian Yates) · RIR-HIT
   (Lyle McDonald). Failure-HIT: warm-up/working sets, forced reps, negatives, rest-pause, drop sets.

@@ -6,16 +6,21 @@ import { cycle, defaultMuscles, MUSCLES, stateOf, withDefaultMuscles } from './m
 import { starterLibrary } from './seed';
 
 describe('muscle map', () => {
-  it('maps every starter exercise except cardio, with known muscles only', () => {
-    const { categories, exercises } = starterLibrary();
-    const cardio = categories.find((c) => c.name === 'Cardio')!.id;
-    for (const e of exercises) {
-      if (e.categoryId === cardio) expect(e.muscles, e.name).toBeUndefined();
-      else {
-        expect(e.muscles?.primary.length, e.name).toBeGreaterThan(0);
-        for (const m of [...e.muscles!.primary, ...e.muscles!.secondary]) expect(MUSCLES).toContain(m);
-      }
+  it('maps every starter exercise but the cardio ones, with known muscles only', () => {
+    // Pinned by name, so a renamed starter exercise fails here instead of silently losing its muscles.
+    const CARDIO = ['Running', 'Cycling', 'Rowing Machine', 'Elliptical Trainer', 'Walking', 'Swimming', 'Jump Rope'];
+    const { exercises } = starterLibrary();
+    expect(exercises.filter((e) => !e.muscles).map((e) => e.name).sort()).toEqual([...CARDIO].sort());
+    for (const e of exercises.filter((x) => x.muscles)) {
+      expect(e.muscles!.primary.length, e.name).toBeGreaterThan(0);
+      for (const m of [...e.muscles!.primary, ...e.muscles!.secondary]) expect(MUSCLES).toContain(m);
     }
+  });
+
+  it('hands out copies of the defaults', () => {
+    const a = defaultMuscles('deadlift')!;
+    a.primary.push('abs');
+    expect(defaultMuscles('deadlift')!.primary).not.toContain('abs');
   });
 
   it('cycles none → primary → secondary → none, in canonical order', () => {

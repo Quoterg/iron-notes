@@ -1,6 +1,6 @@
 // Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
 import { db, getSettings } from './db';
-import { MUSCLES } from './muscles';
+import { MUSCLES, normalizeMuscles } from './muscles';
 import { cleanPlates } from './tools';
 import { DEFAULT_SETTINGS, TYPES, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
@@ -88,7 +88,9 @@ export function validateBackup(b: unknown): Backup {
     const clean = p && (p.unit === 'kg' || p.unit === 'lb') && Array.isArray(p.sizes) && p.sizes.every(isNum) ? cleanPlates(p.bar, p.sizes) : null;
     if (p && clean) settings.plates = { unit: p.unit, ...clean };
   }
-  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
+  // Muscles normalised (primary wins, no repeats, canonical order): effective reps must not double count.
+  const exercises = x.exercises.map((e) => (e.muscles ? { ...e, muscles: normalizeMuscles(e.muscles) } : e));
+  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
     // Entries of a measure that isn't in the file would be invisible orphans: left out.
     body: (x.body ?? []).filter((e) => (x.metrics ?? []).some((m) => m.id === e.metricId)) };
 }

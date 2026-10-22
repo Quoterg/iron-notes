@@ -201,10 +201,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
           <Dot color={cat?.color} /> {cat?.name}
           {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
         </p>
-        {ex.muscles && ex.muscles.primary.length > 0 && (
+        {ex.muscles && ex.muscles.primary.length + ex.muscles.secondary.length > 0 && (
           <p class="muted small">
             {ex.muscles.primary.map((m) => t(`mu_${m}` as Key)).join(', ')}
-            {ex.muscles.secondary.length > 0 && ` (+ ${ex.muscles.secondary.map((m) => t(`mu_${m}` as Key)).join(', ')})`}
+            {ex.muscles.secondary.length > 0 &&
+              `${ex.muscles.primary.length ? ' ' : ''}(+ ${ex.muscles.secondary.map((m) => t(`mu_${m}` as Key)).join(', ')})`}
           </p>
         )}
         {ex.notes && <p class="ex-notes muted small">{ex.notes}</p>}

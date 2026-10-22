@@ -20,7 +20,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [notes, setNotes] = useState(old?.notes ?? '');
-  // A new exercise with a known name starts with that name's muscles.
+  // Edited muscles; until then an existing exercise shows (and keeps) its own, a new one its name's defaults.
   const [muscles, setMuscles] = useState<Muscles | undefined>(old?.muscles);
   const [used, setUsed] = useState(0);
   const [error, setError] = useState('');
@@ -43,7 +43,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       categoryId: cat,
       type: used ? old!.type : type,
       notes: notes.trim() || undefined,
-      muscles: muscles ?? defaultMuscles(n),
+      muscles: muscles ?? (old ? old.muscles : defaultMuscles(n)),
       increment: inc > 0 ? inc : undefined,
       rest: r > 0 ? r : undefined,
     };
@@ -112,14 +112,14 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
           <p class="muted small">{t('musclesHint')}</p>
           <div class="chips">
             {MUSCLES.map((id) => {
-              const state = stateOf(muscles ?? (old ? undefined : defaultMuscles(name)), id);
+              const state = stateOf(muscles ?? (old ? old.muscles : defaultMuscles(name)), id);
               return (
                 <button
                   type="button"
                   key={id}
                   class={`chip muscle ${state}`}
                   aria-label={`${t(`mu_${id}` as Key)}: ${t(`ms_${state}` as Key)}`}
-                  onClick={() => setMuscles(cycle(muscles ?? (old ? undefined : defaultMuscles(name)), id))}
+                  onClick={() => setMuscles(cycle(muscles ?? (old ? old.muscles : defaultMuscles(name)), id))}
                 >
                   {t(`mu_${id}` as Key)}
                 </button>
