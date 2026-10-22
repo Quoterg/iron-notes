@@ -6,8 +6,21 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M8 Analysis**.
+- Next build milestone: **M9 Data** (CSV export, FitNotes CSV import).
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-22 — M8 Analysis
+
+- Statistics (Calendar → Statistics): week / month / 3 months / year / all / custom range. Totals
+  (workouts, sets, reps, volume, time, distance), workouts per week (hand-written SVG bars, average),
+  categories by sets or volume (bars in category colours), most trained exercises with the best
+  estimated 1RM and its change from the period's first to last workout day.
+- One index-range read of the period's sets; `lib/analysis.ts` summarises in one pass (tested), skipping
+  planned sets and sets of deleted exercises.
+- Bug fix: switching day showed the previous day's buttons until the new day loaded, so a quick tap could
+  land on what replaced them (found by a screenshot script hitting "Copy a previous workout"). The log
+  now shows nothing until the shown day's sets are loaded (`dayLoaded`).
+- Checks: 94 unit tests, 12 e2e (new statistics flow), initial JS 18.9 KB, Lighthouse 100/100/100.
 
 ## 2026-10-22 — M7 Body tracker
 

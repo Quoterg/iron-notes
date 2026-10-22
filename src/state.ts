@@ -16,6 +16,8 @@ export const exById = computed(() => new Map(exercises.value.map((e) => [e.id, e
 
 export const date = signal(isoDate(new Date()));
 export const daySets = signal<WorkoutSet[]>([]);
+/** The date `daySets` belong to: while another day loads, the log shows nothing stale to tap. */
+export const dayLoaded = signal('');
 export const dayComment = signal('');
 /** Record-holding set ids per exercise, for the exercises loaded so far. */
 export const records = signal<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
@@ -77,6 +79,7 @@ export async function loadDay(d: string): Promise<void> {
   const [sets, comment] = await Promise.all([db.setsOn(d), db.getComment(d)]);
   if (req !== dayReq) return; // a newer day was asked for meanwhile
   daySets.value = sets.sort(byOrder);
+  dayLoaded.value = d;
   dayComment.value = comment;
   void loadRecords([...new Set(sets.map((s) => s.exerciseId))]);
 }
