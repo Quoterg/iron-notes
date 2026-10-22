@@ -14,7 +14,7 @@ interface Schema extends DBSchema {
   routines: { key: string; value: Routine };
   /** v4: body measures and their entries. */
   metrics: { key: string; value: BodyMetric };
-  body: { key: string; value: BodyEntry; indexes: { metric: string } };
+  body: { key: string; value: BodyEntry; indexes: { metric: string; metricDate: [string, string, number] } };
 }
 
 export interface StoredRecords {
@@ -55,7 +55,10 @@ export function db(): Promise<IDBPDatabase<Schema>> {
       }
       if (oldVersion < 4) {
         d.createObjectStore('metrics', { keyPath: 'id' });
-        d.createObjectStore('body', { keyPath: 'id' }).createIndex('metric', 'metricId');
+        const body = d.createObjectStore('body', { keyPath: 'id' });
+        body.createIndex('metric', 'metricId');
+        // A measure's entries by date (and entry time): its latest dates are a short reverse-cursor walk.
+        body.createIndex('metricDate', ['metricId', 'date', 'at']);
       }
     },
     // A newer version opened elsewhere: step aside so it can upgrade, then start the new version here too.
@@ -225,9 +228,16 @@ export async function deleteMetric(id: string): Promise<void> {
 export async function entriesOf(metricId: string): Promise<BodyEntry[]> {
   return (await db()).getAllFromIndex('body', 'metric', metricId);
 }
-/** All entries (the Body list shows each measure's latest; a few hundred rows at most). */
-export async function allEntries(): Promise<BodyEntry[]> {
-  return (await db()).getAll('body');
+/** A measure's entries of its latest `dates` dates (the newest entry of each date), oldest first. */
+export async function latestEntries(metricId: string, dates: number): Promise<BodyEntry[]> {
+  const tx = (await db()).transaction('body');
+  const out: BodyEntry[] = [];
+  let cur = await tx.store.index('metricDate').openCursor(IDBKeyRange.bound([metricId], [metricId, []]), 'prev');
+  while (cur && out.length < dates) {
+    if (!out.length || out[out.length - 1].date !== cur.value.date) out.push(cur.value);
+    cur = await cur.continue();
+  }
+  return out.reverse();
 }
 export async function putEntry(e: BodyEntry): Promise<void> {
   await (await db()).put('body', e);

@@ -183,6 +183,7 @@ export const later = {
   statWorkouts: 'Workouts',
   statSets: 'Sets',
   statVolume: 'Volume',
+  entryDeleted: 'Entry deleted.',
 } as const;
 
 setLater(later);
