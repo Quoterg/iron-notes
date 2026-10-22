@@ -10,6 +10,16 @@
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## 2026-10-22 — M13 Muscle map
+
+- 15 muscle groups (chest, front/side/rear delts, lats/upper back, traps, lower back, biceps, triceps,
+  forearms, quads, hamstrings, glutes, calves, abs). Each exercise: primary (target) and secondary
+  (helping) muscles. How much a secondary muscle counts is a Phase 2 decision (owner's question 2).
+- Starter library mapped; existing installs get the same mapping once by exercise name (never over an
+  exercise that already has muscles). Editor: tap a muscle to cycle none → primary → secondary.
+  Exercise screen shows "Chest (+ Front delts, Triceps)". Validated in backups.
+- Checks: 113 unit tests, 17 e2e, initial JS 20.0 KB.
+
 ## 2026-10-22 — M10b Picker & polish
 
 - Picker: ★ on every exercise row; Favourites and Recent (last 8 exercises logged, one bounded reverse walk
