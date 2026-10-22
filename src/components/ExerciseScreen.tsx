@@ -6,7 +6,7 @@ import { t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
-import { groupColors, groupMembers, nextInGroup } from '../lib/groups';
+import { groupColors, groupMembers, groupOf, nextInGroup } from '../lib/groups';
 import { open, replaceTop } from '../nav';
 import { allSetsOf, catById, date as shownDate, daySets, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
 import { isDone } from '../lib/routines';
@@ -127,7 +127,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       // A routine's next planned set is filled in (and done); otherwise a new set.
       const s: WorkoutSet = planned
         ? { ...planned, ...values, comment, planned: undefined, done: true }
-        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: today[0]?.group };
+        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id) };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
       if (counted!.some((x) => x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
@@ -260,7 +260,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                           class="tick"
                           aria-label={`${t('setDone')} ${i + 1}`}
                           checked={!!s.done}
-                          onChange={(e) => void saveSet({ ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned })}
+                          onChange={(e) => {
+                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned };
+                            // Shown at once: the box mustn't snap back while the write is in flight (slow phones).
+                            setAll((a) => a && a.map((x) => (x.id === s.id ? next : x)));
+                            void saveSet(next);
+                          }}
                         />
                       )}
                     </li>
@@ -292,6 +297,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       </div>
     </Sheet>
   );
+}
+
+/** The sets of `d` the screen knows about: the shown day's (with every exercise), else just this one's. */
+function daySetsFor(d: string) {
+  return d === shownDate.value ? daySets.value : [];
 }
 
 function Stepper(p: { id: string; label: string; value: string; onChange: (v: string) => void; step: number; integer?: boolean }) {

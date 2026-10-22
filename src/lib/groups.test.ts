@@ -42,4 +42,8 @@ describe('supersets', () => {
     expect(moveUnit(o, 'd', -1)).toEqual(['a', 'd', 'b', 'c']);
     expect(moveUnit(o, 'a', -1)).toEqual(['a', 'b', 'c', 'd']);
   });
+  it('treats a lone group as none and reads the group from any set', () => {
+    expect(dayOrder([s('a', 'g'), s('b')])).toEqual([{ exerciseId: 'a', group: undefined }, { exerciseId: 'b', group: undefined }]);
+    expect(dayOrder([s('a'), s('b', 'g'), s('a', 'g')]).map((o) => o.group)).toEqual(['g', 'g']);
+  });
 });

@@ -140,7 +140,6 @@ export const later = {
   timePlan: 'Time (min)',
   removeFromDay: 'Remove',
   planned: 'planned',
-  nextInSuperset: 'Next: {name}',
   about: 'About',
   aboutText: 'Iron Notes is open source (AGPL-3.0) and works offline.',
   copyWorkout: 'Copy workout',
