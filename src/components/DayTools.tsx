@@ -4,7 +4,7 @@ import { parseIso } from '../lib/calc';
 import { t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { open } from '../nav';
-import { date, dayComment, exById, settings, toast } from '../state';
+import { date, dayComment, daySets, exById, settings, toast } from '../state';
 import { deleteWorkout, groupExercises } from '../workout';
 
 export interface DayToolsProps {
@@ -40,8 +40,8 @@ export default function DayTools({ groups, reordering, setReordering, grouping, 
   }
 
   async function remove() {
-    const count = [...groups.values()].reduce((n, g) => n + g.length, 0);
-    if (!confirm(t('deleteWorkoutQ', { n: count }))) return;
+    // Every set of the day goes, including sets of exercises deleted since (hidden in the log).
+    if (!confirm(t('deleteWorkoutQ', { n: daySets.value.length }))) return;
     setReordering(false);
     setGrouping(false);
     const undo = await deleteWorkout(d);

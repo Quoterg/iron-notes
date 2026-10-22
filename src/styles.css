@@ -300,6 +300,8 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .move { display: flex; gap: 6px; }
 .btn.icon.small { width: 40px; min-height: 40px; font-size: 1.1rem; }
 .day-tools { justify-content: center; margin-top: 16px; }
+/* Holds the lazily loaded tools bar's height (one row of chips) so nothing shifts when it appears. */
+.day-tools-slot { min-height: 64px; }
 .chip.danger { color: var(--over); }
 .copy-head { padding: 0 0 4px; justify-content: space-between; }
 .copy-names { margin: 0; }

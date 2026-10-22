@@ -1,12 +1,31 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, normalize } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { coreKeys, t } from './i18n';
 import { later } from './strings-later';
 
-/** Files in the first-paint bundle: they may only use the core table (the lazy one isn't loaded yet). */
-const FIRST_PAINT = ['src/app.tsx', 'src/main.tsx', 'src/lazy.tsx', 'src/state.ts', 'src/components/Log.tsx', 'src/components/RestTimer.tsx', 'src/components/icons.tsx'];
 const keysIn = (file: string) => [...readFileSync(file, 'utf8').matchAll(/\bt\('([A-Za-z0-9_]+)'/g)].map((m) => m[1]);
+
+/**
+ * Every source file in the first-paint bundle: main.tsx and what it imports statically, transitively.
+ * Dynamic `import('…')` (lazy screens and modules) is where the walk stops — those load the lazy strings.
+ */
+function firstPaintFiles(entry = 'src/main.tsx'): string[] {
+  const seen = new Set<string>();
+  const walk = (file: string) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const src = readFileSync(file, 'utf8');
+    // `import x from './y'` and `import './y'`, but not `import type` (erased) and not `import('./y')`.
+    for (const m of src.matchAll(/^import\s+(?!type\b)(?:[^'";]*?\sfrom\s+)?['"](\.[^'"]+)['"]/gm)) {
+      const base = normalize(join(dirname(file), m[1]));
+      const hit = [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts')].find((p) => existsSync(p) && /\.tsx?$/.test(p));
+      if (hit) walk(hit);
+    }
+  };
+  walk(entry);
+  return [...seen];
+}
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -15,9 +34,15 @@ function sources(dir: string): string[] {
 }
 
 describe('strings', () => {
+  it('finds the first-paint files from the import graph', () => {
+    const files = firstPaintFiles();
+    for (const f of ['src/app.tsx', 'src/components/Log.tsx', 'src/state.ts', 'src/nav.ts', 'src/lib/timer.ts']) expect(files).toContain(f);
+    // Lazy parts stay out.
+    for (const f of ['src/components/Settings.tsx', 'src/components/DayTools.tsx', 'src/workout.ts', 'src/lib/strings-later.ts']) expect(files).not.toContain(f);
+  });
   it('first-paint code only uses first-paint strings', () => {
     const core = new Set(coreKeys());
-    for (const f of FIRST_PAINT) for (const k of keysIn(f)) expect(core.has(k), `${f}: t('${k}') is not in the core table`).toBe(true);
+    for (const f of firstPaintFiles()) for (const k of keysIn(f)) expect(core.has(k), `${f}: t('${k}') is not in the core table`).toBe(true);
   });
   it('every key used anywhere exists in one of the tables', () => {
     const all = new Set([...coreKeys(), ...Object.keys(later)]);

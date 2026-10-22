@@ -7,13 +7,18 @@ import type { WorkoutSet } from '../lib/model';
 import { setText, weight } from '../lib/units';
 import { open } from '../nav';
 import { groupColors } from '../lib/groups';
-import { catById, date, dayComment, daySets, exById, records, settings } from '../state';
+import { catById, date, dayComment, daySets, exById, records, settings, toast } from '../state';
 
 import { lazyView } from '../lazy';
 import { Dot, Trophy } from './icons';
 
-/** The workout tools' code: a lazy chunk, loaded on the first tap (and prefetched when idle). */
-const workout = () => import('../workout');
+/**
+ * Runs a workout operation from its lazy chunk (loaded on the first tap, prefetched when idle). If the
+ * chunk can't load (offline before it was cached, or a new version replaced it), say so.
+ */
+function withWorkout(run: (w: typeof import('../workout')) => Promise<unknown>) {
+  import('../workout').then(run, () => toast(t('loadFailed')));
+}
 /** The tools bar under the day: not needed to show it, so it loads right after the first paint. */
 export const dayTools = lazyView(() => import('./DayTools'), { quiet: true });
 
@@ -96,16 +101,16 @@ export function Log() {
                     <h2>{ex.name}</h2>
                   </button>
                   {grouping && g && (
-                    <button class="btn small" onClick={() => void workout().then((w) => w.ungroupExercise(id))}>
+                    <button class="btn small" onClick={() => withWorkout((w) => w.ungroupExercise(id))}>
                       {t('ungroup')}
                     </button>
                   )}
                   {reordering && (
                     <span class="move">
-                      <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => void workout().then((w) => w.moveExercise(id, -1))}>
+                      <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => withWorkout((w) => w.moveExercise(id, -1))}>
                         ↑
                       </button>
-                      <button class="btn icon small" aria-label={`${t('moveDown')}: ${ex.name}`} disabled={i === ids.length - 1} onClick={() => void workout().then((w) => w.moveExercise(id, 1))}>
+                      <button class="btn icon small" aria-label={`${t('moveDown')}: ${ex.name}`} disabled={i === ids.length - 1} onClick={() => withWorkout((w) => w.moveExercise(id, 1))}>
                         ↓
                       </button>
                     </span>
@@ -138,7 +143,8 @@ export function Log() {
         )}
       </div>
       {groups.size > 0 && (
-        <dayTools.Lazy
+        <div class="day-tools-slot">
+          <dayTools.Lazy
           groups={groups}
           reordering={reordering}
           setReordering={setReordering}
@@ -146,7 +152,8 @@ export function Log() {
           setGrouping={setGrouping}
           picked={picked}
           setPicked={setPicked}
-        />
+          />
+        </div>
       )}
     </>
   );
