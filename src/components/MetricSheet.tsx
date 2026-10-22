@@ -1,24 +1,26 @@
 // One body measure: add an entry, its graph (with a 7-entry trend for body weight), and its entries.
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { addEntry, entries, loadBody, metrics, removeEntry, removeMetric, renameMetric } from '../body-state';
+import { addEntry, entries, loadBody, loadEntries, metrics, removeEntry, removeMetric, renameMetric } from '../body-state';
 import { isoDate, parseIso } from '../lib/calc';
 import { fmtBody, fromUser, toUser, trend, unitOf } from '../lib/body';
 import { t } from '../lib/i18n';
 import { num } from '../lib/units';
 import { back } from '../nav';
-import { settings } from '../state';
+import { settings, toast } from '../state';
 import { LineChart } from './LineChart';
 import { Sheet } from './Sheet';
 
 const PAGE = 30;
+/** Stable empty list (a fresh [] each render would re-run the chart memo). */
+const EMPTY: never[] = [];
 const longDate = (d: string) => parseIso(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function MetricSheet({ id }: { id: string }) {
   useEffect(() => {
-    void loadBody();
-  }, []);
+    void loadBody().then(() => loadEntries(id));
+  }, [id]);
   const m = metrics.value?.find((x) => x.id === id);
-  const list = entries.value.get(id) ?? [];
+  const list = entries.value.get(id) ?? EMPTY;
   const st = settings.value;
   const [value, setValue] = useState('');
   const [day, setDay] = useState(isoDate(new Date()));
@@ -36,8 +38,10 @@ export default function MetricSheet({ id }: { id: string }) {
 
   if (!m) return <Sheet title={t('body')}>{null}</Sheet>;
   const unit = unitOf(m.kind, st);
-  const parsed = parseFloat(value.replace(',', '.'));
-  const valid = Number.isFinite(parsed) && parsed >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(day);
+  // Strict: "12abc" or "1,234.5" isn't a value (parseFloat would read 12 and 1.234).
+  const parsed = /^\d+([.,]\d+)?$/.test(value.trim()) ? Number(value.trim().replace(',', '.')) : NaN;
+  const today = isoDate(new Date());
+  const valid = Number.isFinite(parsed) && /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= today;
   const last = list[list.length - 1];
 
   async function save(e: Event) {
@@ -58,7 +62,7 @@ export default function MetricSheet({ id }: { id: string }) {
             </label>
             <label>
               {t('dateCol')}
-              <input type="date" value={day} max={isoDate(new Date())} onInput={(e) => setDay(e.currentTarget.value)} />
+              <input type="date" value={day} max={today} onInput={(e) => setDay(e.currentTarget.value)} />
             </label>
           </div>
           <button class="btn primary wide" disabled={!valid}>
@@ -80,7 +84,10 @@ export default function MetricSheet({ id }: { id: string }) {
                   <span class="entry-name">{longDate(e.date)}</span>
                   <b class="num">{fmtBody(e.value, m.kind, st)}</b>
                 </span>
-                <button class="btn icon small" aria-label={`${t('delete')}: ${longDate(e.date)}`} onClick={() => void removeEntry(e)}>
+                <button class="btn icon small" aria-label={`${t('delete')}: ${longDate(e.date)}`} onClick={async () => {
+                    const undo = await removeEntry(e);
+                    toast(t('entryDeleted'), { label: t('undo'), run: () => void undo() });
+                  }}>
                   ✕
                 </button>
               </li>

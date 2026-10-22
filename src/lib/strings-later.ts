@@ -196,6 +196,7 @@ export const later = {
   storageKept: 'Storage is persistent: the browser won’t clear it to free space.',
   storageBestEffort: 'The browser may clear this data when space runs low.',
   keepData: 'Keep my data',
+  entryDeleted: 'Entry deleted.',
 } as const;
 
 setLater(later);

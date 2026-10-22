@@ -78,11 +78,14 @@ export function validateBackup(b: unknown): Backup {
     if (st.weekStart === 0 || st.weekStart === 1) settings.weekStart = st.weekStart;
     for (const k of ['autoTimer', 'timerSound', 'markDone'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
   }
-  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [], body: x.body ?? [] };
+  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
+    // Entries of a measure that isn't in the file would be invisible orphans: left out.
+    body: (x.body ?? []).filter((e) => (x.metrics ?? []).some((m) => m.id === e.metricId)) };
 }
 
 /** Replaces all data with a backup. Throws (and changes nothing) if the file isn't a valid one. */
 export async function importAll(b: unknown): Promise<void> {
+  const hasMetrics = Array.isArray((b as Partial<Backup> | null)?.metrics);
   const x = validateBackup(b);
   const d = await db();
   // `records` is a cache of the sets: cleared, refilled lazily.
@@ -100,6 +103,7 @@ export async function importAll(b: unknown): Promise<void> {
   ops.push(tx.objectStore('kv').put({ key: 'settings', value: x.settings }));
   // A restored library counts as seeded, even an empty one: never re-seed over the user's choice.
   ops.push(tx.objectStore('kv').put({ key: 'seeded', value: true }));
-  ops.push(tx.objectStore('kv').put({ key: 'bodySeeded', value: true })); // restored measures, even none, stay
+  // A backup with measures (even none) replaces the starter set; an older one without them keeps it coming.
+  if (hasMetrics) ops.push(tx.objectStore('kv').put({ key: 'bodySeeded', value: true }));
   await Promise.all([...ops, tx.done]);
 }
