@@ -167,6 +167,7 @@ export const later = {
   deleteMeasure: 'Delete measure',
   deleteMeasureQ: 'Delete this measure and its {n} entries?',
   entriesCount: 'entries',
+  entryDeleted: 'Entry deleted.',
 } as const;
 
 setLater(later);
