@@ -5,7 +5,7 @@ import { back } from '../nav';
 import { Sheet } from './Sheet';
 
 export default function WhatsNew({ since }: { since: number }) {
-  const items = CHANGELOG.filter((e) => e.id > since).flatMap((e) => e.items);
+  const items = CHANGELOG.filter((e) => e.id > since).flatMap((e) => e.items.map((k) => t(k)));
   return (
     <Sheet title={t('whatsNew')}>
       <div class="pad">

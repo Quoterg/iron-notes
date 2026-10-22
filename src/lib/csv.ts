@@ -10,6 +10,13 @@ export function csvEscape(v: unknown): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+/**
+ * A text cell that a spreadsheet would run as a formula (=, +, -, @, tab, CR first) gets a leading
+ * apostrophe, which spreadsheets show as text; the importer strips it again.
+ */
+export const safeText = (s: string): string => (/^[=+\-@\t\r]/.test(s) ? `'${s}` : s);
+const unsafeText = (s: string): string => (/^'[=+\-@\t\r]/.test(s) ? s.slice(1) : s);
+
 /** RFC 4180-ish: quoted fields, doubled quotes, CRLF or LF; blank lines dropped. */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -47,15 +54,15 @@ export function toCsv(sets: readonly WorkoutSet[], exercise: (id: string) => Exe
     lines.push(
       [
         s.date,
-        ex.name,
-        category(ex.categoryId)?.name ?? '',
+        safeText(ex.name),
+        safeText(category(ex.categoryId)?.name ?? ''),
         f.includes('weight') && s.weight != null ? num(wToUser(s.weight, st.unit), 3) : '',
         f.includes('weight') ? wUnit : '',
         f.includes('reps') && s.reps != null ? s.reps : '',
         f.includes('distance') && s.distance != null ? num(dToUser(s.distance, st.dist), 3) : '',
         f.includes('distance') ? st.dist : '',
         f.includes('time') && s.time != null ? fmtTime(s.time) : '',
-        s.comment ?? '',
+        safeText(s.comment ?? ''),
       ]
         .map(csvEscape)
         .join(','),
@@ -74,7 +81,8 @@ function parseDuration(v: string): number | undefined {
 }
 const parseNum = (v: string | undefined): number | undefined => {
   if (v == null || !v.trim()) return undefined;
-  const n = Number(v.trim().replace(',', '.'));
+  const t = v.trim();
+  const n = Number(/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t) ? t.replace(/,/g, '') : t.replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 };
 /** Weight in a unit word (kgs, kg, lbs, lb) → kg. */
@@ -158,7 +166,7 @@ export function planImport(
   let skipped = 0;
   for (const r of rows.slice(1)) {
     const date = (r[c.date] ?? '').trim().slice(0, 10);
-    const name = (r[c.exercise] ?? '').trim();
+    const name = unsafeText((r[c.exercise] ?? '').trim());
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !name) {
       skipped++;
       continue;
@@ -167,12 +175,12 @@ export function planImport(
     const row: Row = {
       date,
       name,
-      cat: c.category >= 0 ? (r[c.category] ?? '').trim() : '',
+      cat: c.category >= 0 ? unsafeText((r[c.category] ?? '').trim()) : '',
       weight: w != null ? toKg(w, c.weightUnit >= 0 ? r[c.weightUnit] ?? '' : wHead) : undefined,
       reps: parseNum(r[c.reps]) != null ? Math.round(parseNum(r[c.reps])!) : undefined,
       distance: parseNum(r[c.distance]) != null ? toKm(parseNum(r[c.distance])!, c.distanceUnit >= 0 ? r[c.distanceUnit] ?? '' : dHead) : undefined,
       time: c.time >= 0 ? parseDuration(r[c.time] ?? '') : undefined,
-      comment: c.comment >= 0 ? (r[c.comment] ?? '').trim() || undefined : undefined,
+      comment: c.comment >= 0 ? unsafeText((r[c.comment] ?? '').trim()) || undefined : undefined,
     };
     const vals = (['weight', 'reps', 'distance', 'time'] as const).filter((f) => (row[f] ?? 0) > 0);
     if (!vals.length) {
@@ -202,7 +210,10 @@ export function planImport(
     return ex;
   };
 
-  const have = new Set(current.sets.map(key));
+  // Stored sets as a multiset: three identical sets in the file over two stored add one (a 3 × 5 day is
+  // three sets, not one).
+  const have = new Map<string, number>();
+  for (const s of current.sets) have.set(key(s), (have.get(key(s)) ?? 0) + 1);
   const sets: WorkoutSet[] = [];
   let duplicates = 0;
   let order = startOrder;
@@ -213,11 +224,16 @@ export function planImport(
     const s: WorkoutSet = { id: uid(), date: row.date, exerciseId: ex.id, order: order++, comment: row.comment };
     for (const k of f) if (row[k] != null) s[k] = k === 'weight' ? Math.round(row[k]! * 1000) / 1000 : row[k];
     const k = key(s);
-    if (have.has(k)) {
+    if (!f.some((x) => (s[x] ?? 0) > 0)) {
+      skipped++; // e.g. a time-only row for an existing reps exercise: nothing it records
+      continue;
+    }
+    const left = have.get(k) ?? 0;
+    if (left > 0) {
+      have.set(k, left - 1);
       duplicates++;
       continue;
     }
-    have.add(k);
     sets.push(s);
   }
   const dates = sets.map((s) => s.date).sort();

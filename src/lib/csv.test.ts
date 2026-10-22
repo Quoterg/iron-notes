@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inferType, parseCsv, planImport, toCsv } from './csv';
+import { inferType, parseCsv, planImport, safeText, toCsv } from './csv';
 import { DEFAULT_SETTINGS, type Category, type Exercise, type WorkoutSet } from './model';
 
 const chest: Category = { id: 'c1', name: 'Chest', color: '#f0566a', order: 0 };
@@ -95,5 +95,46 @@ describe('CSV export', () => {
       [80, 8, undefined, undefined],
       [undefined, undefined, 5, 1530],
     ]);
+  });
+});
+
+describe('review fixes', () => {
+  const head = 'Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment';
+  const row = '2024-03-01,Flat Barbell Bench Press,Chest,100,kgs,5,,,,';
+  const none = { categories: [chest], exercises: [bench], sets: [] as WorkoutSet[] };
+
+  it('imports repeated identical sets as separate sets and dedupes them as a multiset', () => {
+    const three = [head, row, row, row].join('\n');
+    const first = planImport(three, none, 1);
+    expect(first.sets.length).toBe(3);
+    expect(first.duplicates).toBe(0);
+    const again = planImport(three, { ...none, sets: first.sets }, 10);
+    expect([again.sets.length, again.duplicates]).toEqual([0, 3]);
+    const four = planImport([head, row, row, row, row].join('\n'), { ...none, sets: first.sets }, 20);
+    expect([four.sets.length, four.duplicates]).toEqual([1, 3]);
+  });
+
+  it('skips rows that give an existing exercise none of its values', () => {
+    const plank: Exercise = { id: 'p', name: 'Plank', categoryId: 'c1', type: 'reps' };
+    const p = planImport([head, '2024-03-01,Plank,Abs,,,,,,0:01:30,'].join('\n'), { categories: [chest], exercises: [plank], sets: [] }, 1);
+    expect([p.sets.length, p.skipped]).toEqual([0, 1]);
+  });
+
+  it('guards formula-like text in the export and restores it on import', () => {
+    expect(safeText('=SUM(A1)')).toBe("'=SUM(A1)");
+    expect(safeText('-5 kg felt fine')).toBe("'-5 kg felt fine");
+    expect(safeText('Bench')).toBe('Bench');
+    const odd: Exercise = { id: 'o', name: '=HYPERLINK("x")', categoryId: 'c1', type: 'weight,reps' };
+    const csv = toCsv([{ id: 's', date: '2024-03-01', exerciseId: 'o', order: 1, weight: 50, reps: 5, comment: '@me' }], () => odd, () => chest, DEFAULT_SETTINGS);
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    expect(csv).toContain("'@me");
+    const back = planImport(csv, { categories: [chest], exercises: [odd], sets: [] }, 1);
+    expect([back.sets[0].exerciseId, back.sets[0].comment]).toEqual(['o', '@me']);
+  });
+
+  it('reads thousands separators and decimal commas', () => {
+    const p = planImport([head, '2024-03-01,Leg Press,Legs,"1,234.5",lbs,10,,,,', '2024-03-02,Leg Press,Legs,"82,5",kgs,10,,,,'].join('\n'), none, 1);
+    expect(p.sets[0].weight).toBeCloseTo(1234.5 * 0.45359237, 2);
+    expect(p.sets[1].weight).toBe(82.5);
   });
 });

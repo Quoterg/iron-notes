@@ -145,7 +145,15 @@ function Persistence() {
     <p class="muted small">
       {kept ? t('storageKept') : t('storageBestEffort')}{' '}
       {!kept && (
-        <button class="link inline" onClick={() => void navigator.storage.persist().then(setKept, () => {})}>
+        <button
+          class="link inline"
+          onClick={() =>
+            void navigator.storage.persist().then(
+              (ok) => (setKept(ok), ok || toast(t('persistDenied'))),
+              () => toast(t('persistDenied')),
+            )
+          }
+        >
           {t('keepData')}
         </button>
       )}
@@ -158,7 +166,7 @@ function download(name: string, text: string, type: string) {
   a.href = URL.createObjectURL(new Blob([text], { type }));
   a.download = name;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setTimeout(() => URL.revokeObjectURL(a.href), 60_000); // slow phones may start the download late
 }
 
 async function exportCsv() {
@@ -172,11 +180,10 @@ async function importCsv(input: HTMLInputElement) {
   input.value = '';
   if (!file) return;
   const { planImport } = await import('../lib/csv');
+  const [text, sets] = await Promise.all([file.text(), allSets()]); // a storage error surfaces as such
   let plan;
   try {
-    const text = await file.text();
-    const rows = text.split('\n').length;
-    plan = planImport(text, { categories: categories.value, exercises: exercises.value, sets: await allSets() }, reserveOrders(rows));
+    plan = planImport(text, { categories: categories.value, exercises: exercises.value, sets }, reserveOrders(text.split('\n').length));
   } catch {
     toast(t('notFitNotes'));
     return;
@@ -197,6 +204,8 @@ async function importCsv(input: HTMLInputElement) {
 async function deleteAll() {
   if (!confirm(t('deleteAllQ'))) return;
   await backup(); // the last copy, in case it was a mistake
+  // The download can't be verified from here (a browser may block it): ask once more after it started.
+  if (!confirm(t('deleteAllAfterBackup'))) return;
   await clearAll();
   (await import('../body-state')).resetBody();
   await reloadAll(); // a first start again: the starter library comes back

@@ -3,7 +3,8 @@ import { App, calendarView, commentView, copyView, editExerciseView, exerciseVie
 import { isoDate } from './lib/calc';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { initNav, open, stack } from './nav';
-import { setBlockedHandler } from './lib/db';
+import { LATEST } from './changelog-id';
+import { getNumber, hasAnySets, setBlockedHandler, setNumber } from './lib/db';
 import { t } from './lib/i18n';
 import { date, loadDay, loadLibrary, loadSettings, updateReady } from './state';
 import './styles.css';
@@ -60,7 +61,6 @@ async function start() {
  * the latest entry (a new user hasn't missed anything). Lazy: the changelog isn't in the first paint.
  */
 async function showWhatsNew() {
-  const [{ LATEST }, { getNumber, hasAnySets, setNumber }] = await Promise.all([import('./changelog'), import('./lib/db')]);
   const seen = await getNumber('whatsNewSeen');
   if (seen === undefined && !(await hasAnySets())) return void setNumber('whatsNewSeen', LATEST);
   if ((seen ?? 0) >= LATEST || stack.value.length) return;

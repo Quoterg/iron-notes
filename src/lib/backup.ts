@@ -1,5 +1,6 @@
 // Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
 import { db, getSettings } from './db';
+import { cleanPlates } from './tools';
 import { DEFAULT_SETTINGS, TYPES, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
 export interface Backup {
@@ -79,9 +80,9 @@ export function validateBackup(b: unknown): Backup {
     if (st.weekStart === 0 || st.weekStart === 1) settings.weekStart = st.weekStart;
     for (const k of ['autoTimer', 'timerSound', 'markDone', 'keepScreenOn'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
     const p = st.plates;
-    if (p && (p.unit === 'kg' || p.unit === 'lb') && isNum(p.bar) && p.bar >= 0 && Array.isArray(p.sizes) && p.sizes.every((x) => isNum(x) && x > 0)) {
-      settings.plates = { unit: p.unit, bar: p.bar, sizes: p.sizes };
-    }
+    // Same limits as the calculator's own editor (an absurd plate set could freeze it).
+    const clean = p && (p.unit === 'kg' || p.unit === 'lb') && Array.isArray(p.sizes) && p.sizes.every(isNum) ? cleanPlates(p.bar, p.sizes) : null;
+    if (p && clean) settings.plates = { unit: p.unit, ...clean };
   }
   return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
     // Entries of a measure that isn't in the file would be invisible orphans: left out.
