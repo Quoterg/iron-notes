@@ -41,7 +41,8 @@ async function start() {
     shownToday = today;
   });
   // The other screens when idle, one at a time, so they open instantly and work offline.
-  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, copyView, routinesView, settingsView]));
+  const workoutChunk = { prefetch: () => import('./workout').then(() => {}) };
+  idle(() => prefetchInTurn([pickView, exerciseView, editExerciseView, commentView, calendarView, copyView, routinesView, settingsView, workoutChunk]));
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
     navigator.serviceWorker.addEventListener('message', (e) => {

@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as db from './lib/db';
-import { daySets, exercises, loadDay, loadLibrary, logRoutineDay, removeExercise } from './state';
+import { daySets, exercises, loadDay, loadLibrary, removeExercise } from './state';
+import { logRoutineDay } from './workout';
 
 describe('routines in the log', () => {
   let bench = '';

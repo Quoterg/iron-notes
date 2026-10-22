@@ -5,7 +5,8 @@ import { uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
 import { back, open, stack } from '../nav';
-import { date, exById, logRoutineDay, removeRoutine, routines, saveRoutine, toast, view } from '../state';
+import { date, exById, routines, toast, view } from '../state';
+import { logRoutineDay, removeRoutine, saveRoutine } from '../workout';
 import { Sheet } from './Sheet';
 
 export default function RoutineSheet({ id }: { id: string }) {

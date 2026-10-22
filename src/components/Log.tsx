@@ -1,14 +1,26 @@
-// The training log of one day: its exercises with their sets, in the order they were logged, and the
-// workout's actions (copy, reorder, share, delete).
+// The training log of one day: its exercises with their sets, in the order they were logged. Reorder and
+// superset modes change the cards; the tools bar that switches them is DayTools (lazy).
 import { useMemo, useState } from 'preact/hooks';
-import { dayTotals, parseIso } from '../lib/calc';
+import { dayTotals } from '../lib/calc';
 import { t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { setText, weight } from '../lib/units';
 import { open } from '../nav';
 import { groupColors } from '../lib/groups';
-import { catById, date, dayComment, daySets, deleteWorkout, exById, groupExercises, moveExercise, records, settings, toast, ungroupExercise } from '../state';
+import { catById, date, dayComment, daySets, exById, records, settings, toast } from '../state';
+
+import { lazyView } from '../lazy';
 import { Dot, Trophy } from './icons';
+
+/**
+ * Runs a workout operation from its lazy chunk (loaded on the first tap, prefetched when idle). If the
+ * chunk can't load (offline before it was cached, or a new version replaced it), say so.
+ */
+function withWorkout(run: (w: typeof import('../workout')) => Promise<unknown>) {
+  import('../workout').then(run, () => toast(t('loadFailed')));
+}
+/** The tools bar under the day: not needed to show it, so it loads right after the first paint. */
+export const dayTools = lazyView(() => import('./DayTools'), { quiet: true });
 
 export function Log() {
   const d = date.value;
@@ -29,30 +41,6 @@ export function Log() {
   const addExercise = () => open({ kind: 'pick', date: d });
   const copy = () => open({ kind: 'copy', date: d });
   const ids = [...groups.keys()];
-
-  async function share() {
-    const { workoutText } = await import('../lib/share');
-    const title = parseIso(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const text = workoutText(title, ids.map((id) => ({ ex: exById.value.get(id)!, sets: groups.get(id)! })), s, dayComment.value);
-    try {
-      if (navigator.share) return void (await navigator.share({ text }));
-    } catch {
-      return; // cancelled
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      toast(t('shared'));
-    } catch {
-      toast(t('shareFailed')); // no share sheet and no clipboard (old browser, no permission)
-    }
-  }
-
-  async function remove() {
-    if (!confirm(t('deleteWorkoutQ', { n: sets.length }))) return;
-    setReordering(false);
-    const undo = await deleteWorkout(d);
-    toast(t('workoutDeleted'), { label: t('undo'), run: () => void undo() });
-  }
 
   return (
     <>
@@ -113,16 +101,16 @@ export function Log() {
                     <h2>{ex.name}</h2>
                   </button>
                   {grouping && g && (
-                    <button class="btn small" onClick={() => void ungroupExercise(id)}>
+                    <button class="btn small" onClick={() => withWorkout((w) => w.ungroupExercise(id))}>
                       {t('ungroup')}
                     </button>
                   )}
                   {reordering && (
                     <span class="move">
-                      <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => void moveExercise(id, -1)}>
+                      <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => withWorkout((w) => w.moveExercise(id, -1))}>
                         ↑
                       </button>
-                      <button class="btn icon small" aria-label={`${t('moveDown')}: ${ex.name}`} disabled={i === ids.length - 1} onClick={() => void moveExercise(id, 1)}>
+                      <button class="btn icon small" aria-label={`${t('moveDown')}: ${ex.name}`} disabled={i === ids.length - 1} onClick={() => withWorkout((w) => w.moveExercise(id, 1))}>
                         ↓
                       </button>
                     </span>
@@ -142,18 +130,6 @@ export function Log() {
           })}
         </>
       )}
-      {grouping && picked.size >= 2 && (
-        <button
-          class="btn primary wide"
-          onClick={async () => {
-            await groupExercises([...picked]);
-            setPicked(new Set());
-            setGrouping(false);
-          }}
-        >
-          {t('makeSuperset', { n: picked.size })}
-        </button>
-      )}
       <div class="actions">
         {groups.size > 0 && (
           <button class="btn primary" onClick={addExercise}>
@@ -167,33 +143,16 @@ export function Log() {
         )}
       </div>
       {groups.size > 0 && (
-        <div class="chips day-tools">
-          <button class="chip" onClick={copy}>
-            {t('copyWorkout')}
-          </button>
-          {groups.size > 1 && !grouping && (
-            <button class={reordering ? 'chip on' : 'chip'} aria-pressed={reordering} onClick={() => setReordering(!reordering)}>
-              {reordering ? t('done') : t('reorder')}
-            </button>
-          )}
-          {groups.size > 1 && !reordering && (
-            <button
-              class={grouping ? 'chip on' : 'chip'}
-              aria-pressed={grouping}
-              onClick={() => {
-                setGrouping(!grouping);
-                setPicked(new Set());
-              }}
-            >
-              {grouping ? t('done') : t('superset')}
-            </button>
-          )}
-          <button class="chip" onClick={() => void share()}>
-            {t('share')}
-          </button>
-          <button class="chip danger" onClick={() => void remove()}>
-            {t('deleteWorkout')}
-          </button>
+        <div class="day-tools-slot">
+          <dayTools.Lazy
+          groups={groups}
+          reordering={reordering}
+          setReordering={setReordering}
+          grouping={grouping}
+          setGrouping={setGrouping}
+          picked={picked}
+          setPicked={setPicked}
+          />
         </div>
       )}
     </>

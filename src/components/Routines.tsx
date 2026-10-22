@@ -3,7 +3,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import { open } from '../nav';
-import { loadRoutines, routines, saveRoutine } from '../state';
+import { routines } from '../state';
+import { loadRoutines, saveRoutine } from '../workout';
 
 export default function Routines() {
   const [name, setName] = useState('');

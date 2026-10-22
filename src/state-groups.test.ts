@@ -3,7 +3,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import * as db from './lib/db';
 import { dayOrder, groupOf } from './lib/groups';
 import type { WorkoutSet } from './lib/model';
-import { daySets, exercises, groupExercises, loadDay, loadLibrary, logRoutineDay, records, removeExercise, ungroupExercise } from './state';
+import { daySets, exercises, loadDay, loadLibrary, records, removeExercise } from './state';
+import { groupExercises, logRoutineDay, ungroupExercise } from './workout';
 
 const D = '2026-03-02';
 const order = () => dayOrder(daySets.value);

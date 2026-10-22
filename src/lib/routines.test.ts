@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { recordIds } from './calc';
 import { DEFAULT_SETTINGS, type Exercise, type RoutineDay, type WorkoutSet } from './model';
 import { defaultPlan, isDone, planSummary, plannedSets } from './routines';
+import './strings-later'; // as every later screen does: plan summaries use its strings
 
 const bench: Exercise = { id: 'b', name: 'Bench', categoryId: 'c', type: 'weight,reps' };
 const pullup: Exercise = { id: 'p', name: 'Pull Up', categoryId: 'c', type: 'reps' };

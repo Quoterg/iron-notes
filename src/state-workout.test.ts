@@ -3,7 +3,8 @@ import { openDB } from 'idb';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as db from './lib/db';
 import type { WorkoutSet } from './lib/model';
-import { copySets, date, daySets, deleteWorkout, exercises, loadDay, loadLibrary, moveExercise, records } from './state';
+import { date, daySets, exercises, loadDay, loadLibrary, records } from './state';
+import { copySets, deleteWorkout, moveExercise } from './workout';
 
 const D1 = '2026-01-05';
 const D2 = '2026-01-12';

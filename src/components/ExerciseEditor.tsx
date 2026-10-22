@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
-import { t, typeName } from '../lib/i18n';
+import { t } from '../lib/i18n';
+import { typeName } from '../lib/strings-later';
 import { TYPES, type Exercise, type ExerciseType } from '../lib/model';
 import { defaultIncrement, num } from '../lib/units';
 import { replaceTop, replaceTopTwo, stack } from '../nav';
