@@ -1,22 +1,10 @@
-// What's new: one entry per release a user would notice, newest first. `id` only ever grows; the app
-// remembers the last one shown and, after an update, shows the newer ones once (lazy: not first paint).
-export const CHANGELOG: { id: number; items: string[] }[] = [
-  {
-    id: 3,
-    items: [
-      'Calculators: 1RM table, plates per side with your own bar and plates, warm-up sets.',
-      'Keep the screen on while logging (Settings).',
-      'Favourite exercises (★) and recently used ones at the top of the exercise list.',
-    ],
-  },
-  {
-    id: 2,
-    items: [
-      'Import your history from FitNotes (Settings → Your data), and export CSV.',
-      'Statistics: totals, workouts per week, categories, most trained exercises.',
-      'Body tracker: weight, body fat, girths and your own measures, with graphs.',
-    ],
-  },
-  { id: 1, items: ['Routines, supersets, copying workouts, calendar, history, graphs and records.'] },
+// What's new: one entry per release a user would notice, newest first; items are string keys (t()), so
+// they can be translated. `id` only ever grows; LATEST (changelog-id.ts) is the newest one.
+import type { Key } from './lib/i18n';
+export { LATEST } from './changelog-id';
+
+export const CHANGELOG: { id: number; items: Key[] }[] = [
+  { id: 3, items: ['new_3a', 'new_3b', 'new_3c'] },
+  { id: 2, items: ['new_2a', 'new_2b', 'new_2c'] },
+  { id: 1, items: ['new_1a'] },
 ];
-export const LATEST = CHANGELOG[0].id;

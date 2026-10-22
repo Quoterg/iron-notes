@@ -8,6 +8,8 @@
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
 - Next build milestone: **M11 Languages** (Swedish), or Phase 2 once the HIT questions are answered.
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
+- Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
+  cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
 ## 2026-10-22 — M13 Muscle map

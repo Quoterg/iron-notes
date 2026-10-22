@@ -27,6 +27,15 @@ test('favourites and recent exercises at the top of the picker', async ({ page }
   await expect(recent).toBeVisible();
   await expect(sheet.getByRole('button', { name: 'Barbell Squat', exact: true })).toBeVisible();
   await expect(sheet.getByRole('button', { name: 'Deadlift', exact: true })).toBeVisible();
+
+  // Editing a favourite keeps it a favourite.
+  await sheet.getByRole('button', { name: 'Deadlift', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Edit' }).click();
+  await sheet.getByLabel('Notes').fill('Hook grip');
+  await sheet.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: /Back/ }).click();
+  await page.getByRole('button', { name: '+ Add exercise' }).click();
+  await expect(sheet.locator('.pick-row', { has: page.getByRole('button', { name: 'Deadlift', exact: true }) }).first().getByRole('button', { name: 'Favourite' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test("what's new: shown once after an update, never on a first install", async ({ page }) => {

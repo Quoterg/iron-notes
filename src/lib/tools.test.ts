@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PLATES, estimate, loadStep, percentTable, platesPerSide, warmup, weightForReps } from './tools';
+import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, warmup, weightForReps } from './tools';
+import { validateBackup } from './backup';
 
 describe('1RM', () => {
   it('inverts the formula', () => {
@@ -45,5 +46,27 @@ describe('warm-up', () => {
   it('drops steps that would repeat the bar for light weights', () => {
     expect(warmup(30, kg.bar, kg.sizes)).toEqual([{ weight: 20, reps: 10 }, { weight: 22.5, reps: 2 }]);
     expect(warmup(20, kg.bar, kg.sizes)).toEqual([]);
+  });
+});
+
+describe('limits (review: no freezes)', () => {
+  it('stops at MAX_PLATES per side and reports the rest', () => {
+    const r = platesPerSide(99_999_999, 20, DEFAULT_PLATES.kg.sizes);
+    expect(r.plates.length).toBe(MAX_PLATES);
+    expect(r.rest).toBeGreaterThan(0);
+    expect(platesPerSide(100, 20, [0.0001]).plates).toEqual([]); // below the smallest allowed plate
+  });
+  it('cleans a plate set: dedupe, sort, limits', () => {
+    expect(cleanPlates(20, [5, 25, 5, 2.5])).toEqual({ bar: 20, sizes: [25, 5, 2.5] });
+    expect(cleanPlates(20, [0.1])).toBeNull();
+    expect(cleanPlates(500, [20])).toBeNull();
+    expect(cleanPlates(20, Array.from({ length: 13 }, (_, i) => i + 1))).toBeNull();
+  });
+  it('validates plates in backups with the same limits', () => {
+    const b = (plates: unknown) => validateBackup({ app: 'iron-notes', version: 1, categories: [], exercises: [], sets: [], settings: { plates } });
+    expect(b({ unit: 'kg', bar: 20, sizes: [20, 10, 10] }).settings.plates).toEqual({ unit: 'kg', bar: 20, sizes: [20, 10] });
+    expect(b({ unit: 'kg', bar: 20, sizes: [0.0001] }).settings.plates).toBeUndefined();
+    expect(b({ unit: 'kg', bar: 20, sizes: [] }).settings.plates).toBeUndefined();
+    expect(b({ unit: 'st', bar: 20, sizes: [20] }).settings.plates).toBeUndefined();
   });
 });

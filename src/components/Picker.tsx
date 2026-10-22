@@ -6,7 +6,7 @@ import { t } from '../lib/i18n';
 import type { Exercise } from '../lib/model';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
-import { catById, categories, exById, exercises, saveExercise } from '../state';
+import { catById, categories, exById, exercises, setFavorite } from '../state';
 import { loadRoutines, saveRoutine } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
@@ -69,17 +69,17 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
           </>
         )}
         {(favs.length > 0 || recents.length > 0) && <h3 class="list-title">{t('categories')}</h3>}
-      <ul class="results">
-        {categories.value.map((c) => (
-          <li key={c.id} class="row-li">
-            <button class="result entry" onClick={() => setCat(c.id)}>
-              <Dot color={c.color} />
-              <span class="entry-name">{c.name}</span>
-              <span class="count">{counts.get(c.id) ?? 0}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+        <ul class="results">
+          {categories.value.map((c) => (
+            <li key={c.id} class="row-li">
+              <button class="result entry" onClick={() => setCat(c.id)}>
+                <Dot color={c.color} />
+                <span class="entry-name">{c.name}</span>
+                <span class="count">{counts.get(c.id) ?? 0}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </>
     );
   }
@@ -115,7 +115,7 @@ function ExerciseList({ list, onPick, showCat }: { list: Exercise[]; onPick: (e:
             class={e.favorite ? 'star on' : 'star'}
             aria-pressed={!!e.favorite}
             aria-label={t('favourite')}
-            onClick={() => void saveExercise({ ...e, favorite: !e.favorite || undefined })}
+            onClick={() => void setFavorite(e, !e.favorite)}
           >
             {e.favorite ? '★' : '☆'}
           </button>

@@ -37,6 +37,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
     const inc = parseFloat(increment.replace(',', '.'));
     const r = parseInt(rest, 10);
     const ex: Exercise = {
+      ...old, // fields this form doesn't edit (e.g. favourite) stay
       id: id ?? uid(),
       name: n,
       categoryId: cat,

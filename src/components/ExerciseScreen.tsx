@@ -80,6 +80,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     if (!keepOn || !('wakeLock' in navigator)) return;
     let lock: WakeLockSentinel | undefined;
     let live = true;
+    // A refused request (e.g. battery saver) isn't retried until the app comes back to the front.
     const take = () => {
       if (document.visibilityState === 'visible') void navigator.wakeLock.request('screen').then((l) => (live ? (lock = l) : void l.release()), () => {});
     };
@@ -249,16 +250,14 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                   <input id="f-comment" type="text" value={form.comment} onInput={(e) => set('comment')(e.currentTarget.value)} />
                 </div>
               ) : (
-                <span class="links">
-                  <button type="button" class="link" onClick={() => setShowComment(true)}>
-                    + {t('addComment')}
-                  </button>
-                  {fields.includes('weight') && (
-                    <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight })}>
-                      {t('tools')}
-                    </button>
-                  )}
-                </span>
+                <button type="button" class="link" onClick={() => setShowComment(true)}>
+                  + {t('addComment')}
+                </button>
+              )}
+              {fields.includes('weight') && (
+                <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight })}>
+                  {t('tools')}
+                </button>
               )}
               <div class="actions">
                 <button type="submit" class="btn primary" disabled={!values}>
