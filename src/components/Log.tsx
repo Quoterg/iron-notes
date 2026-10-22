@@ -1,6 +1,6 @@
 // The training log of one day: its exercises with their sets, in the order they were logged, and the
 // workout's actions (copy, reorder, share, delete).
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { dayTotals, parseIso } from '../lib/calc';
 import { t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
@@ -17,7 +17,7 @@ export function Log() {
   const [reordering, setReordering] = useState(false);
   const [grouping, setGrouping] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const colors = groupColors(sets);
+  const colors = useMemo(() => groupColors(sets), [sets]);
   const groups = new Map<string, WorkoutSet[]>();
   for (const set of sets) {
     if (!exById.value.has(set.exerciseId)) continue;

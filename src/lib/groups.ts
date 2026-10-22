@@ -5,12 +5,22 @@ import type { WorkoutSet } from './model';
 /** Colours for groups (by their position in the day), readable in both themes. */
 export const GROUP_COLORS = ['#7b5cff', '#f29a38', '#2bd4e0', '#e05fb8', '#e0c43a'];
 
-/** The day's exercises in order with their group id (from their first set). */
+/**
+ * The day's exercises in order with their group id: from any of the exercise's sets (a set added later,
+ * e.g. from a routine, may lack it), and only for groups that still have 2+ exercises — a partner left
+ * alone after a delete counts as ungrouped.
+ */
 export function dayOrder(sets: readonly WorkoutSet[]): { exerciseId: string; group?: string }[] {
   const seen = new Map<string, string | undefined>();
-  for (const s of sets) if (!seen.has(s.exerciseId)) seen.set(s.exerciseId, s.group);
-  return [...seen].map(([exerciseId, group]) => ({ exerciseId, group }));
+  for (const s of sets) if (!seen.has(s.exerciseId) || (!seen.get(s.exerciseId) && s.group)) seen.set(s.exerciseId, s.group);
+  const size = new Map<string, number>();
+  for (const g of seen.values()) if (g) size.set(g, (size.get(g) ?? 0) + 1);
+  return [...seen].map(([exerciseId, g]) => ({ exerciseId, group: g && size.get(g)! > 1 ? g : undefined }));
 }
+
+/** The group a new set of `exerciseId` on that day joins (its exercise's current group, if any). */
+export const groupOf = (sets: readonly WorkoutSet[], exerciseId: string): string | undefined =>
+  dayOrder(sets).find((o) => o.exerciseId === exerciseId)?.group;
 
 /** Exercise order with `members` pulled together at the first member's place (others keep their order). */
 export function pullTogether(order: readonly string[], members: ReadonlySet<string>): string[] {
@@ -49,11 +59,11 @@ export function groupColors(sets: readonly WorkoutSet[]): Map<string, string> {
  */
 export function moveUnit(order: readonly { exerciseId: string; group?: string }[], exerciseId: string, dir: -1 | 1): string[] {
   const units: string[][] = [];
+  let prevGroup: string | undefined;
   for (const o of order) {
-    const last = units[units.length - 1];
-    const prevGroup = last && order.find((x) => x.exerciseId === last[0])?.group;
-    if (last && o.group && o.group === prevGroup) last.push(o.exerciseId);
+    if (units.length && o.group && o.group === prevGroup) units[units.length - 1].push(o.exerciseId);
     else units.push([o.exerciseId]);
+    prevGroup = o.group;
   }
   const i = units.findIndex((u) => u.includes(exerciseId));
   const j = i + dir;

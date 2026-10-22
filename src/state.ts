@@ -180,7 +180,7 @@ export async function moveExercise(exerciseId: string, dir: -1 | 1): Promise<voi
   const { dayOrder, moveUnit } = await import('./lib/groups');
   const current = dayOrder(daySets.value);
   const order = moveUnit(current, exerciseId, dir);
-  if (order.join() === current.map((o) => o.exerciseId).join()) return;
+  if (order.every((id, i) => id === current[i].exerciseId)) return;
   const groupOf = new Map(current.map((o) => [o.exerciseId, o.group]));
   await rewriteDay(order, (id) => groupOf.get(id));
 }
@@ -191,8 +191,11 @@ async function rewriteDay(order: string[], groupOf: (exerciseId: string) => stri
   for (const s of daySets.value) groups.get(s.exerciseId)?.push(s) ?? groups.set(s.exerciseId, [s]);
   const base = daySets.value[0].order; // the day's own key range: other days are unaffected
   const next = order.flatMap((id) => groups.get(id) ?? []).map((s, k) => ({ ...s, order: base + k, group: groupOf(s.exerciseId) }));
-  await db.putSets(next);
-  applyToCache(next, false); // order within each exercise is unchanged: records stay as they are
+  // Only sets whose order or group changed are written.
+  const before = new Map(daySets.value.map((s) => [s.id, s]));
+  const changed = next.filter((s) => before.get(s.id)!.order !== s.order || before.get(s.id)!.group !== s.group);
+  await db.putSets(changed);
+  applyToCache(changed, false); // order within each exercise is unchanged: records stay as they are
   setsVersion.value++;
   await loadDay(date.value);
 }
@@ -272,7 +275,10 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   // Last done set per exercise (one indexed read each): fills in weights the plan leaves open.
   const last = new Map<string, WorkoutSet | undefined>();
   await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastDoneSet(i.exerciseId))));
-  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder);
+  const { groupOf } = await import('./lib/groups');
+  const sameDay = d === date.value ? daySets.value : await db.setsOn(d);
+  // Sets of an exercise already in a superset that day join it.
+  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder).map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) }));
   if (!sets.length) return;
   await db.putSets(sets);
   if (d !== date.value) date.value = d;
