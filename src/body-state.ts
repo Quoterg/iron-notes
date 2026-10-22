@@ -48,9 +48,13 @@ async function publish(metricId: string) {
   latest.value = new Map(latest.value).set(metricId, sorted.slice(-2));
 }
 
+let lastAt = 0;
+/** Entry time, strictly increasing: two entries in one millisecond still have an order ("the newer"). */
+const nextAt = () => (lastAt = Math.max(lastAt + 1, Date.now()));
+
 /** Adds an entry (for a date that has one, the newer shows); one write, the list updated in place. */
 export async function addEntry(metricId: string, date: string, value: number): Promise<void> {
-  const e: BodyEntry = { id: uid(), metricId, date, value, at: Date.now() };
+  const e: BodyEntry = { id: uid(), metricId, date, value, at: nextAt() };
   await db.putEntry(e);
   await loadEntries(metricId);
   raw.set(metricId, [...raw.get(metricId)!.filter((x) => x.id !== e.id), e]);
