@@ -76,7 +76,11 @@ export function validateBackup(b: unknown): Backup {
     if (isNum(st.rest) && st.rest > 0) settings.rest = st.rest;
     if (st.formula === 'epley' || st.formula === 'brzycki') settings.formula = st.formula;
     if (st.weekStart === 0 || st.weekStart === 1) settings.weekStart = st.weekStart;
-    for (const k of ['autoTimer', 'timerSound', 'markDone'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
+    for (const k of ['autoTimer', 'timerSound', 'markDone', 'keepScreenOn'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
+    const p = st.plates;
+    if (p && (p.unit === 'kg' || p.unit === 'lb') && isNum(p.bar) && p.bar >= 0 && Array.isArray(p.sizes) && p.sizes.every((x) => isNum(x) && x > 0)) {
+      settings.plates = { unit: p.unit, bar: p.bar, sizes: p.sizes };
+    }
   }
   return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
     // Entries of a measure that isn't in the file would be invisible orphans: left out.

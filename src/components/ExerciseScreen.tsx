@@ -75,6 +75,22 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const [showComment, setShowComment] = useState(false);
   const [tab, setTab] = useState<Tab>('track');
   const ver = setsVersion.value;
+  const keepOn = settings.value.keepScreenOn;
+  useEffect(() => {
+    if (!keepOn || !('wakeLock' in navigator)) return;
+    let lock: WakeLockSentinel | undefined;
+    let live = true;
+    const take = () => {
+      if (document.visibilityState === 'visible') void navigator.wakeLock.request('screen').then((l) => (live ? (lock = l) : void l.release()), () => {});
+    };
+    take();
+    document.addEventListener('visibilitychange', take);
+    return () => {
+      live = false;
+      document.removeEventListener('visibilitychange', take);
+      void lock?.release();
+    };
+  }, [keepOn]);
 
   useEffect(() => {
     let live = true;
@@ -227,9 +243,16 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                   <input id="f-comment" type="text" value={form.comment} onInput={(e) => set('comment')(e.currentTarget.value)} />
                 </div>
               ) : (
-                <button type="button" class="link" onClick={() => setShowComment(true)}>
-                  + {t('addComment')}
-                </button>
+                <span class="links">
+                  <button type="button" class="link" onClick={() => setShowComment(true)}>
+                    + {t('addComment')}
+                  </button>
+                  {fields.includes('weight') && (
+                    <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight })}>
+                      {t('tools')}
+                    </button>
+                  )}
+                </span>
               )}
               <div class="actions">
                 <button type="submit" class="btn primary" disabled={!values}>

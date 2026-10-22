@@ -197,6 +197,19 @@ export const later = {
   storageBestEffort: 'The browser may clear this data when space runs low.',
   keepData: 'Keep my data',
   entryDeleted: 'Entry deleted.',
+  tools: 'Calculators',
+  tool_orm: '1RM',
+  tool_plates: 'Plates',
+  tool_warmup: 'Warm-up',
+  perSide: 'Plates per side',
+  barOnly: 'Just the bar.',
+  barWeight: 'Bar',
+  cantLoad: '{w} can’t be loaded with these plates',
+  warmupSets: 'Warm-up sets',
+  workingSet: 'working set',
+  plateSettings: 'Bar and plates',
+  plateSizes: 'Plates (comma and space between)',
+  keepScreenOn: 'Keep the screen on while logging an exercise',
 } as const;
 
 setLater(later);
