@@ -6,8 +6,20 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M9 Data** (CSV export, FitNotes CSV import).
+- Next build milestone: **M10 Tools & polish**.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-22 — M9 Data
+
+- **FitNotes CSV import** (Settings → Your data): FitNotes' columns (Date, Exercise, Category, Weight,
+  Weight Unit, Reps, Distance, Distance Unit, Time, Comment — taken from a FitNotes CSV parser, since
+  FitNotes documents none) and the older "Weight (kgs)" header form; kgs/lbs, km/mi/m/ft/yd, h:mm:ss.
+  Exercises/categories matched by name, new ones created with a type inferred from the columns used.
+  A summary to confirm first; sets already stored are skipped (re-importing is safe); one transaction.
+- **CSV export** in the same layout, in the user's units (round-trips with the importer, tested).
+- Storage status ("persistent" or "may be cleared") with "Keep my data" (`navigator.storage.persist`).
+- **Delete all data**: a backup downloads first; then a first start again (starter library, measures).
+- Checks: 101 unit tests, 13 e2e (new: import, re-import, export, delete all), initial JS 19.1 KB.
 
 ## 2026-10-22 — M8 Analysis
 
