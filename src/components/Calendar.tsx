@@ -4,6 +4,7 @@ import { isoDate, parseIso } from '../lib/calc';
 import { addMonths, monthBounds, monthGrid, monthOf } from '../lib/calendar';
 import { setsBetween } from '../lib/db';
 import { t } from '../lib/i18n';
+import { open } from '../nav';
 import { catById, date, exById, loadDay, settings, setsVersion, view } from '../state';
 
 /** Up to this many category dots per day (more would not fit an old phone's cell). */
@@ -97,13 +98,16 @@ export default function Calendar() {
       <p class="muted small center num">
         {days ? `${count} ${t('workoutsInMonth')}` : t('loading')}
       </p>
-      {month !== monthOf(today) && (
-        <div class="actions">
+      <div class="actions">
+        {month !== monthOf(today) && (
           <button class="btn" onClick={() => setMonth(monthOf(today))}>
             {t('thisMonth')}
           </button>
-        </div>
-      )}
+        )}
+        <button class="btn primary" onClick={() => open({ kind: 'analysis' })}>
+          {t('analysis')}
+        </button>
+      </div>
     </>
   );
 }

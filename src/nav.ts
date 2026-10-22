@@ -19,6 +19,8 @@ export type Screen =
   | { kind: 'category'; id?: string }
   /** The workout comment of `date`. */
   | { kind: 'comment'; date: string }
+  /** Training statistics. */
+  | { kind: 'analysis' }
   /** A body measure: entries, graph. */
   | { kind: 'metric'; id: string }
   /** Copy (part of) a previous workout into `date`. */

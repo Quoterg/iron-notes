@@ -17,6 +17,7 @@ export const commentView = lazyView(() => import('./components/CommentSheet'));
 export const copyView = lazyView(() => import('./components/CopySheet'));
 export const routinesView = lazyView(() => import('./components/Routines'));
 export const bodyView = lazyView(() => import('./components/Body'));
+export const analysisView = lazyView(() => import('./components/Analysis'));
 export const metricView = lazyView(() => import('./components/MetricSheet'));
 export const routineView = lazyView(() => import('./components/RoutineSheet'));
 export const routineDayView = lazyView(() => import('./components/RoutineDaySheet'));
@@ -93,6 +94,8 @@ function ScreenView({ screen: s }: { screen: Screen }) {
   switch (s.kind) {
     case 'pick':
       return <pickView.Lazy date={s.date} routine={s.routine} />;
+    case 'analysis':
+      return <analysisView.Lazy />;
     case 'metric':
       return <metricView.Lazy id={s.id} />;
     case 'routine':

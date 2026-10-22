@@ -44,7 +44,7 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
   lazy component. Target: initial JS back under ~17 KB.
 - [x] **M7 Body tracker** — Body weight, body fat %, measurements (waist, chest, arms, thighs, neck,
   custom metrics); entries per date, chart with trend line, latest value list.
-- [ ] **M8 Analysis** — Period picker (week, month, 3 m, year, all, custom): workouts, sets, reps,
+- [x] **M8 Analysis** — Period picker (week, month, 3 m, year, all, custom): workouts, sets, reps,
   volume, time; breakdown per category (sets / volume); workouts per week chart; most frequent
   exercises; per-exercise progress summary.
 - [ ] **M9 Data** — CSV export (FitNotes-compatible columns), **FitNotes CSV import** (move your

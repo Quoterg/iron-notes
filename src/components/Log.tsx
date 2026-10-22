@@ -7,7 +7,7 @@ import type { WorkoutSet } from '../lib/model';
 import { setText, weight } from '../lib/units';
 import { open } from '../nav';
 import { groupColors } from '../lib/groups';
-import { catById, date, dayComment, daySets, exById, records, settings, toast } from '../state';
+import { catById, date, dayComment, dayLoaded, daySets, exById, records, settings, toast } from '../state';
 
 import { lazyView } from '../lazy';
 import { Dot, Trophy } from './icons';
@@ -41,6 +41,10 @@ export function Log() {
   const addExercise = () => open({ kind: 'pick', date: d });
   const copy = () => open({ kind: 'copy', date: d });
   const ids = [...groups.keys()];
+
+  // Another day is loading: show nothing rather than the previous day's buttons (a tap would land on
+  // whatever replaces them a moment later). Usually a few milliseconds.
+  if (dayLoaded.value !== d) return <div class="day-loading" aria-busy="true" />;
 
   return (
     <>
