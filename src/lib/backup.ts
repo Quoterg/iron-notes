@@ -1,6 +1,6 @@
 // Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
 import { db, getSettings } from './db';
-import { DEFAULT_SETTINGS, TYPES, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
+import { DEFAULT_SETTINGS, TYPES, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
 export interface Backup {
   app: 'iron-notes';
@@ -16,14 +16,18 @@ export interface Backup {
    * (new optional fields/arrays that older files simply lack); bump it only for breaking changes.
    */
   routines: Routine[];
+  /** Added with M7 (optional, like routines). */
+  metrics: BodyMetric[];
+  body: BodyEntry[];
 }
 
 export async function exportAll(): Promise<Backup> {
   const d = await db();
-  const [categories, exercises, sets, comments, settings, routines] = await Promise.all([
+  const [categories, exercises, sets, comments, settings, routines, metrics, body] = await Promise.all([
     d.getAll('categories'), d.getAll('exercises'), d.getAll('sets'), d.getAll('comments'), getSettings(), d.getAll('routines'),
+    d.getAll('metrics'), d.getAll('body'),
   ]);
-  return { app: 'iron-notes', version: 1, exported: new Date().toISOString(), categories, exercises, sets, comments, settings, routines };
+  return { app: 'iron-notes', version: 1, exported: new Date().toISOString(), categories, exercises, sets, comments, settings, routines, metrics, body };
 }
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
@@ -45,6 +49,10 @@ const validRoutine = (r: Routine) =>
   isStr(r?.id) && isStr(r.name) && isNum(r.order) && Array.isArray(r.days) &&
   r.days.every((d) => isStr(d?.id) && typeof d.name === 'string' && Array.isArray(d.items) &&
     d.items.every((i) => isStr(i?.exerciseId) && Array.isArray(i.sets) && i.sets.every(validPlanned)));
+const validMetric = (m: BodyMetric) =>
+  isStr(m?.id) && isStr(m.name) && ['weight', 'percent', 'length', 'number'].includes(m.kind) && isNum(m.order);
+const validEntry = (e: BodyEntry) =>
+  isStr(e?.id) && isStr(e.metricId) && typeof e.date === 'string' && DATE.test(e.date) && isNum(e.value) && isNum(e.at);
 const validComment = (c: DayComment) => typeof c?.date === 'string' && DATE.test(c.date) && typeof c.text === 'string';
 
 /** Checks a parsed backup file row by row. Throws on anything malformed: nothing is imported then. */
@@ -57,6 +65,8 @@ export function validateBackup(b: unknown): Backup {
   if (!Array.isArray(x.sets) || !x.sets.every(validSet)) throw new Error('Invalid sets');
   if (x.comments !== undefined && (!Array.isArray(x.comments) || !x.comments.every(validComment))) throw new Error('Invalid comments');
   if (x.routines !== undefined && (!Array.isArray(x.routines) || !x.routines.every(validRoutine))) throw new Error('Invalid routines');
+  if (x.metrics !== undefined && (!Array.isArray(x.metrics) || !x.metrics.every(validMetric))) throw new Error('Invalid body measures');
+  if (x.body !== undefined && (!Array.isArray(x.body) || !x.body.every(validEntry))) throw new Error('Invalid body entries');
   const st = x.settings as Partial<Settings> | undefined;
   if (st !== undefined && (typeof st !== 'object' || st === null)) throw new Error('Invalid settings');
   const settings: Settings = { ...DEFAULT_SETTINGS };
@@ -68,15 +78,18 @@ export function validateBackup(b: unknown): Backup {
     if (st.weekStart === 0 || st.weekStart === 1) settings.weekStart = st.weekStart;
     for (const k of ['autoTimer', 'timerSound', 'markDone'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
   }
-  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [] };
+  return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises: x.exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
+    // Entries of a measure that isn't in the file would be invisible orphans: left out.
+    body: (x.body ?? []).filter((e) => (x.metrics ?? []).some((m) => m.id === e.metricId)) };
 }
 
 /** Replaces all data with a backup. Throws (and changes nothing) if the file isn't a valid one. */
 export async function importAll(b: unknown): Promise<void> {
+  const hasMetrics = Array.isArray((b as Partial<Backup> | null)?.metrics);
   const x = validateBackup(b);
   const d = await db();
   // `records` is a cache of the sets: cleared, refilled lazily.
-  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines'] as const;
+  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines', 'metrics', 'body'] as const;
   const tx = d.transaction(stores, 'readwrite');
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
   const ops: Promise<unknown>[] = [];
@@ -85,8 +98,12 @@ export async function importAll(b: unknown): Promise<void> {
   for (const s of x.sets) ops.push(tx.objectStore('sets').put(s));
   for (const c of x.comments) ops.push(tx.objectStore('comments').put(c));
   for (const r of x.routines) ops.push(tx.objectStore('routines').put(r));
+  for (const m of x.metrics) ops.push(tx.objectStore('metrics').put(m));
+  for (const e of x.body) ops.push(tx.objectStore('body').put(e));
   ops.push(tx.objectStore('kv').put({ key: 'settings', value: x.settings }));
   // A restored library counts as seeded, even an empty one: never re-seed over the user's choice.
   ops.push(tx.objectStore('kv').put({ key: 'seeded', value: true }));
+  // A backup with measures (even none) replaces the starter set; an older one without them keeps it coming.
+  if (hasMetrics) ops.push(tx.objectStore('kv').put({ key: 'bodySeeded', value: true }));
   await Promise.all([...ops, tx.done]);
 }

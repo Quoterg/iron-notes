@@ -11,6 +11,7 @@ const core = {
   nextDay: 'Next day',
   log: 'Log',
   settings: 'Settings',
+  body: 'Body',
   loading: 'Loading…',
   loadFailed: "Couldn't load this screen.",
   retry: 'Try again',

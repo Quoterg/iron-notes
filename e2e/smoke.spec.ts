@@ -81,6 +81,19 @@ test('a new exercise of another type, found by search', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Farmer Walk' })).toBeVisible();
 });
 
+/** The weight unit as stored in IndexedDB (runs in the page). */
+const storedUnit = () =>
+  new Promise<string | undefined>((resolve) => {
+    const r = indexedDB.open('iron-notes');
+    r.onsuccess = () => {
+      const get = r.result.transaction('kv').objectStore('kv').get('settings');
+      get.onsuccess = () => {
+        resolve((get.result?.value as { unit?: string } | undefined)?.unit);
+        r.result.close();
+      };
+    };
+  });
+
 test('theme and units in settings', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Settings' }).click();
@@ -89,6 +102,8 @@ test('theme and units in settings', async ({ page }) => {
   await page.getByRole('button', { name: 'Day', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
   await page.getByRole('button', { name: 'lb', exact: true }).click();
+  // Reload only once the setting is stored (the write is async; on a slow runner a reload can beat it).
+  await expect.poll(() => page.evaluate(storedUnit)).toBe('lb');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
   await page.getByRole('button', { name: 'Settings' }).click();
