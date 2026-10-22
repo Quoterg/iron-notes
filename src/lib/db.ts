@@ -256,10 +256,11 @@ export async function importRows(categories: Category[], exercises: Exercise[], 
   await Promise.all([
     ...categories.map((c) => tx.objectStore('categories').put(c)),
     ...exercises.map((e) => tx.objectStore('exercises').put(e)),
-    ...sets.map((s) => tx.objectStore('sets').put(s)),
     tx.objectStore('records').clear(),
-    tx.done,
   ]);
+  // In chunks: a big FitNotes history is tens of thousands of puts; the transaction stays open throughout.
+  for (let i = 0; i < sets.length; i += 2000) await Promise.all(sets.slice(i, i + 2000).map((s) => tx.objectStore('sets').put(s)));
+  await tx.done;
 }
 /** Deletes everything (one transaction). The next start is a first start: starter library and measures again. */
 export async function clearAll(): Promise<void> {
