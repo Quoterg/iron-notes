@@ -19,6 +19,8 @@ export type Screen =
   | { kind: 'category'; id?: string }
   /** The workout comment of `date`. */
   | { kind: 'comment'; date: string }
+  /** Calculators (1RM, plates, warm-up); `weight` (kg) prefills them. */
+  | { kind: 'tools'; weight?: number }
   /** Training statistics. */
   | { kind: 'analysis' }
   /** A body measure: entries, graph. */

@@ -350,3 +350,10 @@ input[type='date'] { border: 1px solid var(--line); border-radius: 12px; backgro
 .small-chips { margin: 0; }
 .small-chips .chip { min-height: 32px; padding: 4px 10px; font-size: 0.85rem; }
 .day-loading { min-height: 50vh; }
+
+/* Calculators (M10a): plates drawn as blocks, taller for heavier plates. */
+.plates { display: flex; align-items: center; gap: 4px; min-height: 84px; padding: 4px 0; }
+.plate { display: flex; align-items: center; justify-content: center; min-width: 34px; padding: 0 4px; border-radius: 6px;
+  background: var(--active); color: var(--active-text); font-size: 0.8rem; font-weight: 700; }
+.links { display: flex; flex-wrap: wrap; gap: 0 20px; }
+details.card summary { cursor: pointer; color: var(--accent); min-height: 32px; }

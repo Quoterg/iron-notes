@@ -77,6 +77,7 @@ export default function Settings() {
       <section class="card">
         <h2>{t('logging')}</h2>
         <Check label="markDone" checked={s.markDone} onChange={(markDone) => void saveSettings({ markDone })} />
+        <Check label="keepScreenOn" checked={s.keepScreenOn} onChange={(keepScreenOn) => void saveSettings({ keepScreenOn })} />
         <Choice<'1' | '0'>
           label={t('weekStart')}
           options={[['1', t('monday')], ['0', t('sunday')]]}
@@ -91,6 +92,9 @@ export default function Settings() {
         />
         <button class="btn wide" onClick={() => open({ kind: 'library' })}>
           {t('manageExercises')}
+        </button>
+        <button class="btn wide" onClick={() => open({ kind: 'tools' })}>
+          {t('tools')}
         </button>
       </section>
 

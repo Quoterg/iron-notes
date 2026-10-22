@@ -6,10 +6,21 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M10 Tools & polish**.
+- Next build milestone: **M10b Picker & polish**.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-22 — M10a Calculators
+
+- Calculators (exercise screen → Calculators with the weight prefilled, or Settings): estimated 1RM with a
+  % table for 1–12 reps (Epley/Brzycki setting); plates per side drawn as blocks, with what can't be loaded;
+  warm-up sets (bar, ~40/60/80 %) rounded down to what the plates can load.
+- Own bar and plate sizes per unit (Settings stores them with their unit; kg and lb defaults otherwise),
+  validated in backups.
+- Keep the screen on while an exercise is open (Wake Lock; setting; re-taken when the app returns).
+- `lib/tools.ts` (tested); the Tools sheet is a lazy chunk.
+- Checks: 107 unit tests, 14 e2e (new calculators flow), initial JS 19.2 KB.
 
 ## 2026-10-22 — M9 Data
 

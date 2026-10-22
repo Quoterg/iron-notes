@@ -127,6 +127,10 @@ export interface Settings {
   formula: 'epley' | 'brzycki';
   /** First day of the week in the calendar: 0 Sunday, 1 Monday. */
   weekStart: 0 | 1;
+  /** Keep the screen on while an exercise is open (Wake Lock). */
+  keepScreenOn: boolean;
+  /** The user's bar and plates, in the unit they were set in (defaults per unit otherwise). */
+  plates?: { unit: WeightUnit; bar: number; sizes: number[] };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -138,4 +142,5 @@ export const DEFAULT_SETTINGS: Settings = {
   markDone: false,
   formula: 'epley',
   weekStart: 1,
+  keepScreenOn: false,
 };
