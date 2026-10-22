@@ -47,6 +47,20 @@ export async function loadLibrary(): Promise<void> {
   } else if (lib.categories.length) void db.isSeeded().then((s) => (s ? undefined : db.markSeeded())); // installs from before the flag
   categories.value = lib.categories.sort(byCatOrder);
   exercises.value = lib.exercises.sort(byName);
+  void mapMusclesOnce();
+}
+
+/** Installs from before the muscle map: give known exercises their muscles, once (never overwrites). */
+async function mapMusclesOnce() {
+  if (await db.getFlag('musclesMapped')) return;
+  const { withDefaultMuscles } = await import('./lib/muscles');
+  const mapped = withDefaultMuscles(exercises.value);
+  if (mapped.length) {
+    await db.putLibrary([], mapped);
+    const byId = new Map(mapped.map((e) => [e.id, e]));
+    exercises.value = exercises.value.map((e) => byId.get(e.id) ?? e);
+  }
+  await db.setFlag('musclesMapped');
 }
 
 export async function saveExercise(e: Exercise): Promise<void> {

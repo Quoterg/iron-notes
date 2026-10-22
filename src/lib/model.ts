@@ -31,6 +31,16 @@ export interface Category {
   order: number;
 }
 
+/** Muscle groups (for effective reps per muscle group). */
+export type MuscleId =
+  | 'chest' | 'frontDelts' | 'sideDelts' | 'rearDelts' | 'lats' | 'traps' | 'lowerBack'
+  | 'biceps' | 'triceps' | 'forearms' | 'quads' | 'hamstrings' | 'glutes' | 'calves' | 'abs';
+/** The muscles an exercise trains: primary (the target) and secondary (helping). */
+export interface Muscles {
+  primary: MuscleId[];
+  secondary: MuscleId[];
+}
+
 export interface Exercise {
   id: string;
   name: string;
@@ -43,6 +53,7 @@ export interface Exercise {
   rest?: number;
   /** Shown under Favourites at the top of the picker. */
   favorite?: boolean;
+  muscles?: Muscles;
 }
 
 export interface WorkoutSet {

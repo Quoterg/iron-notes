@@ -365,3 +365,9 @@ details.card summary { cursor: pointer; color: var(--accent); min-height: 32px; 
 .star.on { color: var(--gold); }
 .news { margin: 0 0 12px; padding: 14px 16px 14px 34px; }
 .news li { margin: 6px 0; }
+
+/* Muscle map (M13): primary filled, secondary outlined in the accent, none plain. */
+fieldset.muscle-pick { border: 0; padding: 0; margin: 0 0 14px; }
+fieldset.muscle-pick legend { color: var(--muted); padding: 0; margin-bottom: 4px; }
+.chip.muscle.primary { background: var(--active); color: var(--active-text); border-color: var(--accent); font-weight: 600; }
+.chip.muscle.secondary { border-color: var(--accent); color: var(--accent); border-style: dashed; }

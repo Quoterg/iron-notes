@@ -1,5 +1,6 @@
 // Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
 import { db, getSettings } from './db';
+import { MUSCLES } from './muscles';
 import { DEFAULT_SETTINGS, TYPES, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
 export interface Backup {
@@ -39,7 +40,10 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const validCategory = (c: Category) => isStr(c?.id) && isStr(c.name) && typeof c.color === 'string' && /^#[0-9a-f]{6}$/i.test(c.color) && isNum(c.order);
 const validExercise = (e: Exercise) =>
   isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest) &&
-  (e.favorite === undefined || typeof e.favorite === 'boolean');
+  (e.favorite === undefined || typeof e.favorite === 'boolean') &&
+  (e.muscles === undefined ||
+    (!!e.muscles && Array.isArray(e.muscles.primary) && Array.isArray(e.muscles.secondary) &&
+      [...e.muscles.primary, ...e.muscles.secondary].every((x) => MUSCLES.includes(x))));
 const validSet = (s: WorkoutSet) =>
   isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
   optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) && optStr(s.group) &&
