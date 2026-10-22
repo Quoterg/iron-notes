@@ -1,15 +1,17 @@
 // User data lives on the device, in IndexedDB. Nothing is sent anywhere.
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import { DEFAULT_SETTINGS, type Category, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
+import { DEFAULT_SETTINGS, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
 
 interface Schema extends DBSchema {
   categories: { key: string; value: Category };
   exercises: { key: string; value: Exercise };
-  sets: { key: string; value: WorkoutSet; indexes: { date: string; exercise: string } };
+  sets: { key: string; value: WorkoutSet; indexes: { date: string; exercise: string; exerciseOrder: [string, string, number] } };
   comments: { key: string; value: DayComment };
   kv: { key: string; value: { key: string; value: unknown } };
   /** Record-holding set ids per exercise (v2): a day opens without reading each exercise's history. */
   records: { key: string; value: StoredRecords };
+  /** v3 */
+  routines: { key: string; value: Routine };
 }
 
 export interface StoredRecords {
@@ -30,8 +32,8 @@ export function setBlockedHandler(fn: () => void): void {
 }
 
 export function db(): Promise<IDBPDatabase<Schema>> {
-  return (dbp ??= openDB<Schema>(DB_NAME, 2, {
-    upgrade(d, oldVersion) {
+  return (dbp ??= openDB<Schema>(DB_NAME, 3, {
+    upgrade(d, oldVersion, _newVersion, tx) {
       if (oldVersion < 1) {
         d.createObjectStore('categories', { keyPath: 'id' });
         d.createObjectStore('exercises', { keyPath: 'id' });
@@ -43,6 +45,11 @@ export function db(): Promise<IDBPDatabase<Schema>> {
       }
       // v2: a cache only — filled lazily from the sets, so existing installs need no data migration.
       if (oldVersion < 2) d.createObjectStore('records', { keyPath: 'exerciseId' });
+      if (oldVersion < 3) {
+        d.createObjectStore('routines', { keyPath: 'id' });
+        // An exercise's sets in date/order: its latest set is one reverse-cursor step away.
+        tx.objectStore('sets').createIndex('exerciseOrder', ['exerciseId', 'date', 'order']);
+      }
     },
     // A newer version opened elsewhere: step aside so it can upgrade, then start the new version here too.
     blocking(_current, _next, event) {
@@ -165,6 +172,26 @@ export async function recentWorkoutDates(limit: number, except?: string): Promis
     cur = await cur.continue();
   }
   return out;
+}
+
+/** The exercise's latest set that isn't a routine's planned one: reads from the end, usually one row. */
+export async function lastDoneSet(exerciseId: string): Promise<WorkoutSet | undefined> {
+  const tx = (await db()).transaction('sets');
+  // [id] sorts before every [id, date, order] key, [id, []] after them (arrays sort after strings).
+  let cur = await tx.store.index('exerciseOrder').openCursor(IDBKeyRange.bound([exerciseId], [exerciseId, []]), 'prev');
+  while (cur && cur.value.planned) cur = await cur.continue();
+  return cur?.value;
+}
+
+// ---- Routines ----
+export async function getRoutines(): Promise<Routine[]> {
+  return (await db()).getAll('routines');
+}
+export async function putRoutine(r: Routine): Promise<void> {
+  await (await db()).put('routines', r);
+}
+export async function deleteRoutine(id: string): Promise<void> {
+  await (await db()).delete('routines', id);
 }
 
 // ---- Stored records (a cache of recordIds per exercise) ----

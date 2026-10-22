@@ -6,8 +6,22 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M5b Routines**.
+- Next build milestone: **M6 Supersets / groups**.
+- Perf follow-up: initial JS is 19.3 KB, mostly UI strings; split later screens' strings into a lazy
+  chunk like Iron Log's `strings-later` before it nears the 30 KB budget.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-21 — M5b Routines
+
+- Routines tab: routines with days; each day lists exercises with a plan (sets × reps, optional
+  weight/distance/time for all sets), reorder/remove exercises, rename/reorder/delete days.
+- "Log to <day>": the day's exercises become **planned sets** (`done: false`) after anything already
+  logged; open weights come from the exercise's last done set. Planned sets show greyed with a tick box,
+  "Save" fills the next planned set (marks it done), and they're left out of records, history, graphs and
+  "last time" until done.
+- DB v3 `routines` store (loaded only when the Routines tab opens); routines included in backups
+  (optional field: older backups still restore; validated per row).
+- Checks: 59 unit tests, 8 e2e (new: routine build → log → fill), initial JS 19.3 KB.
 
 ## 2026-10-21 — M5a Workout tools
 

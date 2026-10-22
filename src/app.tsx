@@ -6,7 +6,7 @@ import { lazyView } from './lazy';
 import { stack, top, type Screen } from './nav';
 import { date, loadDay, toastAction, toastText, updateReady, view, type View } from './state';
 
-const TABS: View[] = ['log', 'calendar', 'settings'];
+const TABS: View[] = ['log', 'calendar', 'routines', 'settings'];
 
 // Not needed for the first screen: split out and prefetched when idle (main.tsx).
 export const pickView = lazyView(() => import('./components/Picker'));
@@ -15,12 +15,16 @@ export const editExerciseView = lazyView(() => import('./components/ExerciseEdit
 export const categoryView = lazyView(() => import('./components/CategoryEditor'));
 export const commentView = lazyView(() => import('./components/CommentSheet'));
 export const copyView = lazyView(() => import('./components/CopySheet'));
+export const routinesView = lazyView(() => import('./components/Routines'));
+export const routineView = lazyView(() => import('./components/RoutineSheet'));
+export const routineDayView = lazyView(() => import('./components/RoutineDaySheet'));
 export const settingsView = lazyView(() => import('./components/Settings'));
 export const calendarView = lazyView(() => import('./components/Calendar'));
 
 const PREFETCH: Partial<Record<View, () => void>> = {
   settings: () => void settingsView.prefetch(),
   calendar: () => void calendarView.prefetch(),
+  routines: () => void routinesView.prefetch(),
 };
 
 export function App() {
@@ -41,6 +45,7 @@ export function App() {
         <main onTouchStart={view.value === 'log' ? swipeStart : undefined} onTouchEnd={view.value === 'log' ? swipeEnd : undefined}>
           {view.value === 'log' && <Log />}
           {view.value === 'calendar' && <calendarView.Lazy />}
+          {view.value === 'routines' && <routinesView.Lazy />}
           {view.value === 'settings' && <settingsView.Lazy />}
         </main>
         <nav class="tabs">
@@ -83,7 +88,11 @@ export function App() {
 function ScreenView({ screen: s }: { screen: Screen }) {
   switch (s.kind) {
     case 'pick':
-      return <pickView.Lazy date={s.date} />;
+      return <pickView.Lazy date={s.date} routine={s.routine} />;
+    case 'routine':
+      return <routineView.Lazy id={s.id} />;
+    case 'routineDay':
+      return <routineDayView.Lazy routineId={s.routineId} dayId={s.dayId} />;
     case 'library':
       return <pickView.Lazy manage />;
     case 'exercise':

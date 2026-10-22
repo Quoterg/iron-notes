@@ -30,6 +30,7 @@ const PAGE = 20;
 
 export function History({ ex, all, rec, st }: { ex: Exercise; all: WorkoutSet[]; rec?: ReadonlySet<string>; st: Settings }) {
   const [shown, setShown] = useState(PAGE);
+  // `all`: only sets that count (the screen leaves out a routine's planned ones).
   const list = useMemo(() => workouts(all), [all]);
   if (!list.length) return <p class="muted center">{t('noHistory')}</p>;
   return (

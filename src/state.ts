@@ -3,9 +3,9 @@
 import { computed, signal } from '@preact/signals';
 import { byOrder, isoDate, recordIds, uid } from './lib/calc';
 import * as db from './lib/db';
-import { DEFAULT_SETTINGS, type Category, type Exercise, type Settings, type WorkoutSet } from './lib/model';
+import { DEFAULT_SETTINGS, type Category, type Exercise, type Routine, type RoutineDay, type Settings, type WorkoutSet } from './lib/model';
 
-export type View = 'log' | 'calendar' | 'settings';
+export type View = 'log' | 'calendar' | 'routines' | 'settings';
 export const view = signal<View>('log');
 
 export const settings = signal<Settings>(DEFAULT_SETTINGS);
@@ -221,6 +221,37 @@ export async function saveComment(d: string, text: string): Promise<void> {
   if (d === date.value) dayComment.value = text.trim();
 }
 
+// ---- Routines (loaded when first needed, not at start) ----
+export const routines = signal<Routine[] | null>(null);
+const byRoutineOrder = (a: Routine, b: Routine) => a.order - b.order || a.name.localeCompare(b.name);
+
+export async function loadRoutines(): Promise<Routine[]> {
+  if (!routines.value) routines.value = (await db.getRoutines()).sort(byRoutineOrder);
+  return routines.value;
+}
+export async function saveRoutine(r: Routine): Promise<void> {
+  await db.putRoutine(r);
+  routines.value = [...(routines.value ?? []).filter((x) => x.id !== r.id), r].sort(byRoutineOrder);
+}
+export async function removeRoutine(id: string): Promise<void> {
+  await db.deleteRoutine(id);
+  routines.value = (routines.value ?? []).filter((x) => x.id !== id);
+}
+
+/** Logs a routine day into `d` as planned (not yet done) sets, after anything already there. */
+export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
+  const { plannedSets } = await import('./lib/routines');
+  const items = day.items.filter((i) => exById.value.has(i.exerciseId));
+  // Last done set per exercise (one indexed read each): fills in weights the plan leaves open.
+  const last = new Map<string, WorkoutSet | undefined>();
+  await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastDoneSet(i.exerciseId))));
+  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder);
+  if (!sets.length) return;
+  await db.putSets(sets);
+  if (d !== date.value) date.value = d;
+  await afterWrite(sets);
+}
+
 // ---- Toast ----
 export const toastText = signal('');
 /** Optional button on the toast (e.g. Undo); it stays a little longer then. */
@@ -240,6 +271,7 @@ export function toast(text: string, action?: { label: string; run: () => void })
 export async function reloadAll(): Promise<void> {
   cache.clear();
   records.value = new Map();
+  routines.value = null;
   await Promise.all([loadSettings(), loadLibrary()]);
   setsVersion.value++;
   await loadDay(date.value);

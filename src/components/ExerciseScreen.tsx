@@ -1,6 +1,6 @@
 // Log sets of one exercise on one day: fields for the exercise type with +/- steppers, Save/Clear
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
@@ -8,6 +8,7 @@ import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
 import { open } from '../nav';
 import { allSetsOf, catById, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
+import { isDone } from '../lib/routines';
 import { Graph, History, Records } from './ExerciseProgress';
 import { Dot, Trophy } from './icons';
 import { Sheet } from './Sheet';
@@ -84,14 +85,19 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   }, [id, ver]);
 
   const today = all?.filter((s) => s.date === date) ?? [];
-  const prev = all ? previousWorkout(all, date) : [];
+  // Sets that count: not a routine's planned ones (filtered once, shared with the tabs).
+  const counted = useMemo(() => all?.filter(isDone) ?? null, [all]);
+  // "Last time" means sets actually done.
+  const prev = counted ? previousWorkout(counted, date) : [];
+  /** The next planned set of a routine logged today: Save fills it in. */
+  const planned = today.find((s) => s.planned);
 
   // Start from the last set logged (today, else last time), like a paper log.
   const [filled, setFilled] = useState(false);
   // Runs once, when the history first arrives (deliberately only on `all`; `filled` stops repeats).
   useEffect(() => {
     if (filled || !all) return;
-    const last = today[today.length - 1] ?? prev[0];
+    const last = planned ?? today[today.length - 1] ?? prev[0];
     // Only into empty fields: on a slow phone the user may have typed before the history arrived.
     if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec']));
     setFilled(true);
@@ -110,12 +116,17 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     if (!values || !ex || !all) return;
     const comment = form.comment.trim() || undefined;
     if (selected) {
-      await saveSet({ ...selected, ...values, comment });
+      // Editing a planned set means it was done.
+      // Editing a planned set means it was done.
+      await saveSet(selected.planned ? { ...selected, ...values, comment, planned: undefined, done: true } : { ...selected, ...values, comment });
       setSel(null);
     } else {
-      const s: WorkoutSet = { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined };
+      // A routine's next planned set is filled in (and done); otherwise a new set.
+      const s: WorkoutSet = planned
+        ? { ...planned, ...values, comment, planned: undefined, done: true }
+        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
-      if (all.length && recordIds([...all, s], ex.type).has(s.id)) toast(t('newRecord'));
+      if (counted!.some((x) => x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
       if (st.autoTimer) startTimer(ex.rest ?? st.rest, st.timerSound);
     }
@@ -171,9 +182,9 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
             </button>
           ))}
         </div>
-        {tab === 'history' && all && <History ex={ex} all={all} rec={rec} st={st} />}
-        {tab === 'graph' && all && <Graph ex={ex} all={all} st={st} />}
-        {tab === 'records' && all && <Records ex={ex} all={all} st={st} />}
+        {tab === 'history' && counted && <History ex={ex} all={counted} rec={rec} st={st} />}
+        {tab === 'graph' && counted && <Graph ex={ex} all={counted} st={st} />}
+        {tab === 'records' && counted && <Records ex={ex} all={counted} st={st} />}
         {tab === 'track' && (
           <>
             <form
@@ -224,13 +235,18 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                         </span>
                         {rec?.has(s.id) && <Trophy />}
                       </button>
-                      {st.markDone && (
+                      {(st.markDone || s.planned) && (
                         <input
                           type="checkbox"
                           class="tick"
                           aria-label={`${t('setDone')} ${i + 1}`}
                           checked={!!s.done}
-                          onChange={(e) => void saveSet({ ...s, done: e.currentTarget.checked })}
+                          onChange={(e) => {
+                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned };
+                            // Shown at once: the box mustn't snap back while the write is in flight (slow phones).
+                            setAll((a) => a && a.map((x) => (x.id === s.id ? next : x)));
+                            void saveSet(next);
+                          }}
                         />
                       )}
                     </li>

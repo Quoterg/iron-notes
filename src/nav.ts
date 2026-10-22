@@ -3,8 +3,12 @@
 import { computed, signal } from '@preact/signals';
 
 export type Screen =
-  /** Pick an exercise to log on `date`. */
-  | { kind: 'pick'; date: string }
+  /** Pick an exercise to log on `date`, or (routine) to add to a routine day. */
+  | { kind: 'pick'; date: string; routine?: { routineId: string; dayId: string } }
+  /** A routine and its days. */
+  | { kind: 'routine'; id: string }
+  /** One day of a routine: its exercises and planned sets. */
+  | { kind: 'routineDay'; routineId: string; dayId: string }
   /** Log sets of an exercise on `date`. */
   | { kind: 'exercise'; id: string; date: string }
   /** Create (no id) or edit an exercise. With `date`, a new exercise opens for logging afterwards. */
