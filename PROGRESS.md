@@ -6,8 +6,18 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M10b Picker & polish**.
+- Next build milestone: **M11 Languages** (Swedish), or Phase 2 once the HIT questions are answered.
+- Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-22 — M10b Picker & polish
+
+- Picker: ★ on every exercise row; Favourites and Recent (last 8 exercises logged, one bounded reverse walk
+  of the date index) at the top of the start view.
+- What's new: `src/changelog.ts`; after an update the entries newer than the last one this device saw are
+  shown once; a first install just records the latest (nothing was missed).
+- Checks: 109 unit tests, 16 e2e (new: favourites/recent; what's new once after an update, never on a
+  first install), initial JS 19.9 KB.
 
 ## 2026-10-22 — M10a Calculators
 

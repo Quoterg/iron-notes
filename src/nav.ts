@@ -21,6 +21,8 @@ export type Screen =
   | { kind: 'comment'; date: string }
   /** Calculators (1RM, plates, warm-up); `weight` (kg) prefills them. */
   | { kind: 'tools'; weight?: number }
+  /** What's new since the last update. */
+  | { kind: 'whatsnew'; since: number }
   /** Training statistics. */
   | { kind: 'analysis' }
   /** A body measure: entries, graph. */

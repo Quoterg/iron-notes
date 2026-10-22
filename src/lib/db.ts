@@ -97,6 +97,14 @@ export async function isSeeded(): Promise<boolean> {
 export async function markSeeded(): Promise<void> {
   await (await db()).put('kv', { key: 'seeded', value: true });
 }
+/** A stored number (e.g. the last What's new entry shown), or undefined. */
+export async function getNumber(key: string): Promise<number | undefined> {
+  const v = (await (await db()).get('kv', key))?.value;
+  return typeof v === 'number' ? v : undefined;
+}
+export async function setNumber(key: string, value: number): Promise<void> {
+  await (await db()).put('kv', { key, value });
+}
 /** A one-time flag (e.g. "body measures seeded"). */
 export async function getFlag(key: string): Promise<boolean> {
   return !!(await (await db()).get('kv', key));
@@ -200,6 +208,19 @@ export async function lastDoneSet(exerciseId: string): Promise<WorkoutSet | unde
   return cur?.value;
 }
 
+/** The last `n` different exercises logged (newest first): a reverse walk of the date index, no full read. */
+export async function recentExerciseIds(n: number): Promise<string[]> {
+  const tx = (await db()).transaction('sets');
+  const out: string[] = [];
+  let cur = await tx.store.index('date').openCursor(null, 'prev');
+  // Bounded: a few hundred rows at most, even if one exercise fills the latest days.
+  for (let seen = 0; cur && out.length < n && seen < 500; seen++) {
+    if (!cur.value.planned && !out.includes(cur.value.exerciseId)) out.push(cur.value.exerciseId);
+    cur = await cur.continue();
+  }
+  return out;
+}
+
 // ---- Routines ----
 export async function getRoutines(): Promise<Routine[]> {
   return (await db()).getAll('routines');
@@ -247,6 +268,10 @@ export async function deleteEntry(id: string): Promise<void> {
 }
 
 // ---- Whole-database operations (Settings → Your data) ----
+/** Whether anything was ever logged (one key read). */
+export async function hasAnySets(): Promise<boolean> {
+  return !!(await (await db()).getKey('sets', IDBKeyRange.lowerBound('')));
+}
 export async function allSets(): Promise<WorkoutSet[]> {
   return (await db()).getAll('sets');
 }

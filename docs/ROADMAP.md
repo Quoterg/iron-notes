@@ -52,8 +52,8 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 - [x] **M10a Calculators** — 1RM calculator with a % table, plate calculator (own bar and plate set
   per unit), warm-up sets rounded to loadable weights; opened from the logging screen (weight prefilled)
   or Settings. Keep the screen on while logging (Wake Lock, setting).
-- [ ] **M10b Picker & polish** — Favourite and recent exercises at the top of the picker, per-exercise
-  default sets, What's new after an update.
+- [x] **M10b Picker & polish** — Favourite (★) and recent exercises at the top of the picker; What's new
+  after an update. (Per-exercise default sets dropped: routines plan sets, exercises keep rest/step.)
 - [ ] **M11 Languages** — Swedish UI (lazy language pack, as Iron Log), then others on request.
 - [ ] **M12 Android app** — TWA with Bubblewrap (like Iron Log), after hosting is settled.
 

@@ -210,6 +210,11 @@ export const later = {
   plateSettings: 'Bar and plates',
   plateSizes: 'Plates (comma and space between)',
   keepScreenOn: 'Keep the screen on while logging an exercise',
+  favourites: 'Favourites',
+  favourite: 'Favourite',
+  recent: 'Recent',
+  whatsNew: "What's new",
+  ok: 'OK',
 } as const;
 
 setLater(later);
