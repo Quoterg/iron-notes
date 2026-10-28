@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { recordIds } from './calc';
 import { DEFAULT_SETTINGS, type Exercise, type RoutineDay, type WorkoutSet } from './model';
-import { defaultPlan, isDone, planSummary, plannedSets } from './routines';
+import { defaultPlan, isDone, planSummary, plannedSets, workoutFromDay } from './routines';
 import './strings-later'; // as every later screen does: plan summaries use its strings
 
 const bench: Exercise = { id: 'b', name: 'Bench', categoryId: 'c', type: 'weight,reps' };
@@ -26,7 +26,7 @@ describe('plannedSets', () => {
   const day: RoutineDay = { id: 'd', name: 'A', items: [{ exerciseId: 'b', sets: [{ reps: 8 }, { reps: 8, weight: 90 }] }, { exerciseId: 'p', sets: [{}] }] };
   it('fills open values from the last done set and marks every set planned', () => {
     let n = 0;
-    const last = (id: string): WorkoutSet | undefined => (id === 'b' ? { id: 'x', date: '2026-01-01', exerciseId: 'b', order: 1, weight: 80, reps: 10 } : undefined);
+    const last = (id: string): WorkoutSet[] => (id === 'b' ? [{ id: 'x', date: '2026-01-01', exerciseId: 'b', order: 1, weight: 80, reps: 10 }] : []);
     const sets = plannedSets(day, '2026-01-08', last, () => ++n);
     expect(sets.map((s) => [s.exerciseId, s.weight, s.reps, s.order, s.planned])).toEqual([
       ['b', 80, 8, 1, true],
@@ -67,8 +67,60 @@ describe('plan edge cases', () => {
   });
   it('plans with no last set leave values empty; an empty day logs nothing', () => {
     const day: RoutineDay = { id: 'd', name: 'A', items: [{ exerciseId: 'k', sets: [{}] }] };
-    const [only] = plannedSets(day, '2026-01-08', () => undefined, () => 1);
+    const [only] = plannedSets(day, '2026-01-08', () => [], () => 1);
     expect([only.time, only.planned, only.done]).toEqual([undefined, true, false]);
-    expect(plannedSets({ id: 'e', name: 'E', items: [] }, '2026-01-08', () => undefined, () => 1)).toEqual([]);
+    expect(plannedSets({ id: 'e', name: 'E', items: [] }, '2026-01-08', () => [], () => 1)).toEqual([]);
+  });
+});
+
+describe('saved workouts (from a logged day)', () => {
+  const run: Exercise = { id: 'r', name: 'Run', categoryId: 'c', type: 'distance,time' };
+  const ex = (id: string) => ({ b: bench, p: pullup, r: run } as Record<string, Exercise>)[id];
+  let n = 0;
+  const s = (exerciseId: string, x: Partial<WorkoutSet>): WorkoutSet => ({ id: `w${++n}`, date: 'd', exerciseId, order: n, ...x });
+  const day = [
+    s('b', { weight: 80, reps: 8, group: 'g' }),
+    s('p', { reps: 10, group: 'g' }),
+    s('b', { weight: 80, reps: 7, group: 'g' }),
+    s('r', { distance: 5, time: 1500 }),
+    s('gone', { weight: 10, reps: 10 }),
+  ];
+  it('keeps order, sets × reps (no weights), distance/time and supersets; skips deleted exercises', () => {
+    const w = workoutFromDay('Push A', day, ex);
+    expect(w.name).toBe('Push A');
+    expect(w.items).toEqual([
+      { exerciseId: 'b', sets: [{ reps: 8 }, { reps: 7 }], group: 'g' },
+      { exerciseId: 'p', sets: [{ reps: 10 }], group: 'g' },
+      { exerciseId: 'r', sets: [{ distance: 5, time: 1500 }], group: undefined },
+    ]);
+  });
+  it('gives each logging of a workout its own fresh superset', () => {
+    const w = workoutFromDay('Push A', day, ex);
+    let o = 0;
+    const a = plannedSets(w, '2026-02-01', () => [], () => ++o);
+    const b = plannedSets(w, '2026-02-01', () => [], () => ++o);
+    const ga = new Set(a.filter((x) => x.exerciseId !== 'r').map((x) => x.group));
+    const gb = new Set(b.filter((x) => x.exerciseId !== 'r').map((x) => x.group));
+    expect(ga.size).toBe(1);
+    expect(gb.size).toBe(1);
+    expect([...ga][0]).not.toBe([...gb][0]);
+    expect([...ga][0]).not.toBe('g');
+    expect(a.find((x) => x.exerciseId === 'r')!.group).toBeUndefined();
+  });
+});
+
+describe('weights from last time, set by set', () => {
+  it('keeps a reverse pyramid: set i from last time’s set i, extra sets from the last one', () => {
+    const prev: WorkoutSet[] = [
+      { id: 'a', date: '2026-01-01', exerciseId: 'b', order: 1, weight: 100, reps: 6 },
+      { id: 'b', date: '2026-01-01', exerciseId: 'b', order: 2, weight: 90, reps: 8 },
+    ];
+    const day: RoutineDay = { id: 'd', name: 'RPT', items: [{ exerciseId: 'b', sets: [{ reps: 6 }, { reps: 8 }, { reps: 10 }] }] };
+    let o = 0;
+    expect(plannedSets(day, '2026-01-08', () => prev, () => ++o).map((s) => [s.weight, s.reps])).toEqual([
+      [100, 6],
+      [90, 8],
+      [90, 10],
+    ]);
   });
 });

@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'preact/hooks';
 import { recentExerciseIds } from '../lib/db';
 import { t } from '../lib/i18n';
-import type { Exercise } from '../lib/model';
+import type { Exercise, Routine, RoutineDay } from '../lib/model';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
-import { catById, categories, exById, exercises, setFavorite } from '../state';
-import { loadRoutines, saveRoutine } from '../workout';
+import { catById, categories, exById, exercises, routines, setFavorite, toast } from '../state';
+import { loadRoutines, logRoutineDay, saveRoutine } from '../workout';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
@@ -20,10 +20,19 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
+  // Saved workouts are offered when logging a day (not when managing, not when filling a routine).
+  const logging = !manage && !routine && !!date;
   useEffect(() => {
     if (!manage) void recentExerciseIds(RECENT).then(setRecent);
+    if (logging) void loadRoutines();
   }, [manage]);
   const query = fold(q.trim());
+  const workouts = logging ? (routines.value ?? []).flatMap((r) => r.days.filter((d) => d.items.length).map((d) => ({ r, d }))) : [];
+  const addWorkout = async (d: RoutineDay) => {
+    await logRoutineDay(d, date!);
+    toast(t('workoutAdded', { name: d.name }));
+    history.back();
+  };
 
   const pick = (e: Exercise) => {
     if (routine) return void addToRoutine(e, routine.routineId, routine.dayId);
@@ -38,7 +47,16 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
       const n = fold(e.name);
       return words.every((w) => n.includes(w));
     });
-    body = hits.length ? <ExerciseList list={hits} onPick={pick} showCat /> : <p class="pad muted">{t('noMatches')}</p>;
+    const wHits = workouts.filter(({ r, d }) => words.every((w) => fold(`${d.name} ${r.name}`).includes(w)));
+    body =
+      hits.length || wHits.length ? (
+        <>
+          {wHits.length > 0 && <WorkoutList list={wHits} onPick={addWorkout} />}
+          {hits.length > 0 && <ExerciseList list={hits} onPick={pick} showCat />}
+        </>
+      ) : (
+        <p class="pad muted">{t('noMatches')}</p>
+      );
   } else if (cat && catById.value.has(cat)) {
     const c = catById.value.get(cat)!;
     body = (
@@ -56,6 +74,7 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
     const recents = recent.map((id) => exById.value.get(id)).filter((e): e is Exercise => !!e && !e.favorite);
     body = (
       <>
+        {workouts.length > 0 && <WorkoutList list={workouts} onPick={addWorkout} />}
         {favs.length > 0 && (
           <>
             <h3 class="list-title">{t('favourites')}</h3>
@@ -68,7 +87,7 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
             <ExerciseList list={recents} onPick={pick} showCat />
           </>
         )}
-        {(favs.length > 0 || recents.length > 0) && <h3 class="list-title">{t('categories')}</h3>}
+        {(favs.length > 0 || recents.length > 0 || workouts.length > 0) && <h3 class="list-title">{t('categories')}</h3>}
         <ul class="results">
           {categories.value.map((c) => (
             <li key={c.id} class="row-li">
@@ -135,4 +154,28 @@ async function addToRoutine(e: Exercise, routineId: string, dayId: string) {
     await saveRoutine({ ...r, days });
   }
   history.back();
+}
+
+/** Saved workouts (routine days): one tap puts the whole workout on the day. */
+function WorkoutList({ list, onPick }: { list: { r: Routine; d: RoutineDay }[]; onPick: (d: RoutineDay) => void }) {
+  return (
+    <>
+      <h3 class="list-title">{t('workoutsSection')}</h3>
+      <ul class="results">
+        {list.map(({ r, d }) => (
+          <li key={d.id}>
+            <button class="result entry workout-row" onClick={() => onPick(d)} aria-label={`${t('addWorkout')}: ${d.name}`}>
+              <span class="entry-name">
+                <b>{d.name}</b>
+                <span class="muted small"> · {r.name}</span>
+              </span>
+              <span class="count">
+                {d.items.length} {t('exercises').toLowerCase()}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
 }

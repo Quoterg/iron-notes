@@ -89,6 +89,8 @@ export interface PlannedSet {
 export interface RoutineItem {
   exerciseId: string;
   sets: PlannedSet[];
+  /** Items sharing this key are done as a superset (a fresh group on the day each time it's logged). */
+  group?: string;
 }
 export interface RoutineDay {
   id: string;

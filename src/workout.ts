@@ -96,13 +96,13 @@ export async function removeRoutine(id: string): Promise<void> {
 export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   const { plannedSets } = await import('./lib/routines');
   const items = day.items.filter((i) => exById.value.has(i.exerciseId));
-  // Last done set per exercise (one indexed read each): fills in weights the plan leaves open.
-  const last = new Map<string, WorkoutSet | undefined>();
-  await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastDoneSet(i.exerciseId))));
+  // Last workout's sets per exercise (two indexed reads each): fill in the weights the plan leaves open, set by set.
+  const last = new Map<string, WorkoutSet[]>();
+  await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastWorkoutSets(i.exerciseId))));
   const { groupOf } = await import('./lib/groups');
   const sameDay = d === date.value ? daySets.value : await db.setsOn(d);
   // Sets of an exercise already in a superset that day join it.
-  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id), nextOrder).map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) }));
+  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id) ?? [], nextOrder).map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) ?? s.group }));
   if (!sets.length) return;
   await db.putSets(sets);
   if (d !== date.value) date.value = d;

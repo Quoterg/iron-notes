@@ -63,6 +63,9 @@ export default function DayTools({ groups, reordering, setReordering, grouping, 
         </button>
       )}
       <div class="chips day-tools">
+        <button class="chip" onClick={() => open({ kind: 'saveWorkout' })}>
+          {t('saveAsWorkout')}
+        </button>
         <button class="chip" onClick={() => open({ kind: 'copy', date: d })}>
           {t('copyWorkout')}
         </button>

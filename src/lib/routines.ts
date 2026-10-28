@@ -1,7 +1,8 @@
 // Routines: named plans with days of exercises and planned sets. Pure helpers; storage in db.ts.
 import { fmtTime, uid } from './calc';
 import { t } from './i18n';
-import { fieldsOf, type Exercise, type PlannedSet, type RoutineDay, type Settings, type WorkoutSet } from './model';
+import { fieldsOf, type Exercise, type PlannedSet, type RoutineDay, type RoutineItem, type Settings, type WorkoutSet } from './model';
+import { dayOrder } from './groups';
 import { distance, setText, weight } from './units';
 
 /** Default plan for a newly added exercise: 3 sets of 8–10 reps, or 1 set for cardio/time work. */
@@ -27,13 +28,18 @@ export function planSummary(sets: PlannedSet[], ex: Exercise, st: Settings): str
 
 /**
  * The sets a routine day logs on `date`: planned (not done), in plan order. Missing values come from
- * the exercise's latest done set (so "3 × 8" starts at last time's weight); still-missing stay empty.
+ * the exercise's last workout, set by set (set 1 from last time's set 1, …; extra sets from its last set),
+ * so a reverse pyramid keeps its shape; still-missing values stay empty.
  */
-export function plannedSets(day: RoutineDay, date: string, lastSet: (exerciseId: string) => WorkoutSet | undefined, nextOrder: () => number): WorkoutSet[] {
+export function plannedSets(day: RoutineDay, date: string, lastSets: (exerciseId: string) => readonly WorkoutSet[], nextOrder: () => number): WorkoutSet[] {
   const out: WorkoutSet[] = [];
+  // A workout's supersets become new groups on the day (logging it twice makes two separate supersets).
+  const groups = new Map<string, string>();
   for (const item of day.items) {
-    const last = lastSet(item.exerciseId);
-    for (const p of item.sets) {
+    const prev = lastSets(item.exerciseId);
+    const group = item.group ? groups.get(item.group) ?? groups.set(item.group, uid()).get(item.group) : undefined;
+    item.sets.forEach((p, i) => {
+      const last = prev[i] ?? prev[prev.length - 1];
       out.push({
         id: uid(),
         date,
@@ -45,11 +51,31 @@ export function plannedSets(day: RoutineDay, date: string, lastSet: (exerciseId:
         time: p.time ?? last?.time,
         done: false,
         planned: true,
+        group,
       });
-    }
+    });
   }
   return out;
 }
 
 /** Sets that count (records, graphs, history): a routine's planned, not yet done ones don't. */
 export const isDone = (s: WorkoutSet): boolean => !s.planned;
+
+/**
+ * A saved workout from a logged day: its exercises in order with sets × reps (distance and time for
+ * those types) and its supersets — no weights: those come from the last time when it's logged.
+ */
+export function workoutFromDay(name: string, daySets: readonly WorkoutSet[], exercise: (id: string) => Exercise | undefined): RoutineDay {
+  const order = dayOrder(daySets);
+  const items: RoutineItem[] = [];
+  for (const { exerciseId, group } of order) {
+    const ex = exercise(exerciseId);
+    if (!ex) continue;
+    const f = fieldsOf(ex.type).filter((k) => k !== 'weight');
+    const sets = daySets
+      .filter((s) => s.exerciseId === exerciseId)
+      .map((s) => Object.fromEntries(f.filter((k) => s[k] != null).map((k) => [k, s[k]])) as PlannedSet);
+    items.push({ exerciseId, sets: sets.length ? sets : [{}], group });
+  }
+  return { id: uid(), name, items };
+}
