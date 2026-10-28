@@ -182,10 +182,18 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const inc = ex.increment ?? defaultIncrement(st.unit);
   const distStep = st.dist === 'm' ? 100 : 0.1;
   const hasReps = fields.includes('reps');
-  // Effective reps per set; the best e1RM estimates the effort of sets logged without one.
-  const best = counted ? Math.max(0, ...counted.map((s) => oneRM(s.weight ?? 0, s.reps ?? 0, st.formula))) : 0;
-  const eff = (s: WorkoutSet) => setEffective(s, best, st.formula);
-  const effToday = hasReps ? today.filter((s) => !s.planned).reduce((n, s) => n + eff(s).n, 0) : 0;
+  // Effective reps of today's sets (computed once per change, not per keystroke): the best e1RM of the
+  // working sets estimates the effort of sets logged without one.
+  const effOf = useMemo(() => {
+    const out = new Map<string, ReturnType<typeof setEffective>>();
+    if (!counted) return out;
+    let best = 0;
+    for (const s of counted) if (!s.warmup) best = Math.max(best, oneRM(s.weight ?? 0, s.reps ?? 0, st.formula));
+    for (const s of counted) if (s.date === date) out.set(s.id, setEffective(s, best, st.formula));
+    return out;
+  }, [counted, date, st.formula]);
+  let effToday = 0;
+  if (hasReps) for (const e of effOf.values()) effToday += e.n;
 
   async function save() {
     if (!values || !ex || !all) return;
@@ -404,7 +412,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                           {hasReps && <Effort s={s} />}
                           {s.comment && <span class="c">{s.comment}</span>}
                         </span>
-                        {hasReps && !s.planned && <EffBadge {...eff(s)} />}
+                        {hasReps && effOf.has(s.id) && <EffBadge {...effOf.get(s.id)!} />}
                         {rec?.has(s.id) && <Trophy />}
                       </button>
                       {(st.markDone || s.planned) && (

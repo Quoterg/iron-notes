@@ -3,7 +3,7 @@ import { exportAll, importAll, validateBackup } from '../lib/backup';
 import { isoDate } from '../lib/calc';
 import { allSets, clearAll, importRows } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
-import type { DistUnit, WeightUnit, TrainingMode } from '../lib/model';
+import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
 import { open } from '../nav';
 import { categories, catById, exById, exercises, reloadAll, reserveOrders, saveSettings, settings, toast } from '../state';

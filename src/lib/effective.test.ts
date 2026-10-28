@@ -87,4 +87,3 @@ describe('effective reps of a logged set', () => {
     expect(setEffective(s({ weight: 0, rir: 1 }), best).n).toBe(5); // 9RM: the last 6 before failure
   });
 });
-
