@@ -177,10 +177,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   // Runs once, when the history first arrives (deliberately only on `all`; `filled` stops repeats).
   useEffect(() => {
     if (filled || !all) return;
-    const lyleSeed = lyleT && !today.some((s) => !s.planned) ? ({ ...prev[0], weight: lyleT.weight, reps: lyleT.reps } as WorkoutSet) : undefined;
+    const lyleSeed = lyleT && !today.some((s) => !s.planned) ? ({ ...prev[0], weight: lyleT.weight, reps: lyleT.reps, rir: undefined } as WorkoutSet) : undefined;
     const last = planned ?? (target ? seedOf(target) : lyleSeed ?? today[today.length - 1] ?? prev[0]);
     // Only into empty fields: on a slow phone the user may have typed before the history arrived.
-    if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec', 'rir']));
+    // Lyle mode: RIR is the progression signal, so it is chosen for every set, never prefilled.
+    if (last) setForm((f) => fillEmpty(f, toForm(last, st), lyle ? ['weight', 'reps', 'distance', 'min', 'sec'] : ['weight', 'reps', 'distance', 'min', 'sec', 'rir']));
     setFilled(true);
   }, [all]);
 
@@ -228,7 +229,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       // back-off set is lighter); reps after failure never carry over.
       const next = dorian && !s.warmup ? targets[workingDone + 1] : undefined;
       if (next) setForm((f) => ({ ...f, ...toForm(seedOf(next), st), comment: f.comment, after: '' }));
-      else setForm((f) => ({ ...f, after: '' }));
+      else setForm((f) => ({ ...f, after: '', rir: lyle ? '' : f.rir }));
       // In a superset: on to the next exercise; rest only after the round's last one.
       const step = nextInGroup(members, id);
       if (st.autoTimer && (!step || step.endOfRound)) startTimer(ex.rest ?? st.rest, st.timerSound);
@@ -331,6 +332,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                       ? t('lyleUp', { reps: lyleT.prev!.reps!, rir: lyleT.prev!.rir! })
                       : lyleT.why === 'grind'
                         ? t('lyleGrind', { reps: lyleT.prev!.reps! })
+                        : lyleT.why === 'norir'
+                        ? t('lyleNoRir', { reps: lyleT.prev!.reps! })
                         : t('lyleReps', { reps: lyleT.prev!.reps! })}
                 </span>
               </p>

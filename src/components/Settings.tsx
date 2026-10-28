@@ -45,7 +45,13 @@ function Cycle() {
           onPick={(v) => void saveSettings({ cycle: { start: c.start, weeks: Number(v) } })}
         />
       )}
-      <button class="btn wide" onClick={() => void saveSettings({ cycle: { start: today, weeks: c?.weeks ?? DEFAULT_CYCLE } })}>
+      <button
+        class="btn wide"
+        onClick={() => {
+          if (c && week <= c.weeks && !confirm(t('startCycleQ', { n: week, N: c.weeks }))) return;
+          void saveSettings({ cycle: { start: today, weeks: c?.weeks ?? DEFAULT_CYCLE } });
+        }}
+      >
         {t('startCycle')}
       </button>
     </div>

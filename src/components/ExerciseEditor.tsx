@@ -1,9 +1,9 @@
 // Create or edit an exercise: name, category, type, weight step, rest time and notes.
 import { useEffect, useState } from 'preact/hooks';
-import { uid } from '../lib/calc';
+import { uid, isoDate } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
 import { DORIAN_TOP } from '../lib/targets';
-import { repRange } from '../lib/lyle';
+import { cycleWeek, repRange } from '../lib/lyle';
 import { t, type Key } from '../lib/i18n';
 import { typeName } from '../lib/strings-later';
 import { TYPES, type Exercise, type ExerciseType, type Muscles } from '../lib/model';
@@ -27,6 +27,8 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   // Edited muscles; until then an existing exercise shows (and keeps) its own, a new one its name's defaults.
   const [muscles, setMuscles] = useState<Muscles | undefined>(old?.muscles);
   const [used, setUsed] = useState(0);
+  const cyc = st.mode === 'lyle' ? st.cycle : undefined;
+  const midCycle = !!cyc && cycleWeek(cyc.start, isoDate(new Date())) <= cyc.weeks;
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -117,6 +119,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
             <input type="text" inputMode="numeric" placeholder={String(DORIAN_TOP)} value={repTop} onInput={(e) => setRepTop(e.currentTarget.value)} />
           </label>
         )}
+        {(used ? old!.type : type).includes('reps') && midCycle && <p class="muted small">{t('rangeMidCycle')}</p>}
         {(used ? old!.type : type).includes('reps') && (
           <label>
             {t('repBottom')}

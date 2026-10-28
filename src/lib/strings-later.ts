@@ -311,6 +311,9 @@ export const later = {
   lyleUp: '{reps} reps with {rir} in reserve last time: weight up.',
   lyleGrind: '{reps} reps at failure last time: hold the weight.',
   lyleReps: '{reps} reps last time: one more.',
+  lyleNoRir: '{reps} reps last time, but no reps in reserve logged: log RIR for each set to progress.',
+  startCycleQ: 'You are in week {n} of {N}. Start a new cycle today? The run-up starts over.',
+  rangeMidCycle: 'A cycle is running: rep-range changes are best made when the next cycle starts.',
 } as const;
 
 setLater(later);

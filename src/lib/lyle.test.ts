@@ -26,11 +26,12 @@ describe('Lyle targets', () => {
     expect(lyleTarget(1, 100, undefined, 2.5, range)).toMatchObject({ weight: 82.5, reps: 8, why: 'runup' });
     expect(lyleTarget(2, 100, undefined, 2.5, range)).toMatchObject({ weight: 92.5, why: 'runup' });
     expect(lyleTarget(2, 105, undefined, 2.5, range)?.weight).toBe(95); // 97.1 → 95
+    expect(lyleTarget(1, 2.5, undefined, 5, range)?.weight).toBeCloseTo(2.0625); // step > run-up weight: the share, not 100 %
   });
   it('push: top with reps to spare → up one step (reps from the bottom); a grind → hold; below → one more rep', () => {
     expect(lyleTarget(3, 100, set({ weight: 92.5, reps: 8, rir: 2 }), 2.5, range)).toMatchObject({ weight: 95, reps: 6, why: 'up' });
     expect(lyleTarget(4, 100, set({ weight: 95, reps: 8, rir: 0 }), 2.5, range)).toMatchObject({ weight: 95, reps: 8, why: 'grind' });
-    expect(lyleTarget(4, 100, set({ weight: 95, reps: 8 }), 2.5, range)?.why).toBe('grind'); // no RIR logged
+    expect(lyleTarget(4, 100, set({ weight: 95, reps: 8 }), 2.5, range)).toMatchObject({ weight: 95, why: 'norir' }); // no RIR logged: hold, and say so
     expect(lyleTarget(5, 100, set({ weight: 97.5, reps: 6, rir: 1 }), 2.5, range)).toMatchObject({ weight: 97.5, reps: 7, why: 'reps' });
   });
   it('no cycle or no best: push rules from last time; nothing at all → no target', () => {
