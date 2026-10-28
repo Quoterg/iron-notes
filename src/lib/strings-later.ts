@@ -248,6 +248,21 @@ export const later = {
   new_2b: 'Statistics: totals, workouts per week, categories, most trained exercises.',
   new_2c: 'Body tracker: weight, body fat, girths and your own measures, with graphs.',
   new_1a: 'Routines, supersets, copying workouts, calendar, history, graphs and records.',
+  trainingMode: 'Training mode',
+  modeStandard: 'Standard',
+  modeDorian: 'Dorian HIT',
+  modeLyle: 'Lyle effective reps',
+  modeStandardHint: 'Plain logging. Effective reps are estimated (≈) from your best lifts.',
+  modeDorianHint: 'Working sets to failure, about 20 effective reps per muscle. Mark warm-ups; count forced, rest-pause and drop-set reps after failure.',
+  modeLyleHint: 'Sets stopped short of failure, 20–40 effective reps per muscle per session. Log reps in reserve (RIR) for each set.',
+  rir: 'Reps in reserve',
+  rirHint: '0 = failure',
+  warmup: 'Warm-up',
+  working: 'Working set',
+  afterFailure: 'Reps after failure',
+  effShort: '{n} eff.',
+  effToday: 'Effective reps: {n}',
+  rirShort: 'RIR {n}',
 } as const;
 
 setLater(later);

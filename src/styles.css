@@ -251,6 +251,9 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .sets li.sel .set-row { background: var(--active); color: var(--active-text); }
 .set-row .n { width: 1.6em; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; flex: none; }
 .set-row .v { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; font-weight: 500; }
+.eff { flex: none; font-size: 0.8em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.eff.zero { color: var(--muted); }
+.eff-total { margin: 0 0 4px; }
 .set-row .c { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 400; }
 .tick { width: 30px; height: 30px; margin: 0 4px; flex: none; accent-color: var(--accent); }
 
