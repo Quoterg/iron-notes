@@ -236,6 +236,14 @@ export async function recentExerciseIds(n: number): Promise<string[]> {
   return out;
 }
 
+/** The exercise's sets of its last workout (the day of its latest done set), in order; [] if none. */
+export async function lastWorkoutSets(exerciseId: string): Promise<WorkoutSet[]> {
+  const last = await lastDoneSet(exerciseId);
+  if (!last) return [];
+  const sets = await (await db()).getAllFromIndex('sets', 'exerciseOrder', IDBKeyRange.bound([exerciseId, last.date], [exerciseId, last.date, Infinity]));
+  return sets.filter((s) => !s.planned);
+}
+
 // ---- Routines ----
 export async function getRoutines(): Promise<Routine[]> {
   return (await db()).getAll('routines');
