@@ -37,7 +37,11 @@ export function plannedSets(day: RoutineDay, date: string, lastSets: (exerciseId
   const groups = new Map<string, string>();
   for (const item of day.items) {
     const prev = lastSets(item.exerciseId);
-    const group = item.group ? groups.get(item.group) ?? groups.set(item.group, uid()).get(item.group) : undefined;
+    let group: string | undefined;
+    if (item.group) {
+      group = groups.get(item.group);
+      if (!group) groups.set(item.group, (group = uid()));
+    }
     item.sets.forEach((p, i) => {
       const last = prev[i] ?? prev[prev.length - 1];
       out.push({

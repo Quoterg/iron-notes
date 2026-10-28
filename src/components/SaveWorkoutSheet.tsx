@@ -12,18 +12,26 @@ const NEW = '';
 
 export default function SaveWorkoutSheet() {
   const [name, setName] = useState('');
-  const [folder, setFolder] = useState<string>(NEW);
+  // The folders are known before Save is possible (a fast tap on a slow phone mustn't make a second
+  // "My workouts"): from memory when loaded, else after the one read.
+  const [folder, setFolder] = useState<string>(routines.value?.[0]?.id ?? NEW);
+  const [ready, setReady] = useState(!!routines.value);
   useEffect(() => {
-    void loadRoutines().then((list) => list.length && setFolder(list[0].id));
+    if (ready) return;
+    void loadRoutines().then((list) => {
+      if (list.length) setFolder(list[0].id);
+      setReady(true);
+    });
   }, []);
   const list = routines.value ?? [];
-  const exercisesCount = new Set(daySets.value.map((s) => s.exerciseId)).size;
+  const exercisesCount = new Set(daySets.value.filter((s) => exById.value.has(s.exerciseId)).map((s) => s.exerciseId)).size;
 
   async function save(e: Event) {
     e.preventDefault();
     const n = name.trim();
     if (!n) return;
     const workout = workoutFromDay(n, daySets.value, (id) => exById.value.get(id));
+    if (!ready || !workout.items.length) return; // nothing to save (an empty day, or only deleted exercises)
     const r = list.find((x) => x.id === folder);
     if (r) await saveRoutine({ ...r, days: [...r.days, workout] });
     else {
@@ -37,7 +45,7 @@ export default function SaveWorkoutSheet() {
   return (
     <Sheet title={t('saveAsWorkout')}>
       <form class="pad form" onSubmit={save}>
-        <p class="muted small">{t('saveWorkoutHint', { n: exercisesCount })}</p>
+        <p class="muted small">{exercisesCount ? t('saveWorkoutHint', { n: exercisesCount }) : t('nothingToSave')}</p>
         <label>
           {t('workoutName')}
           <input type="text" value={name} placeholder={t('workoutNameExample')} onInput={(e) => setName(e.currentTarget.value)} autoFocus />
@@ -53,7 +61,7 @@ export default function SaveWorkoutSheet() {
             <option value={NEW}>{t('newFolderMyWorkouts')}</option>
           </select>
         </div>
-        <button class="btn primary wide" disabled={!name.trim()}>
+        <button class="btn primary wide" disabled={!name.trim() || !ready || !exercisesCount}>
           {t('save')}
         </button>
       </form>

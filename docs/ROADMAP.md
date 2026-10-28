@@ -40,6 +40,8 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 - [x] **M5c Saved workouts** — Save a logged day as a workout (sets × reps, supersets; no weights) into a
   folder (a routine); add a whole workout to a day from the top of "Add exercise" (also found by
   search). Weights come from the exercise's last workout set by set, so pyramids keep their shape.
+  A workout's superset becomes a new group on the day; an exercise already in another superset that day
+  stays in that one (the workout's superset is then split for that exercise).
 - [ ] **M5d Smart targets** — Progression rules for saved workouts (owner to pick the methods: e.g.
   double progression per set / all sets, reverse pyramid with back-off %, linear, triple, RIR-based).
 - [x] **M6 Supersets / groups** — Group exercises in a workout (coloured bar); the rest timer runs

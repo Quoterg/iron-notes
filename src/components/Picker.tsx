@@ -24,8 +24,8 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
   const logging = !manage && !routine && !!date;
   useEffect(() => {
     if (!manage) void recentExerciseIds(RECENT).then(setRecent);
-    if (logging) void loadRoutines();
-  }, [manage]);
+    if (logging) void loadRoutines(); // reads storage once; later opens use the routines in memory
+  }, [manage, logging]);
   const query = fold(q.trim());
   const workouts = logging ? (routines.value ?? []).flatMap((r) => r.days.filter((d) => d.items.length).map((d) => ({ r, d }))) : [];
   const addWorkout = async (d: RoutineDay) => {

@@ -124,3 +124,12 @@ describe('weights from last time, set by set', () => {
     ]);
   });
 });
+
+describe('saving an empty day', () => {
+  it('gives a workout without items (the sheet refuses to save it)', () => {
+    expect(workoutFromDay('X', [], () => undefined).items).toEqual([]);
+    const gone: WorkoutSet = { id: 'g', date: 'd', exerciseId: 'gone', order: 1, weight: 10, reps: 10 };
+    expect(workoutFromDay('X', [gone], () => undefined).items).toEqual([]);
+  });
+});
+

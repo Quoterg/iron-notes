@@ -259,6 +259,7 @@ export const later = {
   workoutsSection: 'Workouts',
   addWorkout: 'Add workout',
   workoutAdded: '“{name}” added: fill in the sets as you go.',
+  nothingToSave: 'This day has no exercises to save yet.',
 } as const;
 
 setLater(later);
