@@ -7,12 +7,14 @@ import type { MuscleId, Muscles, TrainingMode, WorkoutSet } from './model';
 export interface Goal {
   min: number;
   max: number;
+  /** As shown: Dorian's ~20, Lyle's range. */
+  label: string;
 }
 /** Effective reps per muscle per main session. Standard mode has no goal (numbers only). */
 export const GOALS: Record<TrainingMode, Goal | null> = {
   standard: null,
-  dorian: { min: 20, max: 30 },
-  lyle: { min: 20, max: 40 },
+  dorian: { min: 20, max: 30, label: '20' },
+  lyle: { min: 20, max: 40, label: '20–40' },
 };
 
 export type Status = 'under' | 'in' | 'over';

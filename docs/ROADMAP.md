@@ -74,7 +74,7 @@ calculation is local, incremental and lazy (no screen waits on history).
   vs working set, one "reps after failure" counter (forced, rest-pause, drop). Lyle: RIR chips per set (remembered per
   exercise). Effective reps per set (load-based: heavy sets count every rep; Standard mode estimates from e1RM)
   computed and shown.
-- [ ] **M15 Effective reps per muscle** — Per muscle per session and week vs the mode's goal (Dorian ≈20,
+- [x] **M15 Effective reps per muscle** — Per muscle per session and week vs the mode's goal (Dorian ≈20,
   Lyle 20–40), chips on the day log, a Muscles screen with weekly bars and history.
 - [x] **M16 Dorian progression** — Dynamic double progression per set (up to 12 reps, then that set's
   weight up; no rep target after a weight increase), targets on planned sets and the logging screen with the reason; warm-up suggestions
