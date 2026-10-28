@@ -164,6 +164,14 @@ export default function Settings() {
           onPick={(mode) => void saveSettings({ mode })}
         />
         <p class="muted small">{t(s.mode === 'dorian' ? 'modeDorianHint' : s.mode === 'lyle' ? 'modeLyleHint' : 'modeStandardHint')}</p>
+        {s.mode !== 'standard' && (
+          <Choice<'build' | 'maintain' | 'cut'>
+            label={t('dietPhase')}
+            options={[['build', t('dietBuild')], ['maintain', t('dietMaintain')], ['cut', t('dietCut')]]}
+            value={s.diet ?? 'maintain'}
+            onPick={(diet) => void saveSettings({ diet })}
+          />
+        )}
         {s.mode === 'lyle' && <Cycle />}
         {s.mode === 'dorian' && <LightWeek />}
         <Program />

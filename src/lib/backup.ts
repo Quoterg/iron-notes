@@ -42,7 +42,7 @@ const validCategory = (c: Category) => isStr(c?.id) && isStr(c.name) && typeof c
 const optRep = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 1);
 const validExercise = (e: Exercise) =>
   isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest) && optRep(e.repTop) && optRep(e.repBottom) &&
-  (e.favorite === undefined || typeof e.favorite === 'boolean') &&
+  (e.favorite === undefined || typeof e.favorite === 'boolean') && (e.joint === undefined || typeof e.joint === 'boolean') &&
   (e.muscles === undefined ||
     (!!e.muscles && Array.isArray(e.muscles.primary) && Array.isArray(e.muscles.secondary) &&
       [...e.muscles.primary, ...e.muscles.secondary].every((x) => MUSCLES.includes(x))));
@@ -50,7 +50,8 @@ const validSet = (s: WorkoutSet) =>
   isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
   optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) && optStr(s.group) &&
   (s.done === undefined || typeof s.done === 'boolean') && (s.planned === undefined || s.planned === true) &&
-  optNum(s.rir) && optNum(s.after) && (s.warmup === undefined || s.warmup === true) && (s.deload === undefined || s.deload === true);
+  optNum(s.rir) && optNum(s.after) && (s.warmup === undefined || s.warmup === true) && (s.deload === undefined || s.deload === true) &&
+  (s.sore === undefined || s.sore === 0 || s.sore === 1 || s.sore === 2);
 const validPlanned = (p: Routine['days'][number]['items'][number]['sets'][number]) =>
   !!p && typeof p === 'object' && optNum(p.weight) && optNum(p.reps) && optNum(p.distance) && optNum(p.time);
 const validRoutine = (r: Routine) =>
@@ -89,6 +90,7 @@ export function validateBackup(b: unknown): Backup {
     const c = st.cycle;
     if (c && typeof c.start === 'string' && DATE.test(c.start) && (c.weeks === 6 || c.weeks === 8)) settings.cycle = { start: c.start, weeks: c.weeks };
     if (st.light && typeof st.light.start === 'string' && DATE.test(st.light.start)) settings.light = { start: st.light.start };
+    if (st.diet === 'build' || st.diet === 'maintain' || st.diet === 'cut') settings.diet = st.diet;
     const pr = st.program;
     if (pr && isStr(pr.routineId)) settings.program = { routineId: pr.routineId, lastDayId: isStr(pr.lastDayId) ? pr.lastDayId : undefined };
     const p = st.plates;
