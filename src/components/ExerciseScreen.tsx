@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { MAX_RIR, setEffective } from '../lib/effective';
 import { DORIAN_TOP, dorianTargets, tooSoon, warmups, type Target } from '../lib/targets';
+import { inLight, lightTargets, progressing } from '../lib/cycle';
 import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } from '../lib/lyle';
 import { setsBetween } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
@@ -81,12 +82,14 @@ function fromForm(f: Form, ex: Exercise, st: Settings): Partial<WorkoutSet> | nu
 }
 
 /** The effort the mode logs with a set (only for exercises with reps; Standard mode logs none). */
-function effortOf(f: Form, ex: Exercise, st: Settings): Partial<WorkoutSet> {
+function effortOf(f: Form, ex: Exercise, st: Settings, light = false): Partial<WorkoutSet> {
   if (!fieldsOf(ex.type).includes('reps') || st.mode === 'standard') return {};
   if (st.mode === 'dorian') {
-    if (f.warmup) return { warmup: true, rir: undefined, after: undefined };
+    if (f.warmup) return { warmup: true, rir: undefined, after: undefined, deload: undefined };
+    // Lighter week: stopped short of failure, and kept out of progression.
+    if (light) return { warmup: undefined, rir: 1, after: undefined, deload: true };
     const after = Math.round(parse(f.after) ?? 0);
-    return { warmup: undefined, rir: 0, after: after > 0 ? after : undefined };
+    return { warmup: undefined, rir: 0, after: after > 0 ? after : undefined, deload: undefined };
   }
   const rir = parse(f.rir);
   return { warmup: undefined, after: undefined, rir: rir == null ? undefined : Math.min(Math.round(rir), MAX_RIR) };
@@ -140,7 +143,13 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const stepKg = ex ? wFromUser(ex.increment ?? defaultIncrement(st.unit), st.unit) : 0;
   const top = ex?.repTop ?? DORIAN_TOP;
   // `prev` is a new array each render: keyed on the history instead (targets change only with it).
-  const targets = useMemo(() => (dorian ? dorianTargets(prev, stepKg, top) : []), [counted, date, dorian, stepKg, top]);
+  const light = dorian && inLight(st.light, date);
+  // Targets come from the last normal session: lighter-week sets don't drive progression.
+  const targets = useMemo(() => {
+    if (!dorian || !counted) return [];
+    const base = previousWorkout(counted.filter(progressing), date);
+    return light ? lightTargets(base, stepKg) : dorianTargets(base, stepKg, top);
+  }, [counted, date, dorian, light, stepKg, top]);
   const workingDone = today.filter((s) => !s.planned && !s.warmup && s.reps! > 0).length;
   const target: Target | undefined = targets[workingDone];
   const seedOf = (tg: Target): WorkoutSet => ({ ...tg.prev, weight: tg.weight, reps: tg.reps });
@@ -191,7 +200,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const members = date === shownDate.value ? groupMembers(daySets.value, id) : [];
   const selected = sel ? today.find((s) => s.id === sel) : undefined;
   const fv = fromForm(form, ex, st);
-  const values = fv && { ...fv, ...effortOf(form, ex, st) };
+  const values = fv && { ...fv, ...effortOf(form, ex, st, light) };
   const set = (k: keyof Form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const inc = ex.increment ?? defaultIncrement(st.unit);
   const distStep = st.dist === 'm' ? 100 : 0.1;
@@ -339,10 +348,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
               <p class="target small">
                 <strong>
                   {t('targetSet', { n: workingDone + 1 })}: {fmtWeight(target.weight, st)}
-                  {target.reps ? ` × ${target.reps}+` : ''}
+                  {target.reps ? ` × ${target.reps}${target.why === 'light' ? '' : '+'}` : ''}
                 </strong>{' '}
                 <span class="muted">
-                  {target.why === 'up'
+                  {target.why === 'light'
+                    ? t('targetLight')
+                    : target.why === 'up'
                     ? t('targetUp', { reps: target.prev.reps!, top: ex.repTop ?? DORIAN_TOP })
                     : t('targetBeat', { reps: target.prev.reps! })}
                 </span>

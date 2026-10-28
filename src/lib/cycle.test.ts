@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inLight, lightEnd, lightSet, nextProgramDay, phaseOn, progressing } from './cycle';
+import { inLight, lightEnd, lightSet, lightTargets, nextProgramDay, phaseOn, progressing } from './cycle';
 import type { Routine, WorkoutSet } from './model';
 
 describe('phases', () => {
@@ -31,6 +31,17 @@ describe('lighter week', () => {
     expect(lightSet({ weight: 105, reps: 8 }, 2.5).weight).toBe(92.5);
     expect(lightSet({ weight: 50, reps: 10, warmup: true }, 2.5).weight).toBe(50);
     expect(lightSet({ weight: 0, reps: 12 }, 2.5).weight).toBe(0);
+  });
+  it('targets per working set of the last normal session', () => {
+    const last: WorkoutSet[] = [
+      { id: 'w', date: 'd', exerciseId: 'e', order: 1, weight: 50, reps: 10, warmup: true },
+      { id: 'a', date: 'd', exerciseId: 'e', order: 2, weight: 100, reps: 12, rir: 0 },
+      { id: 'b', date: 'd', exerciseId: 'e', order: 3, weight: 80, reps: 10, rir: 0 },
+    ];
+    expect(lightTargets(last, 2.5).map((x) => [x.weight, x.reps, x.why])).toEqual([
+      [90, 12, 'light'],
+      [70, 10, 'light'], // 72 rounded down to the 2.5 kg step
+    ]);
   });
   it('lighter-week and planned sets don’t drive progression', () => {
     const s: WorkoutSet = { id: 'a', date: '2026-10-29', exerciseId: 'e', order: 1, weight: 90, reps: 10 };

@@ -1,11 +1,33 @@
 // A month of workouts: one dot per category trained each day; tap a day to open it in the log.
 import { useEffect, useState } from 'preact/hooks';
 import { isoDate, parseIso } from '../lib/calc';
+import { phaseOn } from '../lib/cycle';
 import { addMonths, monthBounds, monthGrid, monthOf } from '../lib/calendar';
 import { setsBetween } from '../lib/db';
 import { t } from '../lib/i18n';
 import { open } from '../nav';
 import { catById, date, exById, loadDay, settings, setsVersion, view } from '../state';
+
+/** What the coloured lines under the days mean, when a cycle or lighter week is on. */
+function CycleLegend() {
+  const st = settings.value;
+  if (!((st.mode === 'lyle' && st.cycle) || (st.mode === 'dorian' && st.light))) return null;
+  const now = phaseOn(st, isoDate(new Date()));
+  return (
+    <p class="cal-legend small muted center">
+      {now?.week ? `${t('cycleWeek', { n: now.week, N: now.weeks!, phase: t(now.phase === 'runup' ? 'runUp' : 'push') })} · ` : ''}
+      {st.mode === 'lyle' ? (
+        <>
+          <span class="key ph-runup" /> {t('runUp')} <span class="key ph-push" /> {t('push')}
+        </>
+      ) : (
+        <>
+          <span class="key ph-light" /> {t('lightWeek')}
+        </>
+      )}
+    </p>
+  );
+}
 
 /** Up to this many category dots per day (more would not fit an old phone's cell). */
 const MAX_DOTS = 4;
@@ -74,7 +96,8 @@ export default function Calendar() {
             <div class="cal-row" key={r}>
               {grid.slice(r * 7, r * 7 + 7).map((d) => {
                 const dayCats = days?.get(d) ?? [];
-                const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === today && 'today', d === date.value && 'cur', dayCats.length && 'has']
+                const ph = phaseOn(settings.value, d);
+                const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === today && 'today', d === date.value && 'cur', dayCats.length && 'has', ph && `ph-${ph.phase}`]
                   .filter(Boolean)
                   .join(' ');
                 const label = parseIso(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -98,6 +121,7 @@ export default function Calendar() {
       <p class="muted small center num">
         {days ? `${count} ${t('workoutsInMonth')}` : t('loading')}
       </p>
+      <CycleLegend />
       <div class="actions">
         {month !== monthOf(today) && (
           <button class="btn" onClick={() => setMonth(monthOf(today))}>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'preact/hooks';
 import { exportAll, importAll, validateBackup } from '../lib/backup';
-import { isoDate } from '../lib/calc';
+import { isoDate, parseIso } from '../lib/calc';
+import { inLight, lightEnd } from '../lib/cycle';
 import { allSets, clearAll, importRows } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
 import { CYCLE_WEEKS, cycleWeek, DEFAULT_CYCLE, RUN_UP } from '../lib/lyle';
-import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
+import type { DistUnit, Routine, TrainingMode, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
 import { open } from '../nav';
 import { categories, catById, exById, exercises, reloadAll, reserveOrders, saveSettings, settings, toast } from '../state';
@@ -49,6 +50,51 @@ function Cycle() {
         {t('startCycle')}
       </button>
     </div>
+  );
+}
+
+/** Dorian HIT's lighter week: for real fatigue, one week ~10 % lighter and short of failure. */
+function LightWeek() {
+  const l = settings.value.light;
+  const today = isoDate(new Date());
+  const on = inLight(l, today);
+  return (
+    <div class="cycle">
+      <p class="muted small">{on ? t('lightUntil', { date: parseIso(lightEnd(l!)).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) }) : t('lightHint')}</p>
+      <button class="btn wide" onClick={() => void saveSettings({ light: on ? undefined : { start: today } })}>
+        {t(on ? 'endLight' : 'startLight')}
+      </button>
+    </div>
+  );
+}
+
+/** The program: a routine whose workouts rotate; an empty day offers the next one. */
+function Program() {
+  const [list, setList] = useState<Routine[] | null>(null);
+  useEffect(() => {
+    void import('../workout').then((w) => w.loadRoutines()).then(setList);
+  }, []);
+  if (!list?.length) return null;
+  const p = settings.value.program;
+  return (
+    <label class="cycle">
+      {t('program')}
+      <select
+        value={p?.routineId ?? ''}
+        onChange={(e) => {
+          const id = e.currentTarget.value;
+          void saveSettings({ program: id ? { routineId: id, lastDayId: p?.routineId === id ? p.lastDayId : undefined } : undefined });
+        }}
+      >
+        <option value="">{t('programNone')}</option>
+        {list.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name}
+          </option>
+        ))}
+      </select>
+      <span class="muted small">{t('programHint')}</span>
+    </label>
   );
 }
 
@@ -113,6 +159,8 @@ export default function Settings() {
         />
         <p class="muted small">{t(s.mode === 'dorian' ? 'modeDorianHint' : s.mode === 'lyle' ? 'modeLyleHint' : 'modeStandardHint')}</p>
         {s.mode === 'lyle' && <Cycle />}
+        {s.mode === 'dorian' && <LightWeek />}
+        <Program />
         <button class="btn wide" onClick={() => open({ kind: 'muscles' })}>
           {t('muscles')}
         </button>

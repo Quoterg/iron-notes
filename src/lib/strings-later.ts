@@ -311,6 +311,16 @@ export const later = {
   lyleUp: '{reps} reps with {rir} in reserve last time: weight up.',
   lyleGrind: '{reps} reps at failure last time: hold the weight.',
   lyleReps: '{reps} reps last time: one more.',
+  lightWeek: 'Lighter week',
+  lightHint: 'For real fatigue: one week of the same workouts with ~10 % less weight, stopping 1–2 reps short of failure. Those sets don’t count for progression.',
+  lightUntil: 'Lighter week until {date}: ~10 % less weight, stop 1–2 reps short of failure.',
+  startLight: 'Start a lighter week',
+  endLight: 'End the lighter week',
+  targetLight: 'Lighter week: ~10 % less, stop 1–2 reps short of failure.',
+  program: 'Program',
+  programNone: 'None',
+  programHint: 'A routine whose workouts rotate: an empty day offers the next one.',
+  nextWorkout: 'Next: {day} ({routine})',
 } as const;
 
 setLater(later);

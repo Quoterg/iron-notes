@@ -3,6 +3,7 @@
 // plus the program: a routine whose workouts rotate as the cycle's sessions.
 import { cycleWeek, RUN_UP } from './lyle';
 import type { Routine, RoutineDay, Settings, WorkoutSet } from './model';
+import type { Target } from './targets';
 
 /** A lighter week lasts this many days. */
 export const LIGHT_DAYS = 7;
@@ -37,6 +38,11 @@ const down = (x: number, step: number) => (step > 0 ? Math.floor(x / step + 1e-9
 export function lightSet<T extends Pick<WorkoutSet, 'weight' | 'reps' | 'warmup'>>(s: T, stepKg: number): T {
   if (s.warmup || !(s.weight! > 0)) return s;
   return { ...s, weight: down(s.weight! * LIGHT_SHARE, stepKg) || s.weight };
+}
+
+/** Lighter-week targets: each working set of the last normal session, ~10 % lighter, same reps to aim for. */
+export function lightTargets(last: readonly WorkoutSet[], stepKg: number): Target[] {
+  return last.filter((s) => !s.warmup && s.reps! > 0).map((s) => ({ weight: lightSet(s, stepKg).weight ?? 0, reps: s.reps, why: 'light' as const, prev: s }));
 }
 
 /** Sets that drive progression: done, not from a lighter week. */

@@ -1,9 +1,9 @@
 // Workout operations that run after a tap or on later screens (copy, reorder, supersets, delete, routines):
 // a lazy chunk, not part of the first paint. Builds on state.ts (cache, records, day reload).
-import { byOrder, uid } from './lib/calc';
+import { byOrder, previousWorkout, uid } from './lib/calc';
 import * as db from './lib/db';
 import type { RoutineDay, Routine, WorkoutSet } from './lib/model';
-import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, settings, setsVersion } from './state';
+import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, saveSettings, settings, setsVersion } from './state';
 
 /** Copies sets to `to` (new ids, in their order, after anything already logged there; comments not copied). */
 export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
@@ -100,14 +100,21 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   const last = new Map<string, WorkoutSet[]>();
   await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastWorkoutSets(i.exerciseId))));
   if (settings.value.mode === 'dorian') {
-    // Dorian HIT: sets that reached the top of the range come one weight step up.
+    // Dorian HIT: from the last normal session (never a lighter week's): sets that reached the top of the
+    // range come one weight step up; in a lighter week every working set ~10 % lighter.
     const { DORIAN_TOP, progressedSets } = await import('./lib/targets');
+    const { inLight, lightSet, progressing } = await import('./lib/cycle');
     const { defaultIncrement, wFromUser } = await import('./lib/units');
     const u = settings.value.unit;
-    for (const [id, sets] of last) {
-      const ex = exById.value.get(id)!;
-      last.set(id, progressedSets(sets, wFromUser(ex.increment ?? defaultIncrement(u), u), ex.repTop ?? DORIAN_TOP));
-    }
+    const light = inLight(settings.value.light, d);
+    await Promise.all(
+      [...last].map(async ([id]) => {
+        const ex = exById.value.get(id)!;
+        const step = wFromUser(ex.increment ?? defaultIncrement(u), u);
+        const base = previousWorkout((await allSetsOf(id)).filter(progressing), d);
+        last.set(id, light ? base.map((s) => lightSet(s, step)) : progressedSets(base, step, ex.repTop ?? DORIAN_TOP));
+      }),
+    );
   }
   const cycle = settings.value.cycle;
   if (settings.value.mode === 'lyle') {
@@ -135,5 +142,10 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   await db.putSets(sets);
   if (d !== date.value) date.value = d;
   await afterWrite(sets);
+  // A workout of the program: the next one comes after it.
+  const program = settings.value.program;
+  if (program && routines.value?.find((r) => r.id === program.routineId)?.days.some((x) => x.id === day.id)) {
+    await saveSettings({ program: { ...program, lastDayId: day.id } });
+  }
 }
 

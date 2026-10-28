@@ -273,6 +273,13 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .mu-spark span.zero { background: var(--muted); opacity: 0.3; }
 .target { margin: 12px 4px 0; }
 .cycle { margin: 8px 0; }
+.day-plan { margin: 0 0 12px; display: flex; flex-direction: column; gap: 8px; }
+.phase { margin: 0; color: var(--muted); --ph: var(--muted); }
+.phase.push, .ph-push { --ph: var(--accent); }
+.phase.light, .ph-light { --ph: var(--over); color: var(--over); }
+.ph-runup { --ph: var(--muted); }
+.phase::before, .cal-legend .key { content: ''; display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin: 0 6px; background: var(--ph); }
+.cal-day.ph-runup, .cal-day.ph-push, .cal-day.ph-light { box-shadow: inset 0 -3px 0 var(--ph); }
 .hint { margin: 8px 0; padding: 8px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent); }
 .set-row .c { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 400; }
 .tick { width: 30px; height: 30px; margin: 0 4px; flex: none; accent-color: var(--accent); }
