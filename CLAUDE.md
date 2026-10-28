@@ -38,6 +38,8 @@ pnpm e2e                       # Playwright, emulated Moto G4, 4× CPU throttle 
 pnpm lighthouse                # Lighthouse CI on dist/; locally:
                                # CHROME_PATH=~/.cache/ms-playwright/chromium-1193/chrome-linux/chrome
 pnpm icons                     # public/icon.svg → PNG icons
+pnpm assetlinks                # android/twa-manifest.json fingerprints → public/.well-known/assetlinks.json
+                               # Android build guide: docs/ANDROID.md (the owner signs; keys never committed)
 ```
 
 ## Rules

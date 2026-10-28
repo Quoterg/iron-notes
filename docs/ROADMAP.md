@@ -61,7 +61,12 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 - [x] **M10b Picker & polish** — Favourite (★) and recent exercises at the top of the picker; What's new
   after an update. (Per-exercise default sets dropped: routines plan sets, exercises keep rest/step.)
 - [ ] **M11 Languages** — Swedish UI (lazy language pack, as Iron Log), then others on request.
-- [ ] **M12 Android app** — TWA with Bubblewrap (like Iron Log), after hosting is settled.
+- [x] **M12a Android project** — TWA with Bubblewrap like Iron Log: `android/` generated from
+  `android/twa-manifest.json` (package `io.github.quoterg.ironnotes`, host iron-notes.pages.dev, minSdk 24),
+  builds unsigned; `pnpm assetlinks` writes `/.well-known/assetlinks.json` from the fingerprints; build,
+  store listing and data-safety answers in [ANDROID.md](ANDROID.md).
+- [ ] **M12b Android release (owner)** — upload key, fingerprint in the manifest, `bubblewrap build`,
+  deploy assetlinks.json and verify; optional Google Play listing with Play App Signing.
 
 ## Phase 2 — Better than RP Hypertrophy: two training modes on effective reps
 

@@ -6,3 +6,15 @@ playwright-report/
 *.log
 lhci-report/
 .lighthouseci/
+
+# Android signing key (never commit)
+android/*.keystore
+android/*.jks
+# Bubblewrap build outputs (multi-MB; never commit)
+android/*.aab
+android/*.apk
+android/*.idsig
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
