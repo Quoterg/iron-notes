@@ -8,12 +8,26 @@
 - **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
   (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
 - Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
-- Next: **M17 Lyle progression** (6-week cycles: 2 run-up + 4 push; add weight when the first set hits the
-  top of the range with ≥ 1 RIR).
+- Next: **M18 Mesocycles** (cycle on the calendar, deload/lighter week when due or on request — Dorian's
+  lighter week: ~10 % less, 1–2 reps short of failure; saved workouts as the cycle's sessions).
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-29 — M17 Lyle progression
+
+- `lib/lyle.ts`: cycle week from the start date; rep range per exercise (top default 12, bottom top − 4);
+  best weight for the range from working sets before the cycle; targets for the whole exercise: run-up
+  weeks 1–2 at 82.5 % / 92.5 % of that best (rounded down to the step) × top, stop 2–3 / 1–2 short; push:
+  last session's first working set at the top with RIR ≥ 1 → + one step, reps from the bottom; at the top
+  with RIR 0 or unknown → hold; below the top → same weight, one more rep. No cycle → push rules.
+- Settings (Lyle): "Cycle: Week n of N (run-up/push)", length 6/8 (changeable mid-cycle, start kept),
+  "Start a new cycle today"; finished cycle → hint on the logging screen. `settings.cycle` in backups.
+- Logging screen (Lyle): target line with week and reason, form prefilled for the first set. Routine days
+  in Lyle mode: working sets at the target, warm-ups dropped.
+- Exercise editor: bottom of rep range (`repBottom`, integer ≥ 1 in backups).
+- Checks: 175 unit tests, 23 e2e (new lyle.spec), initial JS 20.1 KB, Lighthouse passes.
 
 ## 2026-10-29 — M15 Effective reps per muscle
 
