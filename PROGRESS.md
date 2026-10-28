@@ -8,12 +8,26 @@
 - **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
   (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
 - Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
-- Next: **M18 Mesocycles** (cycle on the calendar, deload/lighter week when due or on request — Dorian's
-  lighter week: ~10 % less, 1–2 reps short of failure; saved workouts as the cycle's sessions).
+- Next: **M19 Feedback & readiness** (design in TRAINING-MODES.md "Feedback and autoregulation": cause
+  first — inconsistency, cutting, one exercise, real fatigue — then each mode's lever).
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-29 — M18 Mesocycles
+
+- `lib/cycle.ts`: phase of any day (Lyle run-up / push by cycle week; Dorian lighter week of 7 days),
+  lighter-week sets and targets (90 % rounded down to the step, same reps to aim for), `progressing`
+  (not planned, not `deload`), next program workout (after the last one logged from it, wrapping).
+- Dorian lighter week (Settings): sets are saved with RIR 1 and `deload: true`; targets and routine days
+  use the last normal session (never a lighter week's), so progression resumes where it was.
+- Program (Settings, any mode): a routine folder whose workouts rotate; `logRoutineDay` records the last
+  one; the day log's quiet lazy `DayPlan` shows the phase ("Week 2 of 6 (run-up)", "Lighter week") and, on
+  an empty day, "Next: Push A (My workouts)".
+- Calendar: a coloured line under days in the cycle (run-up / push / lighter week) and a legend.
+- Lyle cycle length was already changeable mid-cycle (M17); its deload is the next cycle's run-up.
+- Checks: 181 unit tests, 25 e2e (new cycles.spec), initial JS 20.2 KB, CSS 4.6 KB, Lighthouse passes.
 
 ## 2026-10-29 — M17 Lyle progression
 
