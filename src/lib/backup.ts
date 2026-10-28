@@ -54,7 +54,7 @@ const validPlanned = (p: Routine['days'][number]['items'][number]['sets'][number
 const validRoutine = (r: Routine) =>
   isStr(r?.id) && isStr(r.name) && isNum(r.order) && Array.isArray(r.days) &&
   r.days.every((d) => isStr(d?.id) && typeof d.name === 'string' && Array.isArray(d.items) &&
-    d.items.every((i) => isStr(i?.exerciseId) && Array.isArray(i.sets) && i.sets.every(validPlanned)));
+    d.items.every((i) => isStr(i?.exerciseId) && Array.isArray(i.sets) && i.sets.every(validPlanned) && optStr(i.group)));
 const validMetric = (m: BodyMetric) =>
   isStr(m?.id) && isStr(m.name) && ['weight', 'percent', 'length', 'number'].includes(m.kind) && isNum(m.order);
 const validEntry = (e: BodyEntry) =>
