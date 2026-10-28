@@ -77,7 +77,8 @@ calculation is local, incremental and lazy (no screen waits on history).
 - [ ] **M15 Effective reps per muscle** — Per muscle per session and week vs the mode's goal (Dorian ≈20,
   Lyle 20–40), chips on the day log, a Muscles screen with weekly bars and history.
 - [x] **M16 Dorian progression** — Dynamic double progression per set (up to 12 reps, then that set's
-  weight up; no rep target after a weight increase), targets on planned sets and the logging screen with the reason; warm-up suggestions
+  weight up; no rep target after a weight increase — a routine's own reps per set still apply),
+  targets on planned sets and the logging screen with the reason; warm-up suggestions
   (50 % / 75 %); "trained again too soon" hint (< ~5 days).
 - [ ] **M17 Lyle progression** — Cycles of 6 weeks by default (Lyle's own 8 selectable): run-up weeks (80–85 %, 90–95 % of the best for the
   rep range), then add weight when the first set hits the top of the range with ≥ 1 RIR; the next run-up is the

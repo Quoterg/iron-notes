@@ -31,12 +31,25 @@ export function planSummary(sets: PlannedSet[], ex: Exercise, st: Settings): str
  * the exercise's last workout, set by set (set 1 from last time's set 1, …; extra sets from its last set),
  * so a reverse pyramid keeps its shape; still-missing values stay empty.
  */
-export function plannedSets(day: RoutineDay, date: string, lastSets: (exerciseId: string) => readonly WorkoutSet[], nextOrder: () => number): WorkoutSet[] {
+/**
+ * `warmups` (Dorian HIT): last time's warm-ups come back as warm-ups — but only when the plan has room for
+ * all of last time's sets; otherwise, and in the other modes, sets are matched to last time's working sets.
+ */
+export function plannedSets(
+  day: RoutineDay,
+  date: string,
+  lastSets: (exerciseId: string) => readonly WorkoutSet[],
+  nextOrder: () => number,
+  warmups = false,
+): WorkoutSet[] {
   const out: WorkoutSet[] = [];
   // A workout's supersets become new groups on the day (logging it twice makes two separate supersets).
   const groups = new Map<string, string>();
   for (const item of day.items) {
-    const prev = lastSets(item.exerciseId);
+    const all = lastSets(item.exerciseId);
+    const working = all.filter((s) => !s.warmup);
+    const withWarmups = warmups && item.sets.length >= all.length;
+    const prev = withWarmups || !working.length ? all : working;
     let group: string | undefined;
     if (item.group) {
       group = groups.get(item.group);
@@ -56,7 +69,7 @@ export function plannedSets(day: RoutineDay, date: string, lastSets: (exerciseId
         done: false,
         planned: true,
         // A warm-up stays a warm-up (Dorian HIT), so filling it in doesn't count it as a working set.
-        warmup: last?.warmup && i < prev.length ? true : undefined,
+        warmup: withWarmups && last?.warmup && i < prev.length ? true : undefined,
         group,
       });
     });

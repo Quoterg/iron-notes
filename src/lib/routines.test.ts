@@ -142,11 +142,41 @@ describe('Dorian HIT routine days', () => {
     ];
     const day: RoutineDay = { id: 'd', name: 'D', items: [{ exerciseId: 'b', sets: [{}, {}, {}] }] };
     let n = 0;
-    const sets = plannedSets(day, '2026-01-08', () => progressedSets(prev, 2.5), () => ++n);
+    const sets = plannedSets(day, '2026-01-08', () => progressedSets(prev, 2.5), () => ++n, true);
     expect(sets.map((s) => [s.weight, s.reps, s.warmup])).toEqual([
       [50, 10, true],
       [102.5, undefined, undefined],
       [102.5, undefined, undefined], // a third set repeats the last one, as a working set
+    ]);
+  });
+
+  const history: WorkoutSet[] = [
+    { id: 'w', date: '2026-01-01', exerciseId: 'b', order: 1, weight: 50, reps: 10, warmup: true },
+    { id: 'x', date: '2026-01-01', exerciseId: 'b', order: 2, weight: 100, reps: 8, rir: 0 },
+    { id: 'y', date: '2026-01-01', exerciseId: 'b', order: 3, weight: 90, reps: 9, rir: 0 },
+    { id: 'z', date: '2026-01-01', exerciseId: 'b', order: 4, weight: 80, reps: 10, rir: 0 },
+  ];
+  const three: RoutineDay = { id: 'd', name: 'D', items: [{ exerciseId: 'b', sets: [{}, {}, {}] }] };
+
+  it('a plan with fewer sets than last time keeps every working set (no warm-up takes a slot)', () => {
+    let n = 0;
+    const sets = plannedSets(three, '2026-01-08', () => history, () => ++n, true);
+    expect(sets.map((s) => [s.weight, s.warmup])).toEqual([
+      [100, undefined],
+      [90, undefined],
+      [80, undefined],
+    ]);
+  });
+
+  it('other modes never plan warm-ups and take weights from the working sets', () => {
+    let n = 0;
+    const four: RoutineDay = { id: 'd', name: 'D', items: [{ exerciseId: 'b', sets: [{}, {}, {}, {}] }] };
+    const sets = plannedSets(four, '2026-01-08', () => history, () => ++n);
+    expect(sets.map((s) => [s.weight, s.warmup])).toEqual([
+      [100, undefined],
+      [90, undefined],
+      [80, undefined],
+      [80, undefined],
     ]);
   });
 });
