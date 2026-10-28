@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
 import { DORIAN_TOP } from '../lib/targets';
+import { repRange } from '../lib/lyle';
 import { t, type Key } from '../lib/i18n';
 import { typeName } from '../lib/strings-later';
 import { TYPES, type Exercise, type ExerciseType, type Muscles } from '../lib/model';
@@ -21,6 +22,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [repTop, setRepTop] = useState(old?.repTop != null ? String(old.repTop) : '');
+  const [repBottom, setRepBottom] = useState(old?.repBottom != null ? String(old.repBottom) : '');
   const [notes, setNotes] = useState(old?.notes ?? '');
   // Edited muscles; until then an existing exercise shows (and keeps) its own, a new one its name's defaults.
   const [muscles, setMuscles] = useState<Muscles | undefined>(old?.muscles);
@@ -39,6 +41,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
     const inc = parseFloat(increment.replace(',', '.'));
     const r = parseInt(rest, 10);
     const top = parseInt(repTop, 10);
+    const bottom = parseInt(repBottom, 10);
     const ex: Exercise = {
       ...old, // fields this form doesn't edit (e.g. favourite) stay
       id: id ?? uid(),
@@ -50,6 +53,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       increment: inc > 0 ? inc : undefined,
       rest: r > 0 ? r : undefined,
       repTop: top > 0 ? Math.min(top, 100) : undefined,
+      repBottom: bottom > 0 ? Math.min(bottom, 100) : undefined,
     };
     await saveExercise(ex);
     // A new exercise from "Add exercise" goes straight to logging it.
@@ -111,6 +115,18 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
           <label>
             {t('repTop')}
             <input type="text" inputMode="numeric" placeholder={String(DORIAN_TOP)} value={repTop} onInput={(e) => setRepTop(e.currentTarget.value)} />
+          </label>
+        )}
+        {(used ? old!.type : type).includes('reps') && (
+          <label>
+            {t('repBottom')}
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder={String(repRange({ repTop: parseInt(repTop, 10) || undefined }).bottom)}
+              value={repBottom}
+              onInput={(e) => setRepBottom(e.currentTarget.value)}
+            />
           </label>
         )}
         <label>

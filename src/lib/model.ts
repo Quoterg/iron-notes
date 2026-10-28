@@ -51,6 +51,8 @@ export interface Exercise {
   increment?: number;
   /** Top of the rep range for progression (Dorian HIT: reach it, then the weight goes up). Default 12. */
   repTop?: number;
+  /** Bottom of the rep range (Lyle mode: reps to restart from after a weight increase). Default top − 4. */
+  repBottom?: number;
   /** Rest timer length in seconds. Default: the setting. */
   rest?: number;
   /** Shown under Favourites at the top of the picker. */
@@ -158,6 +160,8 @@ export interface Settings {
   keepScreenOn: boolean;
   /** The user's bar and plates, in the unit they were set in (defaults per unit otherwise). */
   plates?: { unit: WeightUnit; bar: number; sizes: number[] };
+  /** Lyle mode's current cycle: first day (YYYY-MM-DD) and length in weeks (2 run-up + the rest push). */
+  cycle?: { start: string; weeks: number };
 }
 
 export const DEFAULT_SETTINGS: Settings = {

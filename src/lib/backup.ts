@@ -39,8 +39,9 @@ const optStr = (v: unknown) => v === undefined || typeof v === 'string';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const validCategory = (c: Category) => isStr(c?.id) && isStr(c.name) && typeof c.color === 'string' && /^#[0-9a-f]{6}$/i.test(c.color) && isNum(c.order);
+const optRep = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 1);
 const validExercise = (e: Exercise) =>
-  isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest) && (e.repTop === undefined || (Number.isInteger(e.repTop) && e.repTop >= 1)) &&
+  isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest) && optRep(e.repTop) && optRep(e.repBottom) &&
   (e.favorite === undefined || typeof e.favorite === 'boolean') &&
   (e.muscles === undefined ||
     (!!e.muscles && Array.isArray(e.muscles.primary) && Array.isArray(e.muscles.secondary) &&
@@ -85,6 +86,8 @@ export function validateBackup(b: unknown): Backup {
     if (st.formula === 'epley' || st.formula === 'brzycki') settings.formula = st.formula;
     if (st.weekStart === 0 || st.weekStart === 1) settings.weekStart = st.weekStart;
     for (const k of ['autoTimer', 'timerSound', 'markDone', 'keepScreenOn'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
+    const c = st.cycle;
+    if (c && typeof c.start === 'string' && DATE.test(c.start) && (c.weeks === 6 || c.weeks === 8)) settings.cycle = { start: c.start, weeks: c.weeks };
     const p = st.plates;
     // Same limits as the calculator's own editor (an absurd plate set could freeze it).
     const clean = p && (p.unit === 'kg' || p.unit === 'lb') && Array.isArray(p.sizes) && p.sizes.every(isNum) ? cleanPlates(p.bar, p.sizes) : null;

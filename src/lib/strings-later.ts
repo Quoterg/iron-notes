@@ -294,6 +294,21 @@ export const later = {
   musclesEmpty: 'Nothing with muscles logged in the last 8 weeks.',
   thisWeek: 'This week',
   lastWeeks: 'Last {n} weeks',
+  repBottom: 'Bottom of rep range',
+  cycle: 'Cycle',
+  cycleNone: 'none yet: start one and the first two weeks are a lighter run-up.',
+  cycleWeek: 'Week {n} of {N} ({phase})',
+  cycleDone: 'Cycle finished. Start the next one: its run-up weeks are the recovery; change exercises or rep ranges now if you want.',
+  cycleLength: 'Cycle length',
+  weeksN: '{n} weeks',
+  startCycle: 'Start a new cycle today',
+  runUp: 'run-up',
+  push: 'push',
+  target: 'Target',
+  lyleRunUp: 'Run-up: stop {rir} reps short of failure.',
+  lyleUp: '{reps} reps with {rir} in reserve last time: weight up.',
+  lyleGrind: '{reps} reps at failure last time: hold the weight.',
+  lyleReps: '{reps} reps last time: one more.',
 } as const;
 
 setLater(later);

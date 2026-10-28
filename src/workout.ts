@@ -3,7 +3,7 @@
 import { byOrder, uid } from './lib/calc';
 import * as db from './lib/db';
 import type { RoutineDay, Routine, WorkoutSet } from './lib/model';
-import { afterWrite, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, settings, setsVersion } from './state';
+import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, settings, setsVersion } from './state';
 
 /** Copies sets to `to` (new ids, in their order, after anything already logged there; comments not copied). */
 export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
@@ -108,6 +108,24 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
       const ex = exById.value.get(id)!;
       last.set(id, progressedSets(sets, wFromUser(ex.increment ?? defaultIncrement(u), u), ex.repTop ?? DORIAN_TOP));
     }
+  }
+  const cycle = settings.value.cycle;
+  if (settings.value.mode === 'lyle') {
+    // Lyle: every working set of an exercise starts at its target (run-up week or push rule).
+    const { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } = await import('./lib/lyle');
+    const { defaultIncrement, wFromUser } = await import('./lib/units');
+    const u = settings.value.unit;
+    const week = cycle ? cycleWeek(cycle.start, d) : 0;
+    const runUp = week >= 1 && week <= RUN_UP.length;
+    await Promise.all(
+      [...last].map(async ([id, sets]) => {
+        const ex = exById.value.get(id)!;
+        const all = (await allSetsOf(id)).filter((s) => !s.planned);
+        const range = repRange(ex);
+        const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(all, range.bottom, cycle!.start) : 0, lastFirstSet(all, d), wFromUser(ex.increment ?? defaultIncrement(u), u), range);
+        if (tg) last.set(id, sets.filter((s) => !s.warmup).map((s) => ({ ...s, weight: tg.weight, reps: tg.reps })));
+      }),
+    );
   }
   const { groupOf } = await import('./lib/groups');
   const sameDay = d === date.value ? daySets.value : await db.setsOn(d);
