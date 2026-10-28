@@ -104,3 +104,17 @@ describe('fillEmpty', () => {
     expect(fillEmpty(typed, last, ['weight', 'reps'])).toEqual({ weight: '90', reps: '6', comment: '' });
   });
 });
+
+describe('records ignore warm-ups', () => {
+  it('a light, high-rep warm-up never holds a record', () => {
+    const sets: WorkoutSet[] = [
+      { id: 'a', date: '2026-10-01', exerciseId: 'e', order: 1, weight: 35, reps: 15 },
+      { id: 'w', date: '2026-10-08', exerciseId: 'e', order: 2, weight: 40, reps: 15, warmup: true },
+      { id: 'b', date: '2026-10-08', exerciseId: 'e', order: 3, weight: 100, reps: 8, rir: 0 },
+    ];
+    const ids = recordIds(sets, 'weight,reps');
+    expect(ids.has('w')).toBe(false);
+    expect(ids.has('a')).toBe(true);
+    expect(recordIds([{ id: 'r', date: '2026-10-08', exerciseId: 'e', order: 1, reps: 30, warmup: true }], 'reps').size).toBe(0);
+  });
+});

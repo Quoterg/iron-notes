@@ -48,12 +48,12 @@ export const byOrder = (a: WorkoutSet, b: WorkoutSet): number =>
  */
 export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType, sorted = false): Set<string> {
   const out = new Set<string>();
-  // `sorted`: already in byOrder order (the cache is). A routine's planned sets never hold records.
+  // `sorted`: already in byOrder order (the cache is). A routine's planned sets and warm-ups never hold records.
   const chrono = sorted ? sets : [...sets].sort(byOrder);
   if (type === 'weight,reps') {
     const best = new Map<number, WorkoutSet>();
     for (const s of chrono) {
-      if (s.planned || !(s.weight! > 0) || !(s.reps! > 0)) continue;
+      if (s.planned || s.warmup || !(s.weight! > 0) || !(s.reps! > 0)) continue;
       const b = best.get(s.reps!);
       if (!b || s.weight! > b.weight!) best.set(s.reps!, s);
     }
@@ -69,7 +69,7 @@ export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType, sorte
   }
   const f = fieldsOf(type)[0];
   let top: WorkoutSet | undefined;
-  for (const s of chrono) if (!s.planned && (s[f] ?? 0) > 0 && (!top || s[f]! > top[f]!)) top = s;
+  for (const s of chrono) if (!s.planned && !s.warmup && (s[f] ?? 0) > 0 && (!top || s[f]! > top[f]!)) top = s;
   if (top) out.add(top.id);
   return out;
 }
@@ -98,7 +98,7 @@ export function dayTotals(sets: readonly WorkoutSet[]) {
 }
 
 /** `f` with its empty (`''`) `keys` taken from `from`: a late prefill never overwrites typed input. */
-export function fillEmpty<T extends { [K in keyof T]: string }>(f: T, from: T, keys: (keyof T)[]): T {
+export function fillEmpty<T extends Record<K, string>, K extends keyof T>(f: T, from: T, keys: K[]): T {
   const out = { ...f };
   for (const k of keys) if (out[k] === '') out[k] = from[k];
   return out;

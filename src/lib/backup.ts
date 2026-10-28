@@ -48,7 +48,8 @@ const validExercise = (e: Exercise) =>
 const validSet = (s: WorkoutSet) =>
   isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
   optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) && optStr(s.group) &&
-  (s.done === undefined || typeof s.done === 'boolean') && (s.planned === undefined || s.planned === true);
+  (s.done === undefined || typeof s.done === 'boolean') && (s.planned === undefined || s.planned === true) &&
+  optNum(s.rir) && optNum(s.after) && (s.warmup === undefined || s.warmup === true);
 const validPlanned = (p: Routine['days'][number]['items'][number]['sets'][number]) =>
   !!p && typeof p === 'object' && optNum(p.weight) && optNum(p.reps) && optNum(p.distance) && optNum(p.time);
 const validRoutine = (r: Routine) =>
@@ -77,6 +78,7 @@ export function validateBackup(b: unknown): Backup {
   if (st !== undefined && (typeof st !== 'object' || st === null)) throw new Error('Invalid settings');
   const settings: Settings = { ...DEFAULT_SETTINGS };
   if (st) {
+    if (st.mode === 'standard' || st.mode === 'dorian' || st.mode === 'lyle') settings.mode = st.mode;
     if (st.unit === 'kg' || st.unit === 'lb') settings.unit = st.unit;
     if (st.dist === 'km' || st.dist === 'mi' || st.dist === 'm') settings.dist = st.dist;
     if (isNum(st.rest) && st.rest > 0) settings.rest = st.rest;

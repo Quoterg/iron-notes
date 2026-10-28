@@ -3,7 +3,7 @@ import { exportAll, importAll, validateBackup } from '../lib/backup';
 import { isoDate } from '../lib/calc';
 import { allSets, clearAll, importRows } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
-import type { DistUnit, WeightUnit } from '../lib/model';
+import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
 import { open } from '../nav';
 import { categories, catById, exById, exercises, reloadAll, reserveOrders, saveSettings, settings, toast } from '../state';
@@ -72,6 +72,18 @@ export default function Settings() {
         </label>
         <Check label="autoTimer" checked={s.autoTimer} onChange={(autoTimer) => void saveSettings({ autoTimer })} />
         <Check label="timerSound" checked={s.timerSound} onChange={(timerSound) => void saveSettings({ timerSound })} />
+      </section>
+
+      <section class="card">
+        <h2>{t('trainingMode')}</h2>
+        <Choice<TrainingMode>
+          label={t('trainingMode')}
+          hideLabel
+          options={[['standard', t('modeStandard')], ['dorian', t('modeDorian')], ['lyle', t('modeLyle')]]}
+          value={s.mode}
+          onPick={(mode) => void saveSettings({ mode })}
+        />
+        <p class="muted small">{t(s.mode === 'dorian' ? 'modeDorianHint' : s.mode === 'lyle' ? 'modeLyleHint' : 'modeStandardHint')}</p>
       </section>
 
       <section class="card">

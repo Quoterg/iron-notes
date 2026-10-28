@@ -5,13 +5,27 @@
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
-- **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next: **M5d Smart targets** once the owner picks progression methods (owner uses a reverse pyramid with
-  double progression: reps up to 12, then weight); HIT modes (M14–M16) once the HIT questions are answered.
+- **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
+  (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
+- Next: **M15 Effective reps per muscle** (day-log chips, main session vs extra work, Muscles screen);
+  then M16 Dorian progression (owner's reverse pyramid: each set to 12, then that set's weight up).
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-28 — M14 Modes & effort input
+
+- Plan (PR #16): Phase 2 rewritten — goal "better than RP Hypertrophy"; Dorian HIT (dynamic double
+  progression) and Lyle (GBR cycles, 6 weeks = 2 run-up + 4 push); load-based effective reps; feedback
+  that finds the cause first. M5d folded into M16/M17.
+- `lib/effective.ts`: effective reps per set (R = reps + RIR; R ≤ 8 every rep, 9 → last 6, ≥ 10 → last 5;
+  reps after failure count fully), RIR estimated from the best e1RM (Standard mode, shown "≈"),
+  per-muscle totals (secondary 0.5, direct vs indirect), main session ≥ half the goal.
+- Settings → Training mode. Sets store their effort (`rir`, `after`, `warmup`), so switching modes never
+  changes what old sets count. Dorian: Warm-up / Working set + "Reps after failure" (working sets RIR 0).
+  Lyle: RIR chips 0–5+, remembered from the last set. Each set shows "n eff.", the day's total above.
+- Checks: 151 unit tests, 20 e2e (new modes.spec), initial JS 19.9 KB, Lighthouse passes.
 
 ## 2026-10-28 — M5c Saved workouts
 

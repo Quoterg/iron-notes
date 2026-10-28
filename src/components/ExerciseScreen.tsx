@@ -1,7 +1,8 @@
 // Log sets of one exercise on one day: fields for the exercise type with +/- steppers, Save/Clear
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { fillEmpty, fmtTime, isoDate, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
+import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
+import { MAX_RIR, setEffective } from '../lib/effective';
 import { t, type Key } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
@@ -21,11 +22,16 @@ interface Form {
   min: string;
   sec: string;
   comment: string;
+  /** Lyle mode: '' (not given) or '0'…'5' (5 = 5+). */
+  rir: string;
+  /** Dorian HIT: reps after failure. */
+  after: string;
+  warmup: boolean;
 }
 type Tab = 'track' | 'history' | 'graph' | 'records';
 const TABS: Tab[] = ['track', 'history', 'graph', 'records'];
 
-const EMPTY: Form = { weight: '', reps: '', distance: '', min: '', sec: '', comment: '' };
+const EMPTY: Form = { weight: '', reps: '', distance: '', min: '', sec: '', comment: '', rir: '', after: '', warmup: false };
 
 /** Accepts "82,5" as well as "82.5". Empty or invalid → null. */
 const parse = (v: string): number | null => {
@@ -33,14 +39,19 @@ const parse = (v: string): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-function toForm(s: WorkoutSet, st: Settings, comment = false): Form {
+/** `own`: the set itself is being edited (its comment and effort); otherwise it only seeds the next set. */
+function toForm(s: WorkoutSet, st: Settings, own = false): Form {
   return {
     weight: s.weight != null ? num(wToUser(s.weight, st.unit)) : '',
     reps: s.reps != null ? String(s.reps) : '',
     distance: s.distance != null ? num(dToUser(s.distance, st.dist), 3) : '',
     min: s.time != null ? String(Math.floor(s.time / 60)) : '',
     sec: s.time != null ? String(Math.round(s.time % 60)) : '',
-    comment: comment ? s.comment ?? '' : '',
+    comment: own ? s.comment ?? '' : '',
+    // RIR carries over to the next set (remembered per exercise); after-failure reps and warm-up don't.
+    rir: s.rir != null && !s.warmup ? String(Math.min(s.rir, MAX_RIR)) : '',
+    after: own && s.after ? String(s.after) : '',
+    warmup: own && !!s.warmup,
   };
 }
 
@@ -64,6 +75,18 @@ function fromForm(f: Form, ex: Exercise, st: Settings): Partial<WorkoutSet> | nu
   }
   // At least one non-zero value (0 kg × 10 is fine for body-weight work; 0 × 0 isn't a set).
   return Object.values(out).some((v) => (v as number) > 0) ? out : null;
+}
+
+/** The effort the mode logs with a set (only for exercises with reps; Standard mode logs none). */
+function effortOf(f: Form, ex: Exercise, st: Settings): Partial<WorkoutSet> {
+  if (!fieldsOf(ex.type).includes('reps') || st.mode === 'standard') return {};
+  if (st.mode === 'dorian') {
+    if (f.warmup) return { warmup: true, rir: undefined, after: undefined };
+    const after = Math.round(parse(f.after) ?? 0);
+    return { warmup: undefined, rir: 0, after: after > 0 ? after : undefined };
+  }
+  const rir = parse(f.rir);
+  return { warmup: undefined, after: undefined, rir: rir == null ? undefined : Math.min(Math.round(rir), MAX_RIR) };
 }
 
 export default function ExerciseScreen({ id, date }: { id: string; date: string }) {
@@ -117,7 +140,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     if (filled || !all) return;
     const last = planned ?? today[today.length - 1] ?? prev[0];
     // Only into empty fields: on a slow phone the user may have typed before the history arrived.
-    if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec']));
+    if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec', 'rir']));
     setFilled(true);
   }, [all]);
 
@@ -127,16 +150,29 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   // The exercise's superset on the shown day (in rotation order), if any.
   const members = date === shownDate.value ? groupMembers(daySets.value, id) : [];
   const selected = sel ? today.find((s) => s.id === sel) : undefined;
-  const values = fromForm(form, ex, st);
+  const fv = fromForm(form, ex, st);
+  const values = fv && { ...fv, ...effortOf(form, ex, st) };
   const set = (k: keyof Form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
   const inc = ex.increment ?? defaultIncrement(st.unit);
   const distStep = st.dist === 'm' ? 100 : 0.1;
+  const hasReps = fields.includes('reps');
+  // Effective reps of today's sets (computed once per change, not per keystroke): the best e1RM of the
+  // working sets estimates the effort of sets logged without one.
+  const effOf = useMemo(() => {
+    const out = new Map<string, ReturnType<typeof setEffective>>();
+    if (!counted) return out;
+    let best = 0;
+    for (const s of counted) if (!s.warmup) best = Math.max(best, oneRM(s.weight ?? 0, s.reps ?? 0, st.formula));
+    for (const s of counted) if (s.date === date) out.set(s.id, setEffective(s, best, st.formula));
+    return out;
+  }, [counted, date, st.formula]);
+  let effToday = 0;
+  if (hasReps) for (const e of effOf.values()) effToday += e.n;
 
   async function save() {
     if (!values || !ex || !all) return;
     const comment = form.comment.trim() || undefined;
     if (selected) {
-      // Editing a planned set means it was done.
       // Editing a planned set means it was done.
       await saveSet(selected.planned ? { ...selected, ...values, comment, planned: undefined, done: true } : { ...selected, ...values, comment });
       setSel(null);
@@ -245,6 +281,32 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 <Stepper id="f-distance" label={`${t('distance')} (${st.dist})`} value={form.distance} onChange={set('distance')} step={distStep} />
               )}
               {fields.includes('time') && <TimeField form={form} setForm={setForm} />}
+              {hasReps && st.mode === 'dorian' && (
+                <>
+                  <div class="chips" role="group" aria-label={t('warmup')}>
+                    {[false, true].map((w) => (
+                      <button key={String(w)} type="button" class={form.warmup === w ? 'chip on' : 'chip'} aria-pressed={form.warmup === w} onClick={() => setForm((f) => ({ ...f, warmup: w }))}>
+                        {t(w ? 'warmup' : 'working')}
+                      </button>
+                    ))}
+                  </div>
+                  {!form.warmup && <Stepper id="f-after" label={t('afterFailure')} value={form.after} onChange={set('after')} step={1} integer />}
+                </>
+              )}
+              {hasReps && st.mode === 'lyle' && (
+                <div class="field">
+                  <span class="lbl">
+                    {t('rir')} <span class="muted small">({t('rirHint')})</span>
+                  </span>
+                  <div class="chips rir" role="group" aria-label={t('rir')}>
+                    {['0', '1', '2', '3', '4', '5'].map((r) => (
+                      <button key={r} type="button" class={form.rir === r ? 'chip on' : 'chip'} aria-pressed={form.rir === r} onClick={() => setForm((f) => ({ ...f, rir: f.rir === r ? '' : r }))}>
+                        {r === '5' ? '5+' : r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {showComment ? (
                 <div class="field">
                   <label for="f-comment">{t('setComment')}</label>
@@ -272,6 +334,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
 
             {today.length > 0 ? (
               <div class="card">
+                {effToday > 0 && <p class="muted small eff-total">{t('effToday', { n: effToday })}</p>}
                 <ol class="sets">
                   {today.map((s, i) => (
                     <li key={s.id} class={sel === s.id ? 'sel' : undefined}>
@@ -279,8 +342,10 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                         <span class="n">{i + 1}</span>
                         <span class="v">
                           {setText(s, ex.type, st)}
+                          {hasReps && <Effort s={s} />}
                           {s.comment && <span class="c">{s.comment}</span>}
                         </span>
+                        {hasReps && effOf.has(s.id) && <EffBadge {...effOf.get(s.id)!} />}
                         {rec?.has(s.id) && <Trophy />}
                       </button>
                       {(st.markDone || s.planned) && (
@@ -326,6 +391,16 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       </div>
     </Sheet>
   );
+}
+
+/** What was logged about the effort: warm-up, RIR, reps after failure. */
+function Effort({ s }: { s: WorkoutSet }) {
+  const parts = [s.warmup ? t('warmup') : s.rir != null && s.rir > 0 ? t('rirShort', { n: s.rir >= MAX_RIR ? '5+' : s.rir }) : '', s.after ? `+${s.after}` : ''].filter(Boolean);
+  return parts.length ? <span class="muted"> · {parts.join(' ')}</span> : null;
+}
+
+function EffBadge({ n, est }: { n: number; est: boolean }) {
+  return <span class={n > 0 ? 'eff' : 'eff zero'}>{t('effShort', { n: (est ? '≈' : '') + n })}</span>;
 }
 
 /** The sets of `d` the screen knows about: the shown day's (with every exercise), else just this one's. */
