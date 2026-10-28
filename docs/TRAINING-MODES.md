@@ -43,7 +43,7 @@ that tends to run too high. Iron Notes aims to do what it does, better:
 - Each muscle about **twice a week**; sets stopped **0–4 reps short of failure**, logged as RIR.
   Goal **20–40 effective reps per muscle group per session** (Lyle: "24 to 30 or so" per workout).
 - **Progression: Lyle's cycle** (Generic Bulking Routine FAQ). Cycle length **6 weeks by default**
-  (2 run-up + 4 push), changeable; Lyle's own GBR is 8 (2 + 6). The coaches Lyle puts in the same
+  (2 run-up + 4 push, confirmed), changeable; Lyle's own GBR is 8 (2 + 6). The coaches Lyle puts in the same
   "progressive tension overload" family use similar blocks: DC Training (Dante Trudel) 6 weeks
   "blast" + 2 "cruise", HST (Bryan Haycock) ~8 weeks of 2-week steps.
   - **Run-up** (weeks 1–2): start submaximal — about 80–85 % of the best weight for the rep range in
@@ -128,9 +128,20 @@ on chest day — is shown as "+n indirect" and counts toward the weekly picture,
 goal. Status per directly trained muscle: under (keep going), in range (done), over (enough — more
 costs recovery, not growth).
 
-- **Dorian HIT:** one direct session per muscle per ~7 days in his split, so session = week; the day
-  log shows `Chest 21/20`. A muscle trained directly again within ~5 days gets a "too soon" hint.
-- **Lyle mode:** two direct sessions a week, each against 20–40; the weekly view shows both sessions.
+- **Days aren't labelled.** Which muscles a session trains comes from the exercises actually logged,
+  never from a "push"/"pull" name — dips on pull day train chest and triceps that day.
+- **Main session vs extra work.** A direct session is a muscle's **main session** when it reaches at
+  least half the mode's goal (Dorian ≥ 10, Lyle ≥ 10 effective reps). Below that it is **extra work**
+  (e.g. one set of dips on pull day = `Chest +8 extra`): it counts toward the week and is shown, but the
+  day gets no "under goal" status for that muscle.
+- **Dorian HIT:** one main session per muscle per ~7 days, so session ≈ week; the day log shows
+  `Chest 21/20`. **Too soon:** a main session less than **5 days** after the muscle's previous main
+  session gets a hint (confirmed). Extra work neither triggers it nor resets the clock — dips on pull
+  day don't nag on push day.
+- **Lyle mode:** two main sessions a week, each against 20–40; the weekly view shows both, plus extra
+  work.
+- **Reordering the split** (still sore → do another workout today) also looks at each saved workout's
+  real muscles, so a pull day with dips counts as hitting chest.
 
 ## Screens (sketch)
 
@@ -167,7 +178,7 @@ and can be dismissed.
 
 ### Still sore (before training)
 
-- **Dorian HIT:** suggest doing the **next workout of the split instead** (its muscles are recovered)
+- **Dorian HIT:** suggest doing the **next workout of the split whose muscles are recovered** instead
   and moving the sore muscle's workout one slot later — e.g. chest still sore on chest day → do legs
   today, chest next session. If every remaining workout hits a sore muscle: a rest day.
 - **Lyle mode:** the session goes ahead; that muscle gets −1 set (not below 20 effective reps).
@@ -190,7 +201,7 @@ Find the cause first — days off are rarely the answer:
 | **Inconsistent** — long gap or missed sessions | Not a recovery problem: no rest. Restart one step lower (Lyle: run-up week 2 weights; Dorian: last weight that was beaten) and build back. |
 | **Cutting** — phase set, or body weight falling | Expected. The goal becomes holding strength: holding the weight counts as success, weight increases aren't pushed. Lyle: volume down toward 20 effective reps, intensity kept (Lyle: on a diet cut volume up to ~⅔, keep the load). Dorian: unchanged — one heavy set already is the low-volume, high-intensity setup. |
 | **One exercise only**, the rest progress | Exercise-specific: check the joint flag; suggest a variation at the next opportunity (Lyle: next cycle). |
-| **Consistent, not cutting, several muscles down** — real fatigue | Lyle: start the next cycle's run-up now (his built-in reset). Dorian: one lighter week — same workouts, ~10 % less weight, stop 1–2 reps short of failure — then back to all-out. Days off only if chosen. |
+| **Consistent, not cutting, several muscles down** — real fatigue | Lyle: start the next cycle's run-up now (his built-in reset). Dorian: one lighter week (confirmed) — same workouts, ~10 % less weight, stop 1–2 reps short of failure — then back to all-out. Days off only if chosen. |
 
 ### Stalled (matched, not beaten, 2 sessions)
 
@@ -200,10 +211,7 @@ Find the cause first — days off are rarely the answer:
 
 ## Questions to settle together
 
-1. **Dorian lighter week** (~10 % less, 1–2 short of failure) as the reset for real fatigue — OK, or
-   would you rather keep failure and just drop the weight?
-2. **Lyle cycle:** 6 weeks as 2 run-up + 4 push (default), or 6 push weeks after the run-up?
-3. **Too soon in Dorian HIT:** < 5 days between direct sessions OK as the hint threshold?
+None open (2026-10-28). New ones go here as milestones raise them.
 
 ## Sources
 
