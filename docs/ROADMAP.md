@@ -57,19 +57,30 @@ the first part. Mark done with `[x]` and the PR/commit. Status lives in [PROGRES
 - [ ] **M11 Languages** — Swedish UI (lazy language pack, as Iron Log), then others on request.
 - [ ] **M12 Android app** — TWA with Bubblewrap (like Iron Log), after hosting is settled.
 
-## Phase 2 — Training modes and effective reps (design: [TRAINING-MODES.md](TRAINING-MODES.md), to settle with the owner first)
+## Phase 2 — Better than RP Hypertrophy: two training modes on effective reps
+
+Goal and design: [TRAINING-MODES.md](TRAINING-MODES.md). Fast on old phones stays a hard rule: every
+calculation is local, incremental and lazy (no screen waits on history).
 
 - [x] **M13 Muscle map** — Muscle groups per exercise (primary and secondary; how much a secondary
-  muscle counts is decided with the HIT milestones); starter library
-  mapped; editable per exercise.
-- [ ] **M14 Training modes & effort input** — Settings: Standard · Failure-HIT (Dorian Yates) · RIR-HIT
-  (Lyle McDonald). Failure-HIT: warm-up/working sets, forced reps, negatives, rest-pause, drop sets.
-  RIR-HIT: RIR chips per set, remembered per exercise.
-- [ ] **M15 Effective reps per muscle group** — Effective reps per set (`min(reps, 5 − RIR)` + reps
-  beyond failure), per muscle per session and week vs the mode's goal (Failure-HIT ~20, RIR-HIT
-  20–40); chips on the day log, Muscles tab with weekly bars and history.
-- [ ] **M16 HIT templates & progression** — Dorian-style 4-day split and Lyle-style routines as
-  starting routines; warm-up weight suggestions (50 % / 75 %); double progression hints; "trained
-  too soon" hint.
-- [ ] **M17 Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no
-  server, no account).
+  muscle counts is decided with the modes); starter library mapped; editable per exercise.
+- [ ] **M14 Modes & effort input** — Settings: Standard · Dorian HIT · Lyle effective reps. Dorian: warm-up
+  vs working set, forced reps, negatives, rest-pause, drop sets. Lyle: RIR chips per set (remembered per
+  exercise). Effective reps per set computed and shown.
+- [ ] **M15 Effective reps per muscle** — Per muscle per session and week vs the mode's goal (Dorian ≈20,
+  Lyle 20–40), chips on the day log, a Muscles screen with weekly bars and history.
+- [ ] **M16 Dorian progression** — Dynamic double progression per set (up to 12 reps, then that set's
+  weight up), targets on planned sets and the logging screen with the reason; warm-up suggestions
+  (50 % / 75 %); "trained again too soon" hint (< ~5 days).
+- [ ] **M17 Lyle progression** — Cycles of 6–8 weeks: run-up weeks (80–85 %, 90–95 % of the best for the
+  rep range), then add weight when the first set hits the top of the range with ≥ 1 RIR; light week and
+  exercise/rep-range changes between cycles.
+- [ ] **M18 Mesocycles** — A cycle on the calendar (week n of N), length changeable mid-cycle, deload/light
+  week when due or on request; saved workouts as the cycle's sessions.
+- [ ] **M19 Feedback & readiness** — Quick ratings after a muscle's last set (pump, soreness, joints,
+  performance); next session's sets adjusted within the mode's effective-rep range, and the change shown.
+  Missed sessions or long gaps lower the next targets; fast recovery allows more.
+- [ ] **M20 Programs** — Dorian 4-day split and Lyle upper/lower (GBR-style) ready to start; a builder that
+  makes a program from saved workouts and a weekly schedule.
+- [ ] **M21 Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
+  no account).
