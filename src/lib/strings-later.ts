@@ -243,6 +243,8 @@ export const later = {
   mu_abs: 'Abs',
   new_3a: 'Calculators: 1RM table, plates per side with your own bar and plates, warm-up sets.',
   new_3b: 'Keep the screen on while logging (Settings).',
+  new_5a: 'Dorian HIT targets: each working set beats last time by a rep until the top of the range (12), then its weight goes up — shown with the reason.',
+  new_5b: 'Dorian HIT: warm-up suggestions (50 % / 75 %) and a hint when a muscle is trained again within 5 days.',
   new_4a: 'Training modes in Settings: Standard, Dorian HIT (to failure) or Lyle effective reps (RIR).',
   new_4b: 'Effective reps on every set and per exercise each day: heavy sets count every rep; mark warm-ups, reps after failure or reps in reserve.',
   new_3c: 'Favourite exercises (★) and recently used ones at the top of the exercise list.',

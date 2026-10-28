@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { recordIds } from './calc';
 import { DEFAULT_SETTINGS, type Exercise, type RoutineDay, type WorkoutSet } from './model';
 import { defaultPlan, isDone, planSummary, plannedSets, workoutFromDay } from './routines';
+import { progressedSets } from './targets';
 import './strings-later'; // as every later screen does: plan summaries use its strings
 
 const bench: Exercise = { id: 'b', name: 'Bench', categoryId: 'c', type: 'weight,reps' };
@@ -130,6 +131,23 @@ describe('saving an empty day', () => {
     expect(workoutFromDay('X', [], () => undefined).items).toEqual([]);
     const gone: WorkoutSet = { id: 'g', date: 'd', exerciseId: 'gone', order: 1, weight: 10, reps: 10 };
     expect(workoutFromDay('X', [gone], () => undefined).items).toEqual([]);
+  });
+});
+
+describe('Dorian HIT routine days', () => {
+  it('last time’s warm-ups stay warm-ups; working sets at the top come one step up', () => {
+    const prev: WorkoutSet[] = [
+      { id: 'w', date: '2026-01-01', exerciseId: 'b', order: 1, weight: 50, reps: 10, warmup: true },
+      { id: 'x', date: '2026-01-01', exerciseId: 'b', order: 2, weight: 100, reps: 12, rir: 0 },
+    ];
+    const day: RoutineDay = { id: 'd', name: 'D', items: [{ exerciseId: 'b', sets: [{}, {}, {}] }] };
+    let n = 0;
+    const sets = plannedSets(day, '2026-01-08', () => progressedSets(prev, 2.5), () => ++n);
+    expect(sets.map((s) => [s.weight, s.reps, s.warmup])).toEqual([
+      [50, 10, true],
+      [102.5, undefined, undefined],
+      [102.5, undefined, undefined], // a third set repeats the last one, as a working set
+    ]);
   });
 });
 

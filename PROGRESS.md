@@ -7,12 +7,26 @@
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
   (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
-- Next: **M15 Effective reps per muscle** (day-log chips, main session vs extra work, Muscles screen);
-  then M16 Dorian progression (owner's reverse pyramid: each set to 12, then that set's weight up).
+- Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
+- Next: **M15 Effective reps per muscle** (day-log chips, main session vs extra work, Muscles screen).
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-29 — M16 Dorian progression
+
+- `lib/targets.ts`: dynamic double progression per working set (n-th working set against last time's
+  n-th; reps + 1 to beat until the top, then that set's weight + the exercise's step and no rep target;
+  body-weight sets keep adding reps), warm-ups 50 % × 10 / 75 % × 6 rounded down to the step, too-soon
+  check (main session — direct effective reps ≥ 10 — less than 5 days earlier; extra work ignored).
+- Logging screen (Dorian HIT): "Set n target: 102.5 kg" / "80 kg × 11+" with the reason; the form is
+  prefilled with the target and moves to the next set's target after each working set (reverse pyramids);
+  warm-up chips until the first working set; "Working set" after warm-ups restores the target; hint card
+  when a primary muscle had a main session in the last 4 days (one `setsBetween` read per screen).
+- Routine/saved-workout days in Dorian HIT start from progressed sets; last time's warm-ups stay warm-ups.
+- Exercise editor: "Top of rep range" (default 12; e.g. 15 for legs). Validated in backups.
+- Checks: 160 unit tests, 21 e2e (new dorian.spec), initial JS 20.0 KB, Lighthouse passes.
 
 ## 2026-10-28 — M14 Modes & effort input
 
