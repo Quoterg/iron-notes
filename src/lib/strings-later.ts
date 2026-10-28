@@ -323,6 +323,9 @@ export const later = {
   programNone: 'None',
   programHint: 'A routine whose workouts rotate: an empty day offers the next one.',
   nextWorkout: 'Next: {day} ({routine})',
+  lyleNoRir: '{reps} reps last time, but no reps in reserve logged: log RIR for each set to progress.',
+  startCycleQ: 'You are in week {n} of {N}. Start a new cycle today? The run-up starts over.',
+  rangeMidCycle: 'A cycle is running: rep-range changes are best made when the next cycle starts.',
 } as const;
 
 setLater(later);

@@ -37,8 +37,8 @@ export interface LyleTarget {
   weight: number;
   reps: number;
   /** 'runup': submaximal week (1 or 2); 'up': top reached with reps to spare; 'grind': top at 0 RIR, hold;
-   *  'reps': below the top, same weight, one more rep. */
-  why: 'runup' | 'up' | 'grind' | 'reps';
+   *  'norir': top reached without an RIR logged, hold until one is; 'reps': below the top, one more rep. */
+  why: 'runup' | 'up' | 'grind' | 'norir' | 'reps';
   week: number;
   /** Last session's first working set (push weeks). */
   prev?: WorkoutSet;
@@ -52,13 +52,15 @@ const down = (x: number, step: number) => (step > 0 ? Math.floor(x / step + 1e-9
  */
 export function lyleTarget(week: number, best: number, lastFirst: WorkoutSet | undefined, stepKg: number, range: { bottom: number; top: number }): LyleTarget | null {
   const pct = week >= 1 ? RUN_UP[week - 1] : undefined;
-  if (pct && best > 0) return { weight: down(best * pct, stepKg) || best, reps: range.top, why: 'runup', week };
+  // A step bigger than the run-up weight: the share itself, unrounded (never more than planned).
+  if (pct && best > 0) return { weight: down(best * pct, stepKg) || best * pct, reps: range.top, why: 'runup', week };
   if (!lastFirst || !working(lastFirst)) return null;
   const w = lastFirst.weight!;
   const r = lastFirst.reps!;
   if (r >= range.top) {
-    // No RIR logged counts as a grind: the weight only goes up on a set known to have reps to spare.
-    if ((lastFirst.rir ?? 0) >= 1) return { weight: w + stepKg, reps: range.bottom, why: 'up', week, prev: lastFirst };
+    // The weight only goes up on a set known to have reps to spare; without an RIR it holds and says why.
+    if (lastFirst.rir == null) return { weight: w, reps: range.top, why: 'norir', week, prev: lastFirst };
+    if (lastFirst.rir >= 1) return { weight: w + stepKg, reps: range.bottom, why: 'up', week, prev: lastFirst };
     return { weight: w, reps: range.top, why: 'grind', week, prev: lastFirst };
   }
   return { weight: w, reps: Math.min(range.top, r + 1), why: 'reps', week, prev: lastFirst };

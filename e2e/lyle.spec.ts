@@ -43,4 +43,6 @@ test('Lyle: a cycle starts with a run-up from the best weight for the rep range'
   await expect(sheet.locator('.target')).toContainText('stop 2–3 reps short of failure');
   await expect(sheet.getByLabel('Weight (kg)', { exact: true })).toHaveValue('82.5');
   await expect(sheet.getByLabel('Reps', { exact: true })).toHaveValue('12');
+  // RIR decides progression: chosen for every set, never carried over from last time (it was 0).
+  await expect(sheet.getByRole('group', { name: 'Reps in reserve' }).locator('[aria-pressed="true"]')).toHaveCount(0);
 });

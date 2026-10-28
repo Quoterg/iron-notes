@@ -127,9 +127,13 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
     await Promise.all(
       [...last].map(async ([id, sets]) => {
         const ex = exById.value.get(id)!;
-        const all = (await allSetsOf(id)).filter((s) => !s.planned);
         const range = repRange(ex);
-        const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(all, range.bottom, cycle!.start) : 0, lastFirstSet(all, d), wFromUser(ex.increment ?? defaultIncrement(u), u), range);
+        // Push weeks need only last time's first set (already read); the full history only for a run-up's
+        // best, or when the last workout is the day itself.
+        let first = lastFirstSet(sets, d);
+        const all = runUp || (!first && sets.length) ? (await allSetsOf(id)).filter((s) => !s.planned) : null;
+        if (!first && all) first = lastFirstSet(all, d);
+        const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(all!, range.bottom, cycle!.start) : 0, first, wFromUser(ex.increment ?? defaultIncrement(u), u), range);
         if (tg) last.set(id, sets.filter((s) => !s.warmup).map((s) => ({ ...s, weight: tg.weight, reps: tg.reps })));
       }),
     );

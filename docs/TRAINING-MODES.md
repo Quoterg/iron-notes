@@ -49,7 +49,9 @@ that tends to run too high. Iron Notes aims to do what it does, better:
   - **Run-up** (weeks 1–2): start submaximal — about 80–85 % of the best weight for the rep range in
     week 1, 90–95 % in week 2 — sets well short of failure.
   - **Push** (weeks 3+): add weight when the **first set reaches the top of the rep range with 1–2
-    reps to spare** (RIR ≥ 1); if those reps were a grind (RIR 0), keep the weight. Steps: 2.5–5 lb
+    reps to spare** (RIR ≥ 1); if those reps were a grind (RIR 0), keep the weight; with no RIR logged,
+    keep it and ask for one. Progress is anchored to the last session, not the previous best: week 3
+    starts one step above week 2's ~92.5 % and climbs back past the old best during the push weeks. Steps: 2.5–5 lb
     (≈1–2.5 kg) big lifts, 1–2.5 lb (≈0.5–1 kg) small ones — the exercise's increment.
   - **Between cycles**: the next cycle's run-up *is* the recovery (Lyle rejects separate
     "deconditioning" weeks and 3-on/1-off as relics); change exercises and/or rep ranges here if wanted,
@@ -110,7 +112,8 @@ effective = max(0, reps − max(0, R − W(R)))  +  reps after failure
   rep = 1: they are done under full recruitment by definition. **Negatives are not tracked** (more to
   log for a small, uncertain effect; a note in the set comment is enough).
 - **Dorian HIT:** working sets are RIR 0 (no input); a Warm-up toggle makes a set count 0.
-- **Lyle mode:** RIR chips (0 · 1 · 2 · 3 · 4 · 5+) per set, remembered per exercise; 5+ counts 0.
+- **Lyle mode:** RIR chips (0 · 1 · 2 · 3 · 4 · 5+) chosen for every set — never prefilled, since RIR
+  decides progression; 5+ counts 0.
 - **Standard mode:** estimated, shown with "≈". `R` comes from the exercise's estimated 1RM (the
   inverse of the app's e1RM formula at the set's weight), so RIR ≈ R − reps; without history, RIR 2
   is assumed. Bodyweight-only and cardio sets count 0 unless an RIR is given.
