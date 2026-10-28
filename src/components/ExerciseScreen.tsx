@@ -187,12 +187,16 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
 
   // Readiness, asked before a muscle's first set of the day (Dorian HIT / Lyle): saved with that set.
   const [sore, setSore] = useState<number | null>(null);
-  const firstForMuscle =
-    st.mode !== 'standard' &&
-    !!ex?.muscles?.primary.length &&
-    fieldsOf(ex.type).includes('reps') &&
-    !today.some((s) => !s.planned) &&
-    !(date === shownDate.value && daySets.value.some((s) => s.exerciseId !== id && !s.planned && exById.value.get(s.exerciseId)?.muscles?.primary.some((m) => ex.muscles!.primary.includes(m))));
+  const doneToday = today.some((s) => !s.planned);
+  const firstForMuscle = useMemo(
+    () =>
+      st.mode !== 'standard' &&
+      !!ex?.muscles?.primary.length &&
+      fieldsOf(ex.type).includes('reps') &&
+      !doneToday &&
+      !(date === shownDate.value && daySets.value.some((s) => s.exerciseId !== id && !s.planned && exById.value.get(s.exerciseId)?.muscles?.primary.some((m) => ex.muscles!.primary.includes(m)))),
+    [st.mode, ex, doneToday, date, daySets.value],
+  );
   // Still sore in Dorian HIT with a program: the next workout of it that doesn't train these muscles.
   const [swapDay, setSwapDay] = useState<RoutineDay | null>(null);
   useEffect(() => {
@@ -272,7 +276,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     } else {
       // A routine's next planned set is filled in (and done); otherwise a new set.
       const s: WorkoutSet = planned
-        ? { ...planned, ...values, comment, planned: undefined, done: true }
+        ? { ...planned, ...values, comment, planned: undefined, done: true, sore: firstForMuscle && sore != null ? sore : undefined }
         : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id), sore: firstForMuscle && sore != null ? sore : undefined };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
       if (counted!.some((x) => x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
@@ -601,9 +605,13 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   );
 }
 
-/** What was logged about the effort: warm-up, RIR, reps after failure. */
+/** What was logged about the effort: warm-up, RIR, reps after failure, readiness. */
 function Effort({ s }: { s: WorkoutSet }) {
-  const parts = [s.warmup ? t('warmup') : s.rir != null && s.rir > 0 ? t('rirShort', { n: s.rir >= MAX_RIR ? '5+' : s.rir }) : '', s.after ? `+${s.after}` : ''].filter(Boolean);
+  const parts = [
+    s.warmup ? t('warmup') : s.rir != null && s.rir > 0 ? t('rirShort', { n: s.rir >= MAX_RIR ? '5+' : s.rir }) : '',
+    s.after ? `+${s.after}` : '',
+    s.sore != null ? t((['fresh', 'bitSore', 'stillSore'] as const)[s.sore]) : '',
+  ].filter(Boolean);
   return parts.length ? <span class="muted"> · {parts.join(' ')}</span> : null;
 }
 

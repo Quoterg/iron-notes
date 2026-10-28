@@ -75,3 +75,23 @@ test('after a long gap the target starts at the last weight; stalled sessions ge
   await expect(sheet(page).locator('.target')).toContainText('14 days since last time');
   await expect(sheet(page).locator('.hint').filter({ hasText: 'No new best for two sessions' })).toContainText('only 2 days apart');
 });
+
+test('readiness is saved on a set filled in from a saved workout', async ({ page }) => {
+  await page.goto('./');
+  await dorian(page);
+  await days(page, -1);
+  await logBench(page, '100', '10');
+  await page.getByRole('button', { name: 'Save as workout' }).click();
+  await sheet(page).getByLabel('Name').fill('Chest');
+  await sheet(page).getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toContainText('Saved “Chest”.');
+  await days(page, 1);
+  await page.getByRole('button', { name: 'Start a workout' }).click();
+  await sheet(page).getByRole('button', { name: 'Add workout: Chest' }).click();
+  await page.locator('.ex-card').getByRole('button', { name: /Flat Barbell Bench Press/ }).first().click();
+  await sheet(page).getByRole('button', { name: 'Still sore', exact: true }).click();
+  await sheet(page).getByLabel('Reps', { exact: true }).fill('10');
+  await sheet(page).getByRole('button', { name: 'Save' }).click();
+  await expect(sheet(page).locator('.sets li').first()).toContainText('Still sore');
+});
+

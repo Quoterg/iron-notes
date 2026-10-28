@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { causeOf, isCutting, longestGap, sessions, trendOf, weeklyRate, type Session } from './feedback';
+import { causeOf, isCutting, longestGap, sessions, stalledAdvice, trendOf, weakerAdvice, weeklyRate, type Session } from './feedback';
 import type { BodyEntry, WorkoutSet } from './model';
 
 let n = 0;
@@ -70,5 +70,21 @@ describe('body weight', () => {
   it('not enough data: no rate', () => {
     expect(weeklyRate([e('2026-10-28', 80), e('2026-10-29', 79)], '2026-10-29')).toBeNull();
     expect(weeklyRate([e('2026-10-27', 80), e('2026-10-28', 80), e('2026-10-29', 79)], '2026-10-29')).toBeNull(); // < a week
+  });
+});
+
+describe('advice', () => {
+  it('stalled: a cut first, then Lyle by readiness, Dorian by spacing', () => {
+    expect(stalledAdvice({ lyle: true, cutting: true, spacing: 3 })).toBe('fbStalledCut');
+    expect(stalledAdvice({ lyle: true, cutting: false, lastSore: 2, spacing: 3 })).toBe('fbStalledLyleSore');
+    expect(stalledAdvice({ lyle: true, cutting: false, lastSore: 0, spacing: 3 })).toBe('fbStalledLyle');
+    expect(stalledAdvice({ lyle: false, cutting: false, spacing: 6 })).toBe('fbStalledDorianSpacing');
+    expect(stalledAdvice({ lyle: false, cutting: false, spacing: 7 })).toBe('fbStalledDorian');
+  });
+  it('weaker: by cause and mode', () => {
+    expect(weakerAdvice('inconsistent', true)).toBe('fbInconsistent');
+    expect(weakerAdvice('fatigue', false)).toBe('fbFatigueDorian');
+    expect(weakerAdvice('fatigue', true)).toBe('fbFatigueLyle');
+    expect(weakerAdvice('cutting', true)).toBe('fbCuttingLyle');
   });
 });
