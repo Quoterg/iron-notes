@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveReps, estimateRir, isMainSession, muscleTotals } from './effective';
+import { effectiveReps, estimateRir, isMainSession, muscleTotals, setEffective } from './effective';
+import type { WorkoutSet } from './model';
 import { oneRM } from './calc';
 
 describe('effective reps per set (the table in docs/TRAINING-MODES.md)', () => {
@@ -67,3 +68,23 @@ describe('per muscle', () => {
     expect(isMainSession(8, 20)).toBe(false); // one set of dips on pull day
   });
 });
+
+describe('effective reps of a logged set', () => {
+  const s = (x: Partial<WorkoutSet>): WorkoutSet => ({ id: 'a', date: '2026-10-28', exerciseId: 'e', order: 1, weight: 100, reps: 8, ...x });
+  const best = oneRM(100, 10); // this weight is a 10RM
+  it('uses the stored effort when there is one', () => {
+    expect(setEffective(s({ rir: 0 }), best)).toEqual({ n: 8, est: false });
+    expect(setEffective(s({ rir: 0, after: 3 }), best)).toEqual({ n: 11, est: false });
+    expect(setEffective(s({ rir: 2 }), best)).toEqual({ n: 3, est: false });
+  });
+  it('warm-ups and sets without reps count 0', () => {
+    expect(setEffective(s({ warmup: true, rir: 0 }), best).n).toBe(0);
+    expect(setEffective(s({ reps: undefined, time: 60 }), best).n).toBe(0);
+  });
+  it('estimates from e1RM without logged effort; body weight needs an RIR', () => {
+    expect(setEffective(s({}), best)).toEqual({ n: 3, est: true }); // 8 with a 10RM ≈ 2 RIR
+    expect(setEffective(s({ weight: 0 }), best).n).toBe(0);
+    expect(setEffective(s({ weight: 0, rir: 1 }), best).n).toBe(5); // 9RM: the last 6 before failure
+  });
+});
+

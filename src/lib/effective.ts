@@ -1,7 +1,7 @@
 // Effective reps: reps done with all of a muscle's high-threshold fibres recruited (docs/TRAINING-MODES.md).
 // Load decides when that starts: with a heavy weight (≈ 5–8RM or heavier) from the first rep, with a
 // lighter one only over the last few reps before failure. The constants are tuning knobs, kept here.
-import type { MuscleId, Muscles } from './model';
+import type { MuscleId, Muscles, WorkoutSet } from './model';
 
 /** Reps-to-failure at or below which every rep counts (≈ 80 % of 1RM). */
 export const HEAVY_RM = 8;
@@ -41,6 +41,18 @@ export function estimateRir(weight: number, reps: number, e1rm: number, formula:
   if (weight >= e1rm) return 0;
   const rm = formula === 'brzycki' ? 37 - (36 * weight) / e1rm : 30 * (e1rm / weight - 1);
   return Math.max(0, Math.round(rm) - reps);
+}
+
+/**
+ * Effective reps of a logged set, whatever mode is on now: the effort stored with the set (RIR, reps
+ * after failure, warm-up) when there is one, else estimated from the exercise's best e1RM (`est`).
+ * Sets without reps, and body-weight sets without an RIR, count 0.
+ */
+export function setEffective(s: WorkoutSet, e1rm: number, formula: 'epley' | 'brzycki' = 'epley'): { n: number; est: boolean } {
+  if (s.warmup || !(s.reps! > 0)) return { n: 0, est: false };
+  if (s.rir != null) return { n: effectiveReps(s.reps!, s.rir, s.after), est: false };
+  if (!(s.weight! > 0)) return { n: 0, est: false };
+  return { n: effectiveReps(s.reps!, estimateRir(s.weight!, s.reps!, e1rm, formula), s.after), est: true };
 }
 
 export interface MuscleTotal {

@@ -77,6 +77,12 @@ export interface WorkoutSet {
    * out of records, history, graphs, "last time", the calendar and copy sources until done.
    */
   planned?: true;
+  /** Reps in reserve (0 = failure, 5 = 5+). Dorian HIT working sets store 0; Standard mode leaves it out. */
+  rir?: number;
+  /** Reps after failure: forced, rest-pause and drop-set reps (Dorian HIT). */
+  after?: number;
+  /** A warm-up set: no effective reps. */
+  warmup?: true;
 }
 
 /** A planned set of a routine (values in stored units; missing values are filled in when logging). */
@@ -129,7 +135,11 @@ export interface DayComment {
 export type WeightUnit = 'kg' | 'lb';
 export type DistUnit = 'km' | 'mi' | 'm';
 
+/** Standard logging, Dorian Yates' HIT (to failure) or Lyle McDonald's effective reps (RIR). */
+export type TrainingMode = 'standard' | 'dorian' | 'lyle';
+
 export interface Settings {
+  mode: TrainingMode;
   unit: WeightUnit;
   dist: DistUnit;
   /** Default rest timer, seconds. */
@@ -147,6 +157,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  mode: 'standard',
   unit: 'kg',
   dist: 'km',
   rest: 90,
