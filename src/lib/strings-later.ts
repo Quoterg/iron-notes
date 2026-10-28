@@ -243,6 +243,8 @@ export const later = {
   mu_abs: 'Abs',
   new_3a: 'Calculators: 1RM table, plates per side with your own bar and plates, warm-up sets.',
   new_3b: 'Keep the screen on while logging (Settings).',
+  new_9a: 'Feedback: when an exercise gets weaker or stalls, the app finds the cause first (a long gap, a cut, one exercise, real fatigue) and suggests your mode’s fix.',
+  new_9b: 'Readiness before a muscle’s first set, a joint-pain flag (no weight increase, swaps offered), and a diet phase in Settings.',
   new_8a: 'Dorian HIT lighter week (Settings): ~10 % less weight, 1–2 reps short of failure; progression picks up from your last normal session.',
   new_8b: 'Program: pick a routine and an empty day offers its next workout; the cycle shows on the day log and the calendar.',
   new_7a: 'Lyle cycles (Settings → Training mode): 6 or 8 weeks; two run-up weeks at ~82.5 % and ~92.5 % of your best, then add weight when the first set reaches the top of the range with reps to spare.',

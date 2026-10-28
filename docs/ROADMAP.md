@@ -85,7 +85,7 @@ calculation is local, incremental and lazy (no screen waits on history).
   recovery; exercise/rep-range changes only between cycles.
 - [x] **M18 Mesocycles** — A cycle on the calendar (week n of N), length changeable mid-cycle, deload/light
   week when due or on request; saved workouts as the cycle's sessions.
-- [ ] **M19 Feedback & readiness** — Performance and consistency measured from the log, diet phase (setting +
+- [x] **M19 Feedback & readiness** — Performance and consistency measured from the log, diet phase (setting +
   body-weight trend), one readiness tap per muscle before its first set, joint-pain flag. Cause first,
   then each mode's lever (Lyle: sets within 20–40, early run-up; Dorian: reorder the split, lighter
   week); swaps start from the new exercise's own history. Every suggestion shows its reason.
