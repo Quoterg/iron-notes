@@ -3,6 +3,7 @@ import { exportAll, importAll, validateBackup } from '../lib/backup';
 import { isoDate } from '../lib/calc';
 import { allSets, clearAll, importRows } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
+import { CYCLE_WEEKS, cycleWeek, DEFAULT_CYCLE, RUN_UP } from '../lib/lyle';
 import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
 import { open } from '../nav';
@@ -21,6 +22,39 @@ function Choice<T extends string>(p: { label: string; options: [T, string][]; va
         ))}
       </div>
     </>
+  );
+}
+
+/** Lyle mode's cycle: week n of N, its length, and starting the next one. */
+function Cycle() {
+  const c = settings.value.cycle;
+  const today = isoDate(new Date());
+  const week = c ? cycleWeek(c.start, today) : 0;
+  return (
+    <div class="cycle">
+      <p class="small">
+        <strong>{t('cycle')}:</strong>{' '}
+        {!c ? t('cycleNone') : week > c.weeks ? t('cycleDone') : t('cycleWeek', { n: week, N: c.weeks, phase: t(week <= RUN_UP.length ? 'runUp' : 'push') })}
+      </p>
+      {c && (
+        // Changeable mid-cycle: the start stays, only the push weeks get longer or shorter.
+        <Choice<'6' | '8'>
+          label={t('cycleLength')}
+          options={CYCLE_WEEKS.map((w) => [String(w) as '6' | '8', t('weeksN', { n: w })])}
+          value={String(c.weeks) as '6' | '8'}
+          onPick={(v) => void saveSettings({ cycle: { start: c.start, weeks: Number(v) } })}
+        />
+      )}
+      <button
+        class="btn wide"
+        onClick={() => {
+          if (c && week <= c.weeks && !confirm(t('startCycleQ', { n: week, N: c.weeks }))) return;
+          void saveSettings({ cycle: { start: today, weeks: c?.weeks ?? DEFAULT_CYCLE } });
+        }}
+      >
+        {t('startCycle')}
+      </button>
+    </div>
   );
 }
 
@@ -84,6 +118,7 @@ export default function Settings() {
           onPick={(mode) => void saveSettings({ mode })}
         />
         <p class="muted small">{t(s.mode === 'dorian' ? 'modeDorianHint' : s.mode === 'lyle' ? 'modeLyleHint' : 'modeStandardHint')}</p>
+        {s.mode === 'lyle' && <Cycle />}
         <button class="btn wide" onClick={() => open({ kind: 'muscles' })}>
           {t('muscles')}
         </button>

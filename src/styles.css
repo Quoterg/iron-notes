@@ -272,6 +272,7 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .mu-spark span { flex: 1; background: var(--accent); border-radius: 2px; opacity: 0.8; }
 .mu-spark span.zero { background: var(--muted); opacity: 0.3; }
 .target { margin: 12px 4px 0; }
+.cycle { margin: 8px 0; }
 .hint { margin: 8px 0; padding: 8px 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--accent); }
 .set-row .c { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 400; }
 .tick { width: 30px; height: 30px; margin: 0 4px; flex: none; accent-color: var(--accent); }

@@ -71,8 +71,8 @@ calculation is local, incremental and lazy (no screen waits on history).
 - [x] **M13 Muscle map** — Muscle groups per exercise (primary and secondary; how much a secondary
   muscle counts is decided with the modes); starter library mapped; editable per exercise.
 - [x] **M14 Modes & effort input** — Settings: Standard · Dorian HIT · Lyle effective reps. Dorian: warm-up
-  vs working set, one "reps after failure" counter (forced, rest-pause, drop). Lyle: RIR chips per set (remembered per
-  exercise). Effective reps per set (load-based: heavy sets count every rep; Standard mode estimates from e1RM)
+  vs working set, one "reps after failure" counter (forced, rest-pause, drop). Lyle: RIR chips per set (chosen
+  every set, never prefilled). Effective reps per set (load-based: heavy sets count every rep; Standard mode estimates from e1RM)
   computed and shown.
 - [x] **M15 Effective reps per muscle** — Per muscle per session and week vs the mode's goal (Dorian ≈20,
   Lyle 20–40), chips on the day log, a Muscles screen with weekly bars and history.
@@ -80,7 +80,7 @@ calculation is local, incremental and lazy (no screen waits on history).
   weight up; no rep target after a weight increase — a routine's own reps per set still apply),
   targets on planned sets and the logging screen with the reason; warm-up suggestions
   (50 % / 75 %); "trained again too soon" hint (< ~5 days).
-- [ ] **M17 Lyle progression** — Cycles of 6 weeks by default (Lyle's own 8 selectable): run-up weeks (80–85 %, 90–95 % of the best for the
+- [x] **M17 Lyle progression** — Cycles of 6 weeks by default (Lyle's own 8 selectable): run-up weeks (80–85 %, 90–95 % of the best for the
   rep range), then add weight when the first set hits the top of the range with ≥ 1 RIR; the next run-up is the
   recovery; exercise/rep-range changes only between cycles.
 - [ ] **M18 Mesocycles** — A cycle on the calendar (week n of N), length changeable mid-cycle, deload/light

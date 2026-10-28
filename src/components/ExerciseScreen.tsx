@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { MAX_RIR, setEffective } from '../lib/effective';
 import { DORIAN_TOP, dorianTargets, tooSoon, warmups, type Target } from '../lib/targets';
+import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } from '../lib/lyle';
 import { setsBetween } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
@@ -143,6 +144,16 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const workingDone = today.filter((s) => !s.planned && !s.warmup && s.reps! > 0).length;
   const target: Target | undefined = targets[workingDone];
   const seedOf = (tg: Target): WorkoutSet => ({ ...tg.prev, weight: tg.weight, reps: tg.reps });
+  // Lyle: one target for the exercise, from the cycle week and its first set last time.
+  const lyle = st.mode === 'lyle' && !!ex && fieldsOf(ex.type).includes('reps');
+  const cycle = st.cycle;
+  const week = lyle && cycle ? cycleWeek(cycle.start, date) : 0;
+  const lyleT = useMemo(() => {
+    if (!lyle || !counted || !ex) return null;
+    const range = repRange(ex);
+    const runUp = week >= 1 && week <= RUN_UP.length;
+    return lyleTarget(runUp ? week : 0, runUp ? bestForRange(counted, range.bottom, cycle!.start) : 0, lastFirstSet(counted, date), stepKg, range);
+  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start]);
 
   // Muscles trained in a main session less than ~5 days ago (Dorian HIT): read once per screen.
   const [soon, setSoon] = useState<ReturnType<typeof tooSoon>>([]);
@@ -166,9 +177,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   // Runs once, when the history first arrives (deliberately only on `all`; `filled` stops repeats).
   useEffect(() => {
     if (filled || !all) return;
-    const last = planned ?? (target ? seedOf(target) : today[today.length - 1] ?? prev[0]);
+    const lyleSeed = lyleT && !today.some((s) => !s.planned) ? ({ ...prev[0], weight: lyleT.weight, reps: lyleT.reps, rir: undefined } as WorkoutSet) : undefined;
+    const last = planned ?? (target ? seedOf(target) : lyleSeed ?? today[today.length - 1] ?? prev[0]);
     // Only into empty fields: on a slow phone the user may have typed before the history arrived.
-    if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec', 'rir']));
+    // Lyle mode: RIR is the progression signal, so it is chosen for every set, never prefilled.
+    if (last) setForm((f) => fillEmpty(f, toForm(last, st), lyle ? ['weight', 'reps', 'distance', 'min', 'sec'] : ['weight', 'reps', 'distance', 'min', 'sec', 'rir']));
     setFilled(true);
   }, [all]);
 
@@ -216,7 +229,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       // back-off set is lighter); reps after failure never carry over.
       const next = dorian && !s.warmup ? targets[workingDone + 1] : undefined;
       if (next) setForm((f) => ({ ...f, ...toForm(seedOf(next), st), comment: f.comment, after: '' }));
-      else setForm((f) => ({ ...f, after: '' }));
+      else setForm((f) => ({ ...f, after: '', rir: lyle ? '' : f.rir }));
       // In a superset: on to the next exercise; rest only after the round's last one.
       const step = nextInGroup(members, id);
       if (st.autoTimer && (!step || step.endOfRound)) startTimer(ex.rest ?? st.rest, st.timerSound);
@@ -304,6 +317,27 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
         {tab === 'records' && counted && <Records ex={ex} all={counted} st={st} />}
         {tab === 'track' && (
           <>
+            {lyle && !selected && cycle && week > cycle.weeks && <p class="hint small">{t('cycleDone')}</p>}
+            {lyle && !selected && lyleT && (
+              <p class="target small">
+                <strong>
+                  {week >= 1 && week <= (cycle?.weeks ?? 0) ? `${t('cycleWeek', { n: week, N: cycle!.weeks, phase: t(week <= RUN_UP.length ? 'runUp' : 'push') })} · ` : ''}
+                  {t('target')}: {fmtWeight(lyleT.weight, st)} × {lyleT.reps}
+                  {lyleT.why === 'runup' ? '' : '+'}
+                </strong>{' '}
+                <span class="muted">
+                  {lyleT.why === 'runup'
+                    ? t('lyleRunUp', { rir: week === 1 ? '2–3' : '1–2' })
+                    : lyleT.why === 'up'
+                      ? t('lyleUp', { reps: lyleT.prev!.reps!, rir: lyleT.prev!.rir! })
+                      : lyleT.why === 'grind'
+                        ? t('lyleGrind', { reps: lyleT.prev!.reps! })
+                        : lyleT.why === 'norir'
+                        ? t('lyleNoRir', { reps: lyleT.prev!.reps! })
+                        : t('lyleReps', { reps: lyleT.prev!.reps! })}
+                </span>
+              </p>
+            )}
             {dorian && !selected && target && (
               <p class="target small">
                 <strong>
