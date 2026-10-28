@@ -65,20 +65,22 @@ calculation is local, incremental and lazy (no screen waits on history).
 - [x] **M13 Muscle map** — Muscle groups per exercise (primary and secondary; how much a secondary
   muscle counts is decided with the modes); starter library mapped; editable per exercise.
 - [ ] **M14 Modes & effort input** — Settings: Standard · Dorian HIT · Lyle effective reps. Dorian: warm-up
-  vs working set, forced reps, negatives, rest-pause, drop sets. Lyle: RIR chips per set (remembered per
-  exercise). Effective reps per set computed and shown.
+  vs working set, one "reps after failure" counter (forced, rest-pause, drop). Lyle: RIR chips per set (remembered per
+  exercise). Effective reps per set (load-based: heavy sets count every rep; Standard mode estimates from e1RM)
+  computed and shown.
 - [ ] **M15 Effective reps per muscle** — Per muscle per session and week vs the mode's goal (Dorian ≈20,
   Lyle 20–40), chips on the day log, a Muscles screen with weekly bars and history.
 - [ ] **M16 Dorian progression** — Dynamic double progression per set (up to 12 reps, then that set's
-  weight up), targets on planned sets and the logging screen with the reason; warm-up suggestions
+  weight up; no rep target after a weight increase), targets on planned sets and the logging screen with the reason; warm-up suggestions
   (50 % / 75 %); "trained again too soon" hint (< ~5 days).
-- [ ] **M17 Lyle progression** — Cycles of 6–8 weeks: run-up weeks (80–85 %, 90–95 % of the best for the
-  rep range), then add weight when the first set hits the top of the range with ≥ 1 RIR; light week and
-  exercise/rep-range changes between cycles.
+- [ ] **M17 Lyle progression** — Cycles of 6 weeks by default (Lyle's own 8 selectable): run-up weeks (80–85 %, 90–95 % of the best for the
+  rep range), then add weight when the first set hits the top of the range with ≥ 1 RIR; the next run-up is the
+  recovery; exercise/rep-range changes only between cycles.
 - [ ] **M18 Mesocycles** — A cycle on the calendar (week n of N), length changeable mid-cycle, deload/light
   week when due or on request; saved workouts as the cycle's sessions.
-- [ ] **M19 Feedback & readiness** — Quick ratings after a muscle's last set (pump, soreness, joints,
-  performance); next session's sets adjusted within the mode's effective-rep range, and the change shown.
+- [ ] **M19 Feedback & readiness** — Performance measured from the log, one readiness tap per muscle before its
+  first set, joint-pain flag; each mode's own lever (Lyle: sets within 20–40; Dorian: rest days and
+  intensity), every change shown with its reason.
   Missed sessions or long gaps lower the next targets; fast recovery allows more.
 - [ ] **M20 Programs** — Dorian 4-day split and Lyle upper/lower (GBR-style) ready to start; a builder that
   makes a program from saved workouts and a weekly schedule.
