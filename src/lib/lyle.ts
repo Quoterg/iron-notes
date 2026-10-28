@@ -24,7 +24,7 @@ export function cycleWeek(start: string, date: string): number {
   return days < 0 ? 0 : Math.floor(days / 7) + 1;
 }
 
-const working = (s: WorkoutSet) => !s.warmup && !s.planned && s.reps! > 0 && s.weight! > 0;
+const working = (s: WorkoutSet) => !s.warmup && !s.planned && !s.deload && s.reps! > 0 && s.weight! > 0;
 
 /** Best weight lifted for at least the bottom of the range, from sets before `before` (the cycle start). */
 export function bestForRange(sets: readonly WorkoutSet[], bottom: number, before: string): number {

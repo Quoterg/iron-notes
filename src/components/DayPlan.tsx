@@ -1,6 +1,6 @@
 // The day's place in the cycle on the day log (a quiet lazy chunk): "Week 2 of 6 (run-up)" or "Lighter
 // week", and on an empty day the program's next workout, added with one tap.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import { nextProgramDay, phaseOn } from '../lib/cycle';
 import { t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
@@ -10,13 +10,12 @@ export default function DayPlan() {
   const st = settings.value;
   const d = date.value;
   const empty = !daySets.value.length;
-  const [ready, setReady] = useState(!!routines.value);
   useEffect(() => {
-    if (st.program && !routines.value) void import('../workout').then((w) => w.loadRoutines()).then(() => setReady(true));
+    if (st.program && !routines.value) void import('../workout').then((w) => w.loadRoutines());
   }, [st.program?.routineId]);
 
   const ph = phaseOn(st, d);
-  const routine: Routine | undefined = ready && st.program ? routines.value?.find((r) => r.id === st.program!.routineId) : undefined;
+  const routine: Routine | undefined = st.program ? routines.value?.find((r) => r.id === st.program!.routineId) : undefined;
   const next = empty ? nextProgramDay(routine, st.program?.lastDayId) : undefined;
   if (!ph && !next) return null;
   return (

@@ -7,8 +7,9 @@ import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById,
 
 /** Copies sets to `to` (new ids, in their order, after anything already logged there; comments not copied). */
 export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
+  const { redated } = await import('./lib/cycle');
   const copies = [...sets].sort(byOrder).map(
-    (s): WorkoutSet => ({ ...s, id: uid(), date: to, order: nextOrder(), comment: undefined, done: settings.value.markDone ? false : undefined }),
+    (s): WorkoutSet => ({ ...redated(s, to, settings.value.light), id: uid(), order: nextOrder(), comment: undefined, done: settings.value.markDone ? false : undefined }),
   );
   await db.putSets(copies);
   await afterWrite(copies);
@@ -90,6 +91,7 @@ export async function saveRoutine(r: Routine): Promise<void> {
 export async function removeRoutine(id: string): Promise<void> {
   await db.deleteRoutine(id);
   routines.value = (routines.value ?? []).filter((x) => x.id !== id);
+  if (settings.value.program?.routineId === id) await saveSettings({ program: undefined });
 }
 
 /** Logs a routine day into `d` as planned (not yet done) sets, after anything already there. */
@@ -111,7 +113,9 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
       [...last].map(async ([id]) => {
         const ex = exById.value.get(id)!;
         const step = wFromUser(ex.increment ?? defaultIncrement(u), u);
-        const base = previousWorkout((await allSetsOf(id)).filter(progressing), d);
+        // Last time's sets (one indexed read, done above) unless they are a lighter week's or the day's own.
+        const recent = last.get(id) ?? [];
+        const base = recent.length && recent[0].date < d && recent.every(progressing) ? recent : previousWorkout((await allSetsOf(id)).filter(progressing), d);
         last.set(id, light ? base.map((s) => lightSet(s, step)) : progressedSets(base, step, ex.repTop ?? DORIAN_TOP));
       }),
     );

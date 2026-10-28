@@ -45,6 +45,11 @@ export function lightTargets(last: readonly WorkoutSet[], stepKg: number): Targe
   return last.filter((s) => !s.warmup && s.reps! > 0).map((s) => ({ weight: lightSet(s, stepKg).weight ?? 0, reps: s.reps, why: 'light' as const, prev: s }));
 }
 
+/** A set copied to `to`: a lighter-week set stays one only when copied into a lighter week. */
+export function redated(s: WorkoutSet, to: string, light: Settings['light']): WorkoutSet {
+  return { ...s, date: to, deload: s.deload && inLight(light, to) ? true : undefined };
+}
+
 /** Sets that drive progression: done, not from a lighter week. */
 export const progressing = (s: WorkoutSet): boolean => !s.planned && !s.deload;
 

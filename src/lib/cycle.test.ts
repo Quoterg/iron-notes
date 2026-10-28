@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inLight, lightEnd, lightSet, lightTargets, nextProgramDay, phaseOn, progressing } from './cycle';
+import { inLight, lightEnd, lightSet, lightTargets, nextProgramDay, phaseOn, progressing, redated } from './cycle';
 import type { Routine, WorkoutSet } from './model';
 
 describe('phases', () => {
@@ -31,6 +31,15 @@ describe('lighter week', () => {
     expect(lightSet({ weight: 105, reps: 8 }, 2.5).weight).toBe(92.5);
     expect(lightSet({ weight: 50, reps: 10, warmup: true }, 2.5).weight).toBe(50);
     expect(lightSet({ weight: 0, reps: 12 }, 2.5).weight).toBe(0);
+    expect(lightSet({ weight: 1, reps: 12 }, 1).weight).toBe(1); // 0.9 rounds down to 0: the weight itself
+  });
+  it('a copied lighter-week set stays one only inside a lighter week', () => {
+    const s: WorkoutSet = { id: 'a', date: '2026-10-29', exerciseId: 'e', order: 1, weight: 90, reps: 10, rir: 1, deload: true };
+    const light = { start: '2026-10-29' };
+    expect(redated(s, '2026-11-12', light)).toMatchObject({ date: '2026-11-12', deload: undefined });
+    expect(progressing(redated(s, '2026-11-12', light))).toBe(true);
+    expect(redated(s, '2026-10-30', light).deload).toBe(true);
+    expect(redated({ ...s, deload: undefined }, '2026-10-30', light).deload).toBeUndefined();
   });
   it('targets per working set of the last normal session', () => {
     const last: WorkoutSet[] = [
