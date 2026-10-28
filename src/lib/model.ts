@@ -87,6 +87,8 @@ export interface WorkoutSet {
   after?: number;
   /** A warm-up set: no effective reps. */
   warmup?: true;
+  /** Logged in a Dorian lighter week: not used for progression targets. */
+  deload?: true;
 }
 
 /** A planned set of a routine (values in stored units; missing values are filled in when logging). */
@@ -162,6 +164,10 @@ export interface Settings {
   plates?: { unit: WeightUnit; bar: number; sizes: number[] };
   /** Lyle mode's current cycle: first day (YYYY-MM-DD) and length in weeks (2 run-up + the rest push). */
   cycle?: { start: string; weeks: number };
+  /** Dorian HIT's lighter week (7 days from `start`). */
+  light?: { start: string };
+  /** The program: a routine whose workouts rotate; the last one logged from it. */
+  program?: { routineId: string; lastDayId?: string };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
