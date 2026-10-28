@@ -277,6 +277,13 @@ export const later = {
   addWorkout: 'Add workout',
   workoutAdded: '“{name}” added: fill in the sets as you go.',
   nothingToSave: 'This day has no exercises to save yet.',
+  repTop: 'Top of rep range (progression)',
+  targetSet: 'Set {n} target',
+  targetBeat: '{reps} reps last time: beat it',
+  targetUp: '{reps} reps last time (top {top} reached): weight up, go to failure',
+  warmupsHint: 'Warm-ups',
+  tooSoon: '{muscle} was trained {n} days ago. Dorian rests a muscle about a week.',
+  tooSoon1: '{muscle} was trained yesterday. Dorian rests a muscle about a week.',
 } as const;
 
 setLater(later);

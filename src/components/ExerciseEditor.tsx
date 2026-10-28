@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
+import { DORIAN_TOP } from '../lib/targets';
 import { t, type Key } from '../lib/i18n';
 import { typeName } from '../lib/strings-later';
 import { TYPES, type Exercise, type ExerciseType, type Muscles } from '../lib/model';
@@ -19,6 +20,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [type, setType] = useState<ExerciseType>(old?.type ?? 'weight,reps');
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
+  const [repTop, setRepTop] = useState(old?.repTop != null ? String(old.repTop) : '');
   const [notes, setNotes] = useState(old?.notes ?? '');
   // Edited muscles; until then an existing exercise shows (and keeps) its own, a new one its name's defaults.
   const [muscles, setMuscles] = useState<Muscles | undefined>(old?.muscles);
@@ -36,6 +38,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
     if (exercises.value.some((x) => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return setError(t('nameTaken'));
     const inc = parseFloat(increment.replace(',', '.'));
     const r = parseInt(rest, 10);
+    const top = parseInt(repTop, 10);
     const ex: Exercise = {
       ...old, // fields this form doesn't edit (e.g. favourite) stay
       id: id ?? uid(),
@@ -46,6 +49,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       muscles: muscles ?? (old ? old.muscles : defaultMuscles(n)),
       increment: inc > 0 ? inc : undefined,
       rest: r > 0 ? r : undefined,
+      repTop: top > 0 ? Math.min(top, 100) : undefined,
     };
     await saveExercise(ex);
     // A new exercise from "Add exercise" goes straight to logging it.
@@ -101,6 +105,12 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
           <label>
             {t('increment')} ({st.unit})
             <input type="text" inputMode="decimal" placeholder={num(defaultIncrement(st.unit))} value={increment} onInput={(e) => setIncrement(e.currentTarget.value)} />
+          </label>
+        )}
+        {(used ? old!.type : type).includes('reps') && (
+          <label>
+            {t('repTop')}
+            <input type="text" inputMode="numeric" placeholder={String(DORIAN_TOP)} value={repTop} onInput={(e) => setRepTop(e.currentTarget.value)} />
           </label>
         )}
         <label>

@@ -55,6 +55,8 @@ export function plannedSets(day: RoutineDay, date: string, lastSets: (exerciseId
         time: p.time ?? last?.time,
         done: false,
         planned: true,
+        // A warm-up stays a warm-up (Dorian HIT), so filling it in doesn't count it as a working set.
+        warmup: last?.warmup && i < prev.length ? true : undefined,
         group,
       });
     });
