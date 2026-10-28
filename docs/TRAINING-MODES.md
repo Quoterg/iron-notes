@@ -145,35 +145,64 @@ costs recovery, not growth).
   Lyle: "run-up week 2: 92.5 kg × 8, stop at 2–3 RIR").
 - **After a muscle's last set:** quick ratings (pump, soreness since last time, joints, performance).
 
-## Feedback and autoregulation (M19) — proposal to discuss
+## Feedback and autoregulation (M19) — proposal, revised with the owner
 
 RP asks after every session about pump, soreness, joints and workload, and adds sets from that on a
-schedule. Two problems: soreness rated *after* a session says little about recovery, and adding sets
-is the only lever. Proposal — measure first, ask little, and use each mode's own lever:
+schedule. Soreness rated *after* a session says little about recovery, adding sets is its only lever,
+and it doesn't ask *why* performance changed. Iron Notes: measure first, ask little, find the cause
+before suggesting anything, and use each mode's own lever. Every suggestion is shown with its reason
+and can be dismissed.
 
-1. **Performance is measured, not asked.** For each exercise the app already knows whether the set
-   beat, matched or fell short of last time (reps at weight, or e1RM). That is the main signal.
-2. **Readiness is asked before, not after.** When a muscle's first set of the day is logged: one tap
-   "Recovered? · fresh · a bit sore · still sore". Plus "joint pain" as a flag on an exercise when
-   needed. Nothing else (no pump rating: it doesn't predict growth).
-3. **Rules per mode, every change shown with its reason:**
-   - **Lyle mode** (lever: sets within 20–40 effective reps). Progressing → keep the volume ("progression
-     is what keeps you growing"). Stalled 2 sessions while fresh → +1 set next session (up to 40).
-     Still sore or performance down → −1 set (down to 20). Down 2 sessions in a row → suggest starting
-     the next cycle's run-up early.
-   - **Dorian HIT** (lever: rest and intensity; volume stays 1 set per exercise). Still sore → suggest
-     moving that muscle's day back a day. Stalled 2 sessions → check ≥ 7 days between direct sessions
-     and drop the after-failure reps for that muscle for a session. Down 2 sessions → suggest a few days
-     off.
-   - **Joint pain** in either mode → keep the weight (no increase) and suggest swapping the exercise
-     (Lyle: at the next cycle).
-4. **Missed sessions / long gaps:** more than ~10 days since a muscle's last direct session → next
-   targets start a step lower (Lyle: back to run-up week 2 weights; Dorian: last weight, no rep goal).
+### Signals
+
+1. **Performance (measured):** per exercise, beat / matched / below last time (reps at the same weight,
+   else e1RM).
+2. **Consistency (measured):** days since the muscle's last direct session, sessions missed against
+   the plan.
+3. **Diet phase (one setting):** Building · Maintaining · Cutting, plus the body-weight trend from the
+   Body screen (falling ≥ ~0.5 %/week counts as cutting even if not set).
+4. **Readiness (one tap, before training):** when a muscle's first set of the day is logged — fresh ·
+   a bit sore · still sore.
+5. **Joint pain (flag on an exercise, when needed).**
+
+### Still sore (before training)
+
+- **Dorian HIT:** suggest doing the **next workout of the split instead** (its muscles are recovered)
+  and moving the sore muscle's workout one slot later — e.g. chest still sore on chest day → do legs
+  today, chest next session. If every remaining workout hits a sore muscle: a rest day.
+- **Lyle mode:** the session goes ahead; that muscle gets −1 set (not below 20 effective reps).
+
+### Joint pain
+
+- Stop progressing the load on that exercise (no weight increase while flagged).
+- Offer a **swap to another exercise for the same primary muscle**. The new exercise starts from its
+  **own** history — its last weights — never the old exercise's weight. Never done before: the first
+  session is a baseline (Dorian: to failure with a weight you choose, the result becomes the target;
+  Lyle: a feeler session at ~2–3 RIR, the cycle continues from there).
+- Lyle mode keeps exercise changes for the next cycle unless the joint flag is on (pain overrides).
+
+### Getting weaker (below last time for 2 sessions)
+
+Find the cause first — days off are rarely the answer:
+
+| Cause (how the app sees it) | Suggestion |
+|---|---|
+| **Inconsistent** — long gap or missed sessions | Not a recovery problem: no rest. Restart one step lower (Lyle: run-up week 2 weights; Dorian: last weight that was beaten) and build back. |
+| **Cutting** — phase set, or body weight falling | Expected. The goal becomes holding strength: holding the weight counts as success, weight increases aren't pushed. Lyle: volume down toward 20 effective reps, intensity kept (Lyle: on a diet cut volume up to ~⅔, keep the load). Dorian: unchanged — one heavy set already is the low-volume, high-intensity setup. |
+| **One exercise only**, the rest progress | Exercise-specific: check the joint flag; suggest a variation at the next opportunity (Lyle: next cycle). |
+| **Consistent, not cutting, several muscles down** — real fatigue | Lyle: start the next cycle's run-up now (his built-in reset). Dorian: one lighter week — same workouts, ~10 % less weight, stop 1–2 reps short of failure — then back to all-out. Days off only if chosen. |
+
+### Stalled (matched, not beaten, 2 sessions)
+
+- **Lyle mode:** fresh → +1 set (up to 40); still sore → leave the volume, it's recovery.
+- **Dorian HIT:** check ≥ 7 days between direct sessions (if less, suggest spacing); otherwise add one
+  rep after failure (forced or rest-pause) on the last set for a session or two.
 
 ## Questions to settle together
 
-1. **Feedback proposal above** — right levers? Too much or too little to tap?
-2. **Lyle cycle:** 6 weeks as 2 run-up + 4 push (chosen default), or 6 push weeks after the run-up?
+1. **Dorian lighter week** (~10 % less, 1–2 short of failure) as the reset for real fatigue — OK, or
+   would you rather keep failure and just drop the weight?
+2. **Lyle cycle:** 6 weeks as 2 run-up + 4 push (default), or 6 push weeks after the run-up?
 3. **Too soon in Dorian HIT:** < 5 days between direct sessions OK as the hint threshold?
 
 ## Sources
