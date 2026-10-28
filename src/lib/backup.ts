@@ -50,7 +50,7 @@ const validSet = (s: WorkoutSet) =>
   isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
   optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) && optStr(s.group) &&
   (s.done === undefined || typeof s.done === 'boolean') && (s.planned === undefined || s.planned === true) &&
-  optNum(s.rir) && optNum(s.after) && (s.warmup === undefined || s.warmup === true);
+  optNum(s.rir) && optNum(s.after) && (s.warmup === undefined || s.warmup === true) && (s.deload === undefined || s.deload === true);
 const validPlanned = (p: Routine['days'][number]['items'][number]['sets'][number]) =>
   !!p && typeof p === 'object' && optNum(p.weight) && optNum(p.reps) && optNum(p.distance) && optNum(p.time);
 const validRoutine = (r: Routine) =>
@@ -88,6 +88,9 @@ export function validateBackup(b: unknown): Backup {
     for (const k of ['autoTimer', 'timerSound', 'markDone', 'keepScreenOn'] as const) if (typeof st[k] === 'boolean') settings[k] = st[k]!;
     const c = st.cycle;
     if (c && typeof c.start === 'string' && DATE.test(c.start) && (c.weeks === 6 || c.weeks === 8)) settings.cycle = { start: c.start, weeks: c.weeks };
+    if (st.light && typeof st.light.start === 'string' && DATE.test(st.light.start)) settings.light = { start: st.light.start };
+    const pr = st.program;
+    if (pr && isStr(pr.routineId)) settings.program = { routineId: pr.routineId, lastDayId: isStr(pr.lastDayId) ? pr.lastDayId : undefined };
     const p = st.plates;
     // Same limits as the calculator's own editor (an absurd plate set could freeze it).
     const clean = p && (p.unit === 'kg' || p.unit === 'lb') && Array.isArray(p.sizes) && p.sizes.every(isNum) ? cleanPlates(p.bar, p.sizes) : null;

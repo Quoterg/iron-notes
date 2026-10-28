@@ -22,6 +22,7 @@ function withWorkout(run: (w: typeof import('../workout')) => Promise<unknown>) 
 /** The tools bar under the day: not needed to show it, so it loads right after the first paint. */
 export const dayTools = lazyView(() => import('./DayTools'), { quiet: true });
 const dayMuscles = lazyView(() => import('./DayMuscles'), { quiet: true });
+const dayPlan = lazyView(() => import('./DayPlan'), { quiet: true });
 
 export function Log() {
   const d = date.value;
@@ -49,6 +50,7 @@ export function Log() {
 
   return (
     <>
+      {settings.value.mode !== 'standard' || settings.value.program ? <dayPlan.Lazy /> : null}
       {dayComment.value && (
         <button class="card comment-card" onClick={() => open({ kind: 'comment', date: d })} aria-label={t('editComment')}>
           <span class="muted small">{t('workoutComment')}</span>

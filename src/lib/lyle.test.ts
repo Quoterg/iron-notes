@@ -46,6 +46,7 @@ describe('history helpers', () => {
     set({ date: '2026-09-20', weight: 110, reps: 5 }), // below the range: not a best for 6–8
     set({ date: '2026-09-22', weight: 100, reps: 7 }),
     set({ date: '2026-09-24', weight: 120, reps: 8, warmup: true }),
+    set({ date: '2026-09-25', weight: 130, reps: 8, deload: true }), // a lighter week never sets the best
     set({ date: '2026-10-27', weight: 85, reps: 8, rir: 3 }),
     set({ date: '2026-10-29', weight: 90, reps: 8, rir: 2 }),
     set({ date: '2026-10-29', weight: 90, reps: 7, rir: 1 }),

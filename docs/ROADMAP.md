@@ -83,7 +83,7 @@ calculation is local, incremental and lazy (no screen waits on history).
 - [x] **M17 Lyle progression** — Cycles of 6 weeks by default (Lyle's own 8 selectable): run-up weeks (80–85 %, 90–95 % of the best for the
   rep range), then add weight when the first set hits the top of the range with ≥ 1 RIR; the next run-up is the
   recovery; exercise/rep-range changes only between cycles.
-- [ ] **M18 Mesocycles** — A cycle on the calendar (week n of N), length changeable mid-cycle, deload/light
+- [x] **M18 Mesocycles** — A cycle on the calendar (week n of N), length changeable mid-cycle, deload/light
   week when due or on request; saved workouts as the cycle's sessions.
 - [ ] **M19 Feedback & readiness** — Performance and consistency measured from the log, diet phase (setting +
   body-weight trend), one readiness tap per muscle before its first set, joint-pain flag. Cause first,

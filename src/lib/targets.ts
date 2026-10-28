@@ -16,8 +16,9 @@ export interface Target {
   weight: number;
   /** Reps to reach (one more than last time), or none right after a weight increase. */
   reps?: number;
-  /** 'up': last time reached the top, so the weight goes up; 'beat': beat last time's reps. */
-  why: 'up' | 'beat';
+  /** 'up': last time reached the top, so the weight goes up; 'beat': beat last time's reps; 'light': a
+   *  lighter-week set (~10 % less, stop short of failure). */
+  why: 'up' | 'beat' | 'light';
   /** The same set last time. */
   prev: WorkoutSet;
 }
