@@ -1,9 +1,9 @@
 // The logging screen's feedback card (Dorian HIT / Lyle): when an exercise got weaker or stalled over its
 // last sessions, find the cause first (a long gap, a cut, only this exercise, or real fatigue) and suggest
 // the mode's own lever, with one tap where there is one. Reads more only when there is something to say.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addDays } from '../lib/calc';
-import { causeOf, daysBetween, isCutting, longestGap, sessions, trendOf, weeklyRate, type Cause } from '../lib/feedback';
+import { causeOf, daysBetween, isCutting, longestGap, sessions, stalledAdvice, trendOf, weakerAdvice, weeklyRate } from '../lib/feedback';
 import { entriesOf, getMetrics, setsBetween } from '../lib/db';
 import { t } from '../lib/i18n';
 import type { Exercise, WorkoutSet } from '../lib/model';
@@ -14,11 +14,13 @@ export function Feedback({ ex, date, counted }: { ex: Exercise; date: string; co
   const mode = st.mode;
   // Lyle: only the push weeks of the running cycle compare (run-up weeks are lighter on purpose).
   const since = mode === 'lyle' && st.cycle && st.cycle.start <= date ? addDays(st.cycle.start, 14) : '';
-  const list = sessions(counted.filter((s) => s.date < date), st.formula, since);
-  const trend = trendOf(list);
+  // Once per history change, not per keystroke in the form above.
+  const list = useMemo(() => sessions(counted.filter((s) => s.date < date), st.formula, since), [counted, date, st.formula, since]);
+  const trend = useMemo(() => trendOf(list), [list]);
   const [ctx, setCtx] = useState<{ cutting: boolean; othersWeaker: number } | null>(null);
 
   useEffect(() => {
+    setCtx(null); // never the previous exercise's (or day's) cause while the reads run
     if (trend !== 'weaker' && trend !== 'stalled') return;
     let live = true;
     void (async () => {
@@ -36,7 +38,7 @@ export function Feedback({ ex, date, counted }: { ex: Exercise; date: string; co
     return () => {
       live = false;
     };
-  }, [ex.id, date, trend, st.diet, mode]);
+  }, [ex.id, date, trend, st.diet, mode, st.formula, since]);
 
   if (mode === 'standard' || (trend !== 'weaker' && trend !== 'stalled') || !ctx) return null;
   const lyle = mode === 'lyle';
@@ -44,28 +46,13 @@ export function Feedback({ ex, date, counted }: { ex: Exercise; date: string; co
   if (trend === 'stalled') {
     const last = list[list.length - 1];
     const spacing = list.length > 1 ? daysBetween(list[list.length - 2].date, last.date) : 7;
-    const text = ctx.cutting
-      ? t('fbStalledCut')
-      : lyle
-        ? last.sore === 2
-          ? t('fbStalledLyleSore')
-          : t('fbStalledLyle')
-        : spacing < 7
-          ? t('fbStalledDorianSpacing', { n: spacing })
-          : t('fbStalledDorian');
-    return <p class="hint small">{text}</p>;
+    return <p class="hint small">{t(stalledAdvice({ lyle, cutting: ctx.cutting, lastSore: last.sore, spacing }), { n: spacing })}</p>;
   }
 
-  const cause: Cause = causeOf({ gapDays: longestGap(list), cutting: ctx.cutting, othersWeaker: ctx.othersWeaker });
-  const key = {
-    inconsistent: 'fbInconsistent',
-    cutting: lyle ? 'fbCuttingLyle' : 'fbCuttingDorian',
-    exercise: lyle ? 'fbExerciseLyle' : 'fbExerciseDorian',
-    fatigue: lyle ? 'fbFatigueLyle' : 'fbFatigueDorian',
-  } as const;
+  const cause = causeOf({ gapDays: longestGap(list), cutting: ctx.cutting, othersWeaker: ctx.othersWeaker });
   return (
     <div class="hint small">
-      <p>{t(key[cause], { n: longestGap(list) })}</p>
+      <p>{t(weakerAdvice(cause, lyle), { n: longestGap(list) })}</p>
       {cause === 'fatigue' && (
         <button
           class="btn small"

@@ -27,7 +27,8 @@ export function sessions(sets: readonly WorkoutSet[], formula: 'epley' | 'brzyck
   const by = new Map<string, Session>();
   for (const s of sets) {
     if (s.planned || s.warmup || s.deload || s.date < since || !(s.reps! > 0)) continue;
-    // Body-weight sets score by reps.
+    // Body-weight sets score by reps. An exercise that switches between body weight and added weight
+    // (weighted pull-ups later on) compares different scales across the switch: an accepted edge case.
     const score = s.weight! > 0 ? oneRM(s.weight!, s.reps!, formula) : s.reps!;
     const x = by.get(s.date) ?? by.set(s.date, { date: s.date, score: 0 }).get(s.date)!;
     x.score = Math.max(x.score, score);
@@ -90,6 +91,23 @@ export function weeklyRate(entries: readonly BodyEntry[], today: string, days = 
     den += (x - mx) ** 2;
   }
   return den ? ((num / den) * 7) / my : null;
+}
+
+/** The suggestion for a stalled exercise (string key), by the design's rules. */
+export function stalledAdvice(i: { lyle: boolean; cutting: boolean; lastSore?: number; spacing: number }): 'fbStalledCut' | 'fbStalledLyle' | 'fbStalledLyleSore' | 'fbStalledDorian' | 'fbStalledDorianSpacing' {
+  if (i.cutting) return 'fbStalledCut';
+  if (i.lyle) return i.lastSore === 2 ? 'fbStalledLyleSore' : 'fbStalledLyle';
+  return i.spacing < 7 ? 'fbStalledDorianSpacing' : 'fbStalledDorian';
+}
+
+/** The suggestion for an exercise that got weaker, by cause and mode. */
+export function weakerAdvice(cause: Cause, lyle: boolean) {
+  return ({
+    inconsistent: 'fbInconsistent',
+    cutting: lyle ? 'fbCuttingLyle' : 'fbCuttingDorian',
+    exercise: lyle ? 'fbExerciseLyle' : 'fbExerciseDorian',
+    fatigue: lyle ? 'fbFatigueLyle' : 'fbFatigueDorian',
+  } as const)[cause];
 }
 
 /** Cutting: set as the diet phase, or body weight falling ≥ 0.5 % a week. */
