@@ -3,6 +3,7 @@
 import { useEffect } from 'preact/hooks';
 import { nextProgramDay, phaseOn } from '../lib/cycle';
 import { t } from '../lib/i18n';
+import { isTrainingDay } from '../lib/programs';
 import type { Routine } from '../lib/model';
 import { date, daySets, routines, settings } from '../state';
 
@@ -17,6 +18,7 @@ export default function DayPlan() {
   const ph = phaseOn(st, d);
   const routine: Routine | undefined = st.program ? routines.value?.find((r) => r.id === st.program!.routineId) : undefined;
   const next = empty ? nextProgramDay(routine, st.program?.lastDayId) : undefined;
+  const rest = !!next && !isTrainingDay(st.program?.weekdays, d);
   if (!ph && !next) return null;
   return (
     <div class="day-plan">
@@ -25,8 +27,9 @@ export default function DayPlan() {
           {ph.phase === 'light' ? t('lightWeek') : t('cycleWeek', { n: ph.week!, N: ph.weeks!, phase: t(ph.phase === 'runup' ? 'runUp' : 'push') })}
         </p>
       )}
+      {rest && <p class="muted small">{t('restDay')}</p>}
       {next && (
-        <button class="btn primary wide" onClick={() => void import('../workout').then((w) => w.logRoutineDay(next, d))}>
+        <button class={rest ? 'btn wide' : 'btn primary wide'} onClick={() => void import('../workout').then((w) => w.logRoutineDay(next, d))}>
           {t('nextWorkout', { day: next.name, routine: routine!.name })}
         </button>
       )}

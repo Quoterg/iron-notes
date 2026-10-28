@@ -357,6 +357,19 @@ export const later = {
   fbStalledLyleSore: 'No new best for two sessions, but you were still sore: keep the volume; that is recovery.',
   fbStalledDorian: 'No new best for two sessions: add one rep after failure (forced or rest-pause) on the last set for a session or two.',
   fbStalledDorianSpacing: 'No new best for two sessions, only {n} days apart: give these muscles about a week between sessions.',
+  programs: 'Programs',
+  readyToStart: 'Ready to start',
+  tplDorian: 'Dorian 4-day split',
+  tplDorianHint: 'Dorian Yates’ split: chest & biceps, legs, delts/traps/triceps, back & rear delts. One all-out set per exercise after warm-ups; each muscle about once a week. Switches to Dorian HIT.',
+  tplLyle: 'Lyle’s upper/lower (GBR)',
+  tplLyleHint: 'Lyle McDonald’s Generic Bulking Routine: lower and upper twice a week; 3 × 6–8 main lifts, 2 × 10–12 secondary, 2 × 12–15 arms. Switches to Lyle effective reps and starts a cycle.',
+  startProgram: 'Start',
+  replaceProgramQ: 'Replace your current program? Your logged workouts stay.',
+  programStarted: '“{name}” started.',
+  programStartedMissing: '“{name}” started without {n} exercises that aren’t in your library: {list}.',
+  yourProgram: 'Your program',
+  trainingDays: 'Training days',
+  restDay: 'Rest day in your program.',
 } as const;
 
 setLater(later);

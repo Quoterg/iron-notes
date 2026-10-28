@@ -273,6 +273,9 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .mu-spark span.zero { background: var(--muted); opacity: 0.3; }
 .target { margin: 12px 4px 0; }
 .cycle { margin: 8px 0; }
+.program { padding: 8px 0; border-top: 1px solid var(--card-border); }
+.program:first-of-type { border-top: 0; }
+.program h3 { margin: 0 0 4px; font-size: 1rem; }
 .day-plan { margin: 0 0 12px; display: flex; flex-direction: column; gap: 8px; }
 .phase { margin: 0; color: var(--muted); --ph: var(--muted); }
 .phase.push, .ph-push { --ph: var(--accent); }

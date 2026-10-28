@@ -171,7 +171,7 @@ export interface Settings {
   /** Dorian HIT's lighter week (7 days from `start`). */
   light?: { start: string };
   /** The program: a routine whose workouts rotate; the last one logged from it. */
-  program?: { routineId: string; lastDayId?: string };
+  program?: { routineId: string; lastDayId?: string; weekdays?: number[] };
   /** Diet phase: a cut makes holding the weight a success (feedback). Unset = maintaining. */
   diet?: 'build' | 'maintain' | 'cut';
 }
