@@ -19,6 +19,7 @@ export const routinesView = lazyView(() => import('./components/Routines'));
 export const saveWorkoutView = lazyView(() => import('./components/SaveWorkoutSheet'));
 export const bodyView = lazyView(() => import('./components/Body'));
 export const analysisView = lazyView(() => import('./components/Analysis'));
+export const musclesView = lazyView(() => import('./components/Muscles'));
 export const toolsView = lazyView(() => import('./components/Tools'));
 export const whatsNewView = lazyView(() => import('./components/WhatsNew'));
 export const metricView = lazyView(() => import('./components/MetricSheet'));
@@ -103,6 +104,8 @@ function ScreenView({ screen: s }: { screen: Screen }) {
       return <toolsView.Lazy weight={s.weight} />;
     case 'analysis':
       return <analysisView.Lazy />;
+    case 'muscles':
+      return <musclesView.Lazy />;
     case 'metric':
       return <metricView.Lazy id={s.id} />;
     case 'saveWorkout':

@@ -84,6 +84,9 @@ export default function Settings() {
           onPick={(mode) => void saveSettings({ mode })}
         />
         <p class="muted small">{t(s.mode === 'dorian' ? 'modeDorianHint' : s.mode === 'lyle' ? 'modeLyleHint' : 'modeStandardHint')}</p>
+        <button class="btn wide" onClick={() => open({ kind: 'muscles' })}>
+          {t('muscles')}
+        </button>
       </section>
 
       <section class="card">

@@ -8,11 +8,25 @@
 - **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
   (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
 - Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
-- Next: **M15 Effective reps per muscle** (day-log chips, main session vs extra work, Muscles screen).
+- Next: **M17 Lyle progression** (6-week cycles: 2 run-up + 4 push; add weight when the first set hits the
+  top of the range with ≥ 1 RIR).
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-29 — M15 Effective reps per muscle
+
+- `lib/volume.ts`: goals per mode (Dorian 20, in range to 30; Lyle 20–40; Standard none), per-session
+  muscle totals (direct, indirect at 0.5, main session ≥ half the goal), week starts by setting, per-week
+  totals with main sessions.
+- `effort.ts` (lazy): effective reps of any sets, estimates from each exercise's best e1RM over its cached
+  history (warm-ups excluded) — same numbers as the logging screen.
+- Day log: quiet lazy `DayMuscles` under the summary — `Chest 26/20` (status colour), `Triceps +8 extra`;
+  tap → Muscles. Indirect-only muscles only on the Muscles screen.
+- Muscles sheet (Settings → Training mode → Muscles, or the day chips): this week's bars per muscle with
+  main sessions (weekday + reps, coloured vs goal), last 8 weeks as mini bars. One `setsBetween` read.
+- Checks: 166 unit tests, 22 e2e (new volume.spec), initial JS 20.1 KB, CSS 4.4 KB, Lighthouse passes.
 
 ## 2026-10-29 — M16 Dorian progression
 

@@ -21,6 +21,7 @@ function withWorkout(run: (w: typeof import('../workout')) => Promise<unknown>) 
 }
 /** The tools bar under the day: not needed to show it, so it loads right after the first paint. */
 export const dayTools = lazyView(() => import('./DayTools'), { quiet: true });
+const dayMuscles = lazyView(() => import('./DayMuscles'), { quiet: true });
 
 export function Log() {
   const d = date.value;
@@ -72,6 +73,7 @@ export function Log() {
             {groups.size} {t('exercises').toLowerCase()} · {totals.sets} {t('sets')}
             {totals.volume > 0 && ` · ${weight(totals.volume, s)} ${t('volume')}`}
           </p>
+          <dayMuscles.Lazy />
           {grouping && <p class="muted small center">{t('pickForSuperset')}</p>}
           {ids.map((id, i) => {
             const ex = exById.value.get(id)!;

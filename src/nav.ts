@@ -27,6 +27,8 @@ export type Screen =
   | { kind: 'whatsnew'; since: number }
   /** Training statistics. */
   | { kind: 'analysis' }
+  /** Effective reps per muscle group: this week and the last weeks. */
+  | { kind: 'muscles' }
   /** A body measure: entries, graph. */
   | { kind: 'metric'; id: string }
   /** Copy (part of) a previous workout into `date`. */
