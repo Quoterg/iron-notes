@@ -49,6 +49,8 @@ export interface Exercise {
   notes?: string;
   /** Weight step for the +/- buttons, in the user's weight unit. Default: 2.5 kg / 5 lb. */
   increment?: number;
+  /** Top of the rep range for progression (Dorian HIT: reach it, then the weight goes up). Default 12. */
+  repTop?: number;
   /** Rest timer length in seconds. Default: the setting. */
   rest?: number;
   /** Shown under Favourites at the top of the picker. */

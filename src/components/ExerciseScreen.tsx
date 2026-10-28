@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { MAX_RIR, setEffective } from '../lib/effective';
+import { DORIAN_TOP, dorianTargets, tooSoon, warmups, type Target } from '../lib/targets';
+import { setsBetween } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
 import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
-import { dFromUser, defaultIncrement, dToUser, num, setText, wFromUser, wToUser } from '../lib/units';
+import { dFromUser, defaultIncrement, dToUser, num, setText, weight as fmtWeight, wFromUser, wToUser } from '../lib/units';
 import { groupColors, groupMembers, groupOf, nextInGroup } from '../lib/groups';
 import { open, replaceTop } from '../nav';
 import { allSetsOf, catById, date as shownDate, daySets, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
@@ -51,7 +53,7 @@ function toForm(s: WorkoutSet, st: Settings, own = false): Form {
     // RIR carries over to the next set (remembered per exercise); after-failure reps and warm-up don't.
     rir: s.rir != null && !s.warmup ? String(Math.min(s.rir, MAX_RIR)) : '',
     after: own && s.after ? String(s.after) : '',
-    warmup: own && !!s.warmup,
+    warmup: (own || !!s.planned) && !!s.warmup,
   };
 }
 
@@ -132,13 +134,39 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const prev = counted ? previousWorkout(counted, date) : [];
   /** The next planned set of a routine logged today: Save fills it in. */
   const planned = today.find((s) => s.planned);
+  // Dorian HIT: each working set against the same set last time (double progression).
+  const dorian = st.mode === 'dorian' && !!ex && fieldsOf(ex.type).includes('reps');
+  const stepKg = ex ? wFromUser(ex.increment ?? defaultIncrement(st.unit), st.unit) : 0;
+  const top = ex?.repTop ?? DORIAN_TOP;
+  // `prev` is a new array each render: keyed on the history instead (targets change only with it).
+  const targets = useMemo(() => (dorian ? dorianTargets(prev, stepKg, top) : []), [counted, date, dorian, stepKg, top]);
+  const workingDone = today.filter((s) => !s.planned && !s.warmup && s.reps! > 0).length;
+  const target: Target | undefined = targets[workingDone];
+  const seedOf = (tg: Target): WorkoutSet => ({ ...tg.prev, weight: tg.weight, reps: tg.reps });
+
+  // Muscles trained in a main session less than ~5 days ago (Dorian HIT): read once per screen.
+  const [soon, setSoon] = useState<ReturnType<typeof tooSoon>>([]);
+  useEffect(() => {
+    if (!dorian || !ex?.muscles?.primary.length) return setSoon([]);
+    let live = true;
+    const from = parseIso(date);
+    from.setDate(from.getDate() - 4);
+    const to = parseIso(date);
+    to.setDate(to.getDate() - 1);
+    void setsBetween(isoDate(from), isoDate(to)).then(
+      (sets) => live && setSoon(tooSoon(date, ex.muscles, sets, (x) => exById.value.get(x)?.muscles, (s) => setEffective(s, 0, st.formula).n)),
+    );
+    return () => {
+      live = false;
+    };
+  }, [id, date, dorian, ex?.muscles, st.formula]);
 
   // Start from the last set logged (today, else last time), like a paper log.
   const [filled, setFilled] = useState(false);
   // Runs once, when the history first arrives (deliberately only on `all`; `filled` stops repeats).
   useEffect(() => {
     if (filled || !all) return;
-    const last = planned ?? today[today.length - 1] ?? prev[0];
+    const last = planned ?? (target ? seedOf(target) : today[today.length - 1] ?? prev[0]);
     // Only into empty fields: on a slow phone the user may have typed before the history arrived.
     if (last) setForm((f) => fillEmpty(f, toForm(last, st), ['weight', 'reps', 'distance', 'min', 'sec', 'rir']));
     setFilled(true);
@@ -184,6 +212,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
       if (counted!.some((x) => x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
+      // Dorian HIT: after a working set the form moves on to the next set's target (a reverse pyramid's
+      // back-off set is lighter); reps after failure never carry over.
+      const next = dorian && !s.warmup ? targets[workingDone + 1] : undefined;
+      if (next) setForm((f) => ({ ...f, ...toForm(seedOf(next), st), comment: f.comment, after: '' }));
+      else setForm((f) => ({ ...f, after: '' }));
       // In a superset: on to the next exercise; rest only after the round's last one.
       const step = nextInGroup(members, id);
       if (st.autoTimer && (!step || step.endOfRound)) startTimer(ex.rest ?? st.rest, st.timerSound);
@@ -245,6 +278,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
           </p>
         )}
         {ex.notes && <p class="ex-notes muted small">{ex.notes}</p>}
+        {soon.map((x) => (
+          <p key={x.muscle} class="hint small">
+            {t(x.days === 1 ? 'tooSoon1' : 'tooSoon', { muscle: t(`mu_${x.muscle}` as Key), n: x.days })}
+          </p>
+        ))}
         {members.length > 1 && (
           <div class="chips superset-bar" role="group" aria-label={t('superset')} style={{ borderColor: colors?.get(today[0]?.group ?? '') }}>
             {members.map((m) => (
@@ -266,6 +304,34 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
         {tab === 'records' && counted && <Records ex={ex} all={counted} st={st} />}
         {tab === 'track' && (
           <>
+            {dorian && !selected && target && (
+              <p class="target small">
+                <strong>
+                  {t('targetSet', { n: workingDone + 1 })}: {fmtWeight(target.weight, st)}
+                  {target.reps ? ` × ${target.reps}+` : ''}
+                </strong>{' '}
+                <span class="muted">
+                  {target.why === 'up'
+                    ? t('targetUp', { reps: target.prev.reps!, top: ex.repTop ?? DORIAN_TOP })
+                    : t('targetBeat', { reps: target.prev.reps! })}
+                </span>
+              </p>
+            )}
+            {dorian && !selected && workingDone === 0 && (target?.weight ?? 0) > 0 && (
+              <div class="chips" aria-label={t('warmupsHint')}>
+                <span class="muted small">{t('warmupsHint')}:</span>
+                {warmups(target!.weight, stepKg).map((w) => (
+                  <button
+                    key={w.reps}
+                    type="button"
+                    class="chip"
+                    onClick={() => setForm((f) => ({ ...f, weight: num(wToUser(w.weight, st.unit), 3), reps: String(w.reps), warmup: true, after: '' }))}
+                  >
+                    {fmtWeight(w.weight, st)} × {w.reps}
+                  </button>
+                ))}
+              </div>
+            )}
             <form
               class="card"
               onSubmit={(e) => {
@@ -285,7 +351,10 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 <>
                   <div class="chips" role="group" aria-label={t('warmup')}>
                     {[false, true].map((w) => (
-                      <button key={String(w)} type="button" class={form.warmup === w ? 'chip on' : 'chip'} aria-pressed={form.warmup === w} onClick={() => setForm((f) => ({ ...f, warmup: w }))}>
+                      <button key={String(w)} type="button" class={form.warmup === w ? 'chip on' : 'chip'} aria-pressed={form.warmup === w} onClick={() =>
+                          // Back to working sets after warm-ups: the form takes the set's target again.
+                          setForm((f) => (!w && f.warmup && target && !selected ? { ...f, ...toForm(seedOf(target), st), comment: f.comment, warmup: false } : { ...f, warmup: w }))
+                        }>
                         {t(w ? 'warmup' : 'working')}
                       </button>
                     ))}
