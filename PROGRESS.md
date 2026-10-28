@@ -6,11 +6,24 @@
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
 - **Brainstorm** docs/TRAINING-MODES.md (questions at the end) before M13–M16.
-- Next build milestone: **M11 Languages** (Swedish), or Phase 2 once the HIT questions are answered.
+- Next: **M5d Smart targets** once the owner picks progression methods (owner uses a reverse pyramid with
+  double progression: reps up to 12, then weight); HIT modes (M14–M16) once the HIT questions are answered.
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-28 — M5c Saved workouts
+
+- Day tools → **Save as workout**: name + folder (the routines are the folders; "My workouts" is created
+  when there are none). Stores the day's exercises in order with sets × reps (distance/time for those
+  types) and supersets — no weights (owner's choice).
+- **Add exercise** shows **Workouts** at the top (and in search results); one tap puts the whole workout
+  on the day as planned sets. Weights come from the exercise's last workout **set by set** (set 1 from
+  last time's set 1 …), so a reverse pyramid keeps its shape (`lastWorkoutSets`: two indexed reads).
+- A workout's supersets become fresh groups each time it's logged (or join the exercise's superset of
+  that day). Item groups validated in backups.
+- Checks: 128 unit tests, 18 e2e (new: save → add from the picker), Lighthouse 100/100/100, initial JS 19.9 KB.
 
 ## 2026-10-22 — M13 Muscle map
 

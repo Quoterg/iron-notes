@@ -5,6 +5,8 @@ import { computed, signal } from '@preact/signals';
 export type Screen =
   /** Pick an exercise to log on `date`, or (routine) to add to a routine day. */
   | { kind: 'pick'; date: string; routine?: { routineId: string; dayId: string } }
+  /** Save the shown day as a reusable workout. */
+  | { kind: 'saveWorkout' }
   /** A routine and its days. */
   | { kind: 'routine'; id: string }
   /** One day of a routine: its exercises and planned sets. */

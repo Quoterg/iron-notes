@@ -263,6 +263,18 @@ export const later = {
   effShort: '{n} eff.',
   effToday: 'Effective reps: {n}',
   rirShort: 'RIR {n}',
+  saveAsWorkout: 'Save as workout',
+  saveWorkoutHint: 'Saves the {n} exercises of this day in their order, with sets × reps and supersets. Weights aren’t saved: they come from your last time when you add the workout.',
+  workoutName: 'Name',
+  workoutNameExample: 'e.g. Push A',
+  folder: 'Folder',
+  newFolderMyWorkouts: 'New folder: My workouts',
+  myWorkouts: 'My workouts',
+  workoutSaved: 'Saved “{name}”.',
+  workoutsSection: 'Workouts',
+  addWorkout: 'Add workout',
+  workoutAdded: '“{name}” added: fill in the sets as you go.',
+  nothingToSave: 'This day has no exercises to save yet.',
 } as const;
 
 setLater(later);

@@ -374,3 +374,6 @@ fieldset.muscle-pick { border: 0; padding: 0; margin: 0 0 14px; }
 fieldset.muscle-pick legend { color: var(--muted); padding: 0; margin-bottom: 4px; }
 .chip.muscle.primary { background: var(--active); color: var(--active-text); border-color: var(--accent); font-weight: 600; }
 .chip.muscle.secondary { border-color: var(--accent); color: var(--accent); border-style: dashed; }
+
+/* Saved workouts in the picker (M5c). */
+.workout-row .entry-name b { font-weight: 600; }
