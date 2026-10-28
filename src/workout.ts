@@ -112,7 +112,7 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   const { groupOf } = await import('./lib/groups');
   const sameDay = d === date.value ? daySets.value : await db.setsOn(d);
   // Sets of an exercise already in a superset that day join it.
-  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id) ?? [], nextOrder).map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) ?? s.group }));
+  const sets = plannedSets({ ...day, items }, d, (id) => last.get(id) ?? [], nextOrder, settings.value.mode === 'dorian').map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) ?? s.group }));
   if (!sets.length) return;
   await db.putSets(sets);
   if (d !== date.value) date.value = d;

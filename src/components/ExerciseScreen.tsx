@@ -137,7 +137,9 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   // Dorian HIT: each working set against the same set last time (double progression).
   const dorian = st.mode === 'dorian' && !!ex && fieldsOf(ex.type).includes('reps');
   const stepKg = ex ? wFromUser(ex.increment ?? defaultIncrement(st.unit), st.unit) : 0;
-  const targets = dorian ? dorianTargets(prev, stepKg, ex!.repTop ?? DORIAN_TOP) : [];
+  const top = ex?.repTop ?? DORIAN_TOP;
+  // `prev` is a new array each render: keyed on the history instead (targets change only with it).
+  const targets = useMemo(() => (dorian ? dorianTargets(prev, stepKg, top) : []), [counted, date, dorian, stepKg, top]);
   const workingDone = today.filter((s) => !s.planned && !s.warmup && s.reps! > 0).length;
   const target: Target | undefined = targets[workingDone];
   const seedOf = (tg: Target): WorkoutSet => ({ ...tg.prev, weight: tg.weight, reps: tg.reps });
@@ -157,7 +159,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     return () => {
       live = false;
     };
-  }, [id, date, dorian]);
+  }, [id, date, dorian, ex?.muscles, st.formula]);
 
   // Start from the last set logged (today, else last time), like a paper log.
   const [filled, setFilled] = useState(false);
