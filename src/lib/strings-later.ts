@@ -243,6 +243,8 @@ export const later = {
   mu_abs: 'Abs',
   new_3a: 'Calculators: 1RM table, plates per side with your own bar and plates, warm-up sets.',
   new_3b: 'Keep the screen on while logging (Settings).',
+  new_10a: 'Programs (Settings): start Dorian’s 4-day split or Lyle’s upper/lower in one tap, or use your own saved workouts.',
+  new_10b: 'Pick your training weekdays: the day log shows the next workout, and rest days; a missed day just moves the rotation along.',
   new_9a: 'Feedback: when an exercise gets weaker or stalls, the app finds the cause first (a long gap, a cut, one exercise, real fatigue) and suggests your mode’s fix.',
   new_9b: 'Readiness before a muscle’s first set, a joint-pain flag (no weight increase, swaps offered), and a diet phase in Settings.',
   new_8a: 'Dorian HIT lighter week (Settings): ~10 % less weight, 1–2 reps short of failure; progression picks up from your last normal session.',

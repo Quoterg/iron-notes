@@ -90,7 +90,7 @@ calculation is local, incremental and lazy (no screen waits on history).
   then each mode's lever (Lyle: sets within 20–40, early run-up; Dorian: reorder the split, lighter
   week); swaps start from the new exercise's own history. Every suggestion shows its reason.
   Missed sessions or long gaps lower the next targets; fast recovery allows more.
-- [ ] **M20 Programs** — Dorian 4-day split and Lyle upper/lower (GBR-style) ready to start; a builder that
+- [x] **M20 Programs** — Dorian 4-day split and Lyle upper/lower (GBR-style) ready to start; a builder that
   makes a program from saved workouts and a weekly schedule.
 - [ ] **M21 Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
   no account).
