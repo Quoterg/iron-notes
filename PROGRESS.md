@@ -8,12 +8,29 @@
 - **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
   (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
 - Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
-- Next: **M19 Feedback & readiness** (design in TRAINING-MODES.md "Feedback and autoregulation": cause
-  first — inconsistency, cutting, one exercise, real fatigue — then each mode's lever).
+- Next: **M20 Programs** (Dorian 4-day split and Lyle upper/lower ready to start; a builder from saved
+  workouts and a weekly schedule), then M12 Android, M11 Swedish, M21 sync.
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-29 — M19 Feedback & readiness
+
+- `lib/feedback.ts`: sessions per exercise (best working-set e1RM per date; no warm-ups, lighter week,
+  plans; readiness kept), trend (weaker = down twice; stalled = no new best in two; tolerance 0.5 %),
+  cause of getting weaker in the design's order (gap > 10 days → inconsistent; cutting by setting or body
+  weight falling ≥ 0.5 %/week; only this exercise; else real fatigue), body-weight weekly rate.
+- Logging screen (Dorian/Lyle): "Recovered?" chips before a muscle's first set of the day (saved on that
+  set as `sore`); still sore → Dorian: the program's next workout without those muscles ("Log … instead"),
+  else train other muscles; Lyle: one set fewer. Joint-pain chip on the exercise (`joint`): no weight
+  increase while flagged, "Swap: …" chips for exercises with the same main muscle (they start from their
+  own history). Long gap (> 10 days): Dorian last weight, no rep target; Lyle a run-up week 2 session.
+- `Feedback.tsx`: card when weaker or stalled (Lyle compares only push weeks): the cause and the mode's
+  lever, with "Start a lighter week" / "Start a new cycle today" for real fatigue. Reads body weight and 4
+  weeks of other exercises only when there is something to say.
+- Settings: diet phase (Building · Maintaining · Cutting). `sore`, `joint`, `diet` validated in backups.
+- Checks: 190 unit tests, 27 e2e (new feedback.spec), initial JS 20.2 KB, Lighthouse passes.
 
 ## 2026-10-29 — M18 Mesocycles
 

@@ -53,6 +53,8 @@ export interface Exercise {
   repTop?: number;
   /** Bottom of the rep range (Lyle mode: reps to restart from after a weight increase). Default top − 4. */
   repBottom?: number;
+  /** Joint pain flagged: no weight increases until cleared; swaps for the same muscle are offered. */
+  joint?: boolean;
   /** Rest timer length in seconds. Default: the setting. */
   rest?: number;
   /** Shown under Favourites at the top of the picker. */
@@ -89,6 +91,8 @@ export interface WorkoutSet {
   warmup?: true;
   /** Logged in a Dorian lighter week: not used for progression targets. */
   deload?: true;
+  /** Readiness given before the exercise's first set that day: 0 fresh, 1 a bit sore, 2 still sore. */
+  sore?: number;
 }
 
 /** A planned set of a routine (values in stored units; missing values are filled in when logging). */
@@ -168,6 +172,8 @@ export interface Settings {
   light?: { start: string };
   /** The program: a routine whose workouts rotate; the last one logged from it. */
   program?: { routineId: string; lastDayId?: string };
+  /** Diet phase: a cut makes holding the weight a success (feedback). Unset = maintaining. */
+  diet?: 'build' | 'maintain' | 'cut';
 }
 
 export const DEFAULT_SETTINGS: Settings = {

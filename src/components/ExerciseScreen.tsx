@@ -4,16 +4,18 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { MAX_RIR, setEffective } from '../lib/effective';
 import { DORIAN_TOP, dorianTargets, tooSoon, warmups, type Target } from '../lib/targets';
-import { inLight, lightTargets, progressing } from '../lib/cycle';
+import { inLight, lightTargets, nextProgramDay, progressing } from '../lib/cycle';
+import { daysBetween, GAP_DAYS } from '../lib/feedback';
+import { Feedback } from './Feedback';
 import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } from '../lib/lyle';
 import { setsBetween } from '../lib/db';
 import { t, type Key } from '../lib/i18n';
-import { fieldsOf, type Exercise, type Settings, type WorkoutSet } from '../lib/model';
+import { fieldsOf, type Exercise, type RoutineDay, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, weight as fmtWeight, wFromUser, wToUser } from '../lib/units';
 import { groupColors, groupMembers, groupOf, nextInGroup } from '../lib/groups';
 import { open, replaceTop } from '../nav';
-import { allSetsOf, catById, date as shownDate, daySets, exById, loadRecords, nextOrder, records, removeSet, saveSet, settings, setsVersion, toast } from '../state';
+import { allSetsOf, catById, date as shownDate, daySets, exById, exercises, loadRecords, nextOrder, records, removeSet, saveExercise, saveSet, setsVersion, settings, toast } from '../state';
 import { isDone } from '../lib/routines';
 import { Graph, History, Records } from './ExerciseProgress';
 import { Dot, Trophy } from './icons';
@@ -151,7 +153,18 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     return light ? lightTargets(base, stepKg) : dorianTargets(base, stepKg, top);
   }, [counted, date, dorian, light, stepKg, top]);
   const workingDone = today.filter((s) => !s.planned && !s.warmup && s.reps! > 0).length;
-  const target: Target | undefined = targets[workingDone];
+  // Days since this exercise's last normal session: after a long gap, targets start a step lower.
+  const lastDate = useMemo(() => (counted ? previousWorkout(counted.filter(progressing), date)[0]?.date : undefined), [counted, date]);
+  const gap = lastDate ? daysBetween(lastDate, date) : 0;
+  const longGap = gap > GAP_DAYS;
+  /** Dorian target after the gap and joint-pain rules: the last weight, no rep target / no weight increase. */
+  const adjust = (tg: Target | undefined): Target | undefined => {
+    if (!tg || tg.why === 'light') return tg;
+    if (longGap) return { ...tg, weight: tg.prev.weight ?? tg.weight, reps: undefined, why: 'gap' };
+    if (ex?.joint && tg.why === 'up') return { ...tg, weight: tg.prev.weight ?? tg.weight, reps: undefined, why: 'joint' };
+    return tg;
+  };
+  const target: Target | undefined = adjust(targets[workingDone]);
   const seedOf = (tg: Target): WorkoutSet => ({ ...tg.prev, weight: tg.weight, reps: tg.reps });
   // Lyle: one target for the exercise, from the cycle week and its first set last time.
   const lyle = st.mode === 'lyle' && !!ex && fieldsOf(ex.type).includes('reps');
@@ -161,8 +174,42 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     if (!lyle || !counted || !ex) return null;
     const range = repRange(ex);
     const runUp = week >= 1 && week <= RUN_UP.length;
-    return lyleTarget(runUp ? week : 0, runUp ? bestForRange(counted, range.bottom, cycle!.start) : 0, lastFirstSet(counted, date), stepKg, range);
-  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start]);
+    const first = lastFirstSet(counted, date);
+    // Back after a long gap: a run-up week 2 session (~92.5 % of the best) instead of pushing on.
+    if (longGap && !runUp) {
+      const tg = lyleTarget(2, bestForRange(counted, range.bottom, date), first, stepKg, range);
+      if (tg) return { ...tg, why: 'gap' as const };
+    }
+    const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(counted, range.bottom, cycle!.start) : 0, first, stepKg, range);
+    if (tg && ex.joint && tg.why === 'up') return { ...tg, weight: tg.prev!.weight!, reps: range.top, why: 'joint' as const };
+    return tg;
+  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start, longGap, ex?.joint]);
+
+  // Readiness, asked before a muscle's first set of the day (Dorian HIT / Lyle): saved with that set.
+  const [sore, setSore] = useState<number | null>(null);
+  const doneToday = today.some((s) => !s.planned);
+  const firstForMuscle = useMemo(
+    () =>
+      st.mode !== 'standard' &&
+      !!ex?.muscles?.primary.length &&
+      fieldsOf(ex.type).includes('reps') &&
+      !doneToday &&
+      !(date === shownDate.value && daySets.value.some((s) => s.exerciseId !== id && !s.planned && exById.value.get(s.exerciseId)?.muscles?.primary.some((m) => ex.muscles!.primary.includes(m)))),
+    [st.mode, ex, doneToday, date, daySets.value],
+  );
+  // Still sore in Dorian HIT with a program: the next workout of it that doesn't train these muscles.
+  const [swapDay, setSwapDay] = useState<RoutineDay | null>(null);
+  useEffect(() => {
+    if (sore !== 2 || !dorian || !st.program || !ex?.muscles) return setSwapDay(null);
+    void import('../workout').then(async (w) => {
+      const r = (await w.loadRoutines()).find((x) => x.id === st.program!.routineId);
+      if (!r) return setSwapDay(null);
+      const start = r.days.indexOf(nextProgramDay(r, st.program!.lastDayId)!);
+      const order = [...r.days.slice(start), ...r.days.slice(0, start)];
+      const ok = order.find((d) => d.items.every((i) => !exById.value.get(i.exerciseId)?.muscles?.primary.some((m) => ex.muscles!.primary.includes(m))));
+      setSwapDay(ok ?? null);
+    });
+  }, [sore, dorian, st.program?.routineId, st.program?.lastDayId, id]);
 
   // Muscles trained in a main session less than ~5 days ago (Dorian HIT): read once per screen.
   const [soon, setSoon] = useState<ReturnType<typeof tooSoon>>([]);
@@ -229,14 +276,14 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     } else {
       // A routine's next planned set is filled in (and done); otherwise a new set.
       const s: WorkoutSet = planned
-        ? { ...planned, ...values, comment, planned: undefined, done: true }
-        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id) };
+        ? { ...planned, ...values, comment, planned: undefined, done: true, sore: firstForMuscle && sore != null ? sore : undefined }
+        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id), sore: firstForMuscle && sore != null ? sore : undefined };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
       if (counted!.some((x) => x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
       // Dorian HIT: after a working set the form moves on to the next set's target (a reverse pyramid's
       // back-off set is lighter); reps after failure never carry over.
-      const next = dorian && !s.warmup ? targets[workingDone + 1] : undefined;
+      const next = dorian && !s.warmup ? adjust(targets[workingDone + 1]) : undefined;
       if (next) setForm((f) => ({ ...f, ...toForm(seedOf(next), st), comment: f.comment, after: '' }));
       else setForm((f) => ({ ...f, after: '', rir: lyle ? '' : f.rir }));
       // In a superset: on to the next exercise; rest only after the round's last one.
@@ -326,13 +373,56 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
         {tab === 'records' && counted && <Records ex={ex} all={counted} st={st} />}
         {tab === 'track' && (
           <>
+            {firstForMuscle && !selected && (
+              <div class="field">
+                <span class="lbl">{t('recoveredQ', { muscle: ex.muscles!.primary.map((m) => t(`mu_${m}` as Key)).join(', ') })}</span>
+                <div class="chips" role="group" aria-label={t('recoveredQ', { muscle: '' })}>
+                  {(['fresh', 'bitSore', 'stillSore'] as const).map((k, i) => (
+                    <button key={k} type="button" class={sore === i ? 'chip on' : 'chip'} aria-pressed={sore === i} onClick={() => setSore(sore === i ? null : i)}>
+                      {t(k)}
+                    </button>
+                  ))}
+                </div>
+                {sore === 2 && (
+                  <div class="hint small">
+                    <p>{dorian ? (swapDay ? t('soreDorianSwap', { day: swapDay.name }) : t('soreDorian')) : t('soreLyle')}</p>
+                    {swapDay && (
+                      <button
+                        type="button"
+                        class="btn small"
+                        onClick={() => void import('../workout').then((w) => w.logRoutineDay(swapDay, date)).then(() => history.back())}
+                      >
+                        {t('logInstead', { day: swapDay.name })}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {(dorian || lyle) && !selected && counted && <Feedback ex={ex} date={date} counted={counted} />}
+            {(dorian || lyle) && (
+              <div class="chips">
+                <button type="button" class={ex.joint ? 'chip on' : 'chip'} aria-pressed={!!ex.joint} onClick={() => void saveExercise({ ...ex, joint: ex.joint ? undefined : true })}>
+                  {t('jointPain')}
+                </button>
+                {ex.joint &&
+                  exercises.value
+                    .filter((x) => x.id !== id && x.muscles?.primary[0] && x.muscles.primary[0] === ex.muscles?.primary[0])
+                    .slice(0, 5)
+                    .map((x) => (
+                      <button key={x.id} type="button" class="chip" onClick={() => replaceTop({ kind: 'exercise', id: x.id, date })}>
+                        {t('swapTo', { name: x.name })}
+                      </button>
+                    ))}
+              </div>
+            )}
             {lyle && !selected && cycle && week > cycle.weeks && <p class="hint small">{t('cycleDone')}</p>}
             {lyle && !selected && lyleT && (
               <p class="target small">
                 <strong>
                   {week >= 1 && week <= (cycle?.weeks ?? 0) ? `${t('cycleWeek', { n: week, N: cycle!.weeks, phase: t(week <= RUN_UP.length ? 'runUp' : 'push') })} · ` : ''}
                   {t('target')}: {fmtWeight(lyleT.weight, st)} × {lyleT.reps}
-                  {lyleT.why === 'runup' ? '' : '+'}
+                  {lyleT.why === 'runup' || lyleT.why === 'gap' ? '' : '+'}
                 </strong>{' '}
                 <span class="muted">
                   {lyleT.why === 'runup'
@@ -343,6 +433,10 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                         ? t('lyleGrind', { reps: lyleT.prev!.reps! })
                         : lyleT.why === 'norir'
                         ? t('lyleNoRir', { reps: lyleT.prev!.reps! })
+                        : lyleT.why === 'gap'
+                        ? t('lyleGap', { n: gap })
+                        : lyleT.why === 'joint'
+                        ? t('jointHold')
                         : t('lyleReps', { reps: lyleT.prev!.reps! })}
                 </span>
               </p>
@@ -356,6 +450,10 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 <span class="muted">
                   {target.why === 'light'
                     ? t('targetLight')
+                    : target.why === 'gap'
+                    ? t('targetGap', { n: gap })
+                    : target.why === 'joint'
+                    ? t('jointHold')
                     : target.why === 'up'
                     ? t('targetUp', { reps: target.prev.reps!, top: ex.repTop ?? DORIAN_TOP })
                     : t('targetBeat', { reps: target.prev.reps! })}
@@ -507,9 +605,13 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   );
 }
 
-/** What was logged about the effort: warm-up, RIR, reps after failure. */
+/** What was logged about the effort: warm-up, RIR, reps after failure, readiness. */
 function Effort({ s }: { s: WorkoutSet }) {
-  const parts = [s.warmup ? t('warmup') : s.rir != null && s.rir > 0 ? t('rirShort', { n: s.rir >= MAX_RIR ? '5+' : s.rir }) : '', s.after ? `+${s.after}` : ''].filter(Boolean);
+  const parts = [
+    s.warmup ? t('warmup') : s.rir != null && s.rir > 0 ? t('rirShort', { n: s.rir >= MAX_RIR ? '5+' : s.rir }) : '',
+    s.after ? `+${s.after}` : '',
+    s.sore != null ? t((['fresh', 'bitSore', 'stillSore'] as const)[s.sore]) : '',
+  ].filter(Boolean);
   return parts.length ? <span class="muted"> · {parts.join(' ')}</span> : null;
 }
 

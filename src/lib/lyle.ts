@@ -38,7 +38,7 @@ export interface LyleTarget {
   reps: number;
   /** 'runup': submaximal week (1 or 2); 'up': top reached with reps to spare; 'grind': top at 0 RIR, hold;
    *  'norir': top reached without an RIR logged, hold until one is; 'reps': below the top, one more rep. */
-  why: 'runup' | 'up' | 'grind' | 'norir' | 'reps';
+  why: 'runup' | 'up' | 'grind' | 'norir' | 'reps' | 'gap' | 'joint';
   week: number;
   /** Last session's first working set (push weeks). */
   prev?: WorkoutSet;
