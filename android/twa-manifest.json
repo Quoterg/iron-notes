@@ -1,0 +1,41 @@
+{
+  "packageId": "io.github.quoterg.ironnotes",
+  "host": "iron-notes.pages.dev",
+  "name": "Iron Notes",
+  "launcherName": "Iron Notes",
+  "display": "standalone",
+  "themeColor": "#050912",
+  "themeColorDark": "#050912",
+  "navigationColor": "#050912",
+  "navigationColorDark": "#050912",
+  "navigationDividerColor": "#050912",
+  "navigationDividerColorDark": "#050912",
+  "backgroundColor": "#050912",
+  "splashScreenFadeOutDuration": 300,
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://iron-notes.pages.dev/icon-512.png",
+  "maskableIconUrl": "https://iron-notes.pages.dev/icon-maskable-512.png",
+  "webManifestUrl": "https://iron-notes.pages.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "appVersionCode": 1,
+  "appVersionName": "1.0.0",
+  "signingKey": { "path": "./android.keystore", "alias": "ironnotes" },
+  "generatorApp": "bubblewrap-cli",
+  "shortcuts": [
+    {
+      "name": "Add exercise",
+      "shortName": "Add",
+      "url": "/?add",
+      "chosenIconUrl": "https://iron-notes.pages.dev/icon-192.png"
+    }
+  ],
+  "minSdkVersion": 24
+}
