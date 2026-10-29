@@ -29,6 +29,8 @@ export type Screen =
   | { kind: 'analysis' }
   /** Effective reps per muscle group: this week and the last weeks. */
   | { kind: 'muscles' }
+  /** Ready-made programs and your own (a routine folder + training weekdays). */
+  | { kind: 'programs' }
   /** A body measure: entries, graph. */
   | { kind: 'metric'; id: string }
   /** Copy (part of) a previous workout into `date`. */

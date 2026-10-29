@@ -243,6 +243,8 @@ export const later = {
   mu_abs: 'Abs',
   new_3a: 'Calculators: 1RM table, plates per side with your own bar and plates, warm-up sets.',
   new_3b: 'Keep the screen on while logging (Settings).',
+  new_10a: 'Programs (Settings): start Dorian’s 4-day split or Lyle’s upper/lower in one tap, or use your own saved workouts.',
+  new_10b: 'Pick your training weekdays: the day log shows the next workout, and rest days; a missed day just moves the rotation along.',
   new_9a: 'Feedback: when an exercise gets weaker or stalls, the app finds the cause first (a long gap, a cut, one exercise, real fatigue) and suggests your mode’s fix.',
   new_9b: 'Readiness before a muscle’s first set, a joint-pain flag (no weight increase, swaps offered), and a diet phase in Settings.',
   new_8a: 'Dorian HIT lighter week (Settings): ~10 % less weight, 1–2 reps short of failure; progression picks up from your last normal session.',
@@ -357,6 +359,19 @@ export const later = {
   fbStalledLyleSore: 'No new best for two sessions, but you were still sore: keep the volume; that is recovery.',
   fbStalledDorian: 'No new best for two sessions: add one rep after failure (forced or rest-pause) on the last set for a session or two.',
   fbStalledDorianSpacing: 'No new best for two sessions, only {n} days apart: give these muscles about a week between sessions.',
+  programs: 'Programs',
+  readyToStart: 'Ready to start',
+  tplDorian: 'Dorian 4-day split',
+  tplDorianHint: 'Dorian Yates’ split: chest & biceps, legs, delts/traps/triceps, back & rear delts. One all-out set per exercise after warm-ups; each muscle about once a week. Switches to Dorian HIT.',
+  tplLyle: 'Lyle’s upper/lower (GBR)',
+  tplLyleHint: 'Lyle McDonald’s Generic Bulking Routine: lower and upper twice a week; 3 × 6–8 main lifts, 2 × 10–12 secondary, 2 × 12–15 arms. Switches to Lyle effective reps and starts a cycle.',
+  startProgram: 'Start',
+  replaceProgramQ: 'Replace your current program? Your logged workouts stay.',
+  programStarted: '“{name}” started.',
+  programStartedMissing: '“{name}” started without {n} exercises that aren’t in your library: {list}.',
+  yourProgram: 'Your program',
+  trainingDays: 'Training days',
+  restDay: 'Rest day in your program.',
 } as const;
 
 setLater(later);

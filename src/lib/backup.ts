@@ -92,7 +92,10 @@ export function validateBackup(b: unknown): Backup {
     if (st.light && typeof st.light.start === 'string' && DATE.test(st.light.start)) settings.light = { start: st.light.start };
     if (st.diet === 'build' || st.diet === 'maintain' || st.diet === 'cut') settings.diet = st.diet;
     const pr = st.program;
-    if (pr && isStr(pr.routineId)) settings.program = { routineId: pr.routineId, lastDayId: isStr(pr.lastDayId) ? pr.lastDayId : undefined };
+    if (pr && isStr(pr.routineId)) {
+      const wd = Array.isArray(pr.weekdays) ? pr.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : undefined;
+      settings.program = { routineId: pr.routineId, lastDayId: isStr(pr.lastDayId) ? pr.lastDayId : undefined, weekdays: wd?.length ? [...new Set(wd)].sort() : undefined };
+    }
     const p = st.plates;
     // Same limits as the calculator's own editor (an absurd plate set could freeze it).
     const clean = p && (p.unit === 'kg' || p.unit === 'lb') && Array.isArray(p.sizes) && p.sizes.every(isNum) ? cleanPlates(p.bar, p.sizes) : null;

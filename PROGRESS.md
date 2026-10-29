@@ -8,12 +8,25 @@
 - **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
   (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
 - Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
-- Next: **M20 Programs** (Dorian 4-day split and Lyle upper/lower ready to start; a builder from saved
-  workouts and a weekly schedule), then M12 Android, M11 Swedish, M21 sync.
+- Next: **M12 Android app** (TWA with Bubblewrap like Iron Log; needs the owner's Play Console account and
+  signing key), then M11 Swedish, M21 sync.
 - Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
   cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-10-29 — M20 Programs
+
+- `lib/programs.ts`: templates as data — Dorian 4-day split (Chest & biceps, Legs, Delts/traps/triceps,
+  Back & rear delts; one all-out set per exercise) and Lyle's GBR (Lower/Upper; 3 × 6–8 main, 2 × 10–12
+  secondary, 2 × 12–15 arms), both Mon/Tue/Thu/Fri. `buildProgram` matches the library by name, sets Lyle's
+  rep ranges only on exercises without one, reports missing exercises; `isTrainingDay` by weekday.
+- Programs sheet (Settings → Programs): start a template (confirm if a program exists) → routine folder,
+  mode, program with its weekdays, and for Lyle a cycle unless one is running; "Your program": routine
+  folder + training-day chips. The program select moved here from Settings.
+- Day log: on a rest day of the schedule "Rest day in your program." with the next workout as a secondary
+  button; the rotation continues after missed days (next after the last one logged).
+- Checks: 195 unit tests, 28 e2e (new programs.spec), initial JS 20.3 KB, Lighthouse passes.
 
 ## 2026-10-29 — M19 Feedback & readiness
 

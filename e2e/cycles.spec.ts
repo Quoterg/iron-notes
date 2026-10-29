@@ -72,7 +72,9 @@ test('program: an empty day offers the next workout of the chosen routine', asyn
   await expect(page.getByRole('status')).toContainText('Saved “Push A”.');
 
   await settingsTab(page);
-  await page.getByLabel('Program').selectOption({ label: 'My workouts' });
+  await page.getByRole('button', { name: 'Programs', exact: true }).click();
+  await sheet(page).getByLabel('Program').selectOption({ label: 'My workouts' });
+  await page.getByRole('button', { name: /Back/ }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
   await page.getByRole('button', { name: 'Next day' }).click();
   await page.getByRole('button', { name: 'Next: Push A (My workouts)' }).click();
