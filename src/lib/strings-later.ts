@@ -374,6 +374,8 @@ export const later = {
   restDay: 'Rest day in your program.',
   language: 'Language',
   langAuto: 'Auto',
+  gymEnglish: 'Gym-English names for the starter exercises',
+  new_15a: 'In Swedish: the starter exercises, categories and body measures have Swedish names (gym English with a setting), and numbers use a decimal comma.',
   review: 'Review',
   reviewCycle: 'Review the cycle',
   reviewWeeks: 'Review the last weeks',

@@ -125,7 +125,7 @@ sync last (it has to carry every field the milestones before it add).
 - [x] **M27 Cycle & block review** — When a Lyle cycle (or a 4–8 week block) ends: start vs end e1RM per
   exercise, average weekly effective reps per muscle, readiness/soreness history, and one-tap swap
   suggestions for stalled or joint-pain-flagged exercises before the next cycle.
-- [ ] **M29 Swedish starter library & decimal comma** — Stable keys for starter exercises and categories
+- [x] **M29 Swedish starter library & decimal comma** — Stable keys for starter exercises and categories
   so they can show Swedish names without breaking program templates or FitNotes imports; display-only
   decimal comma (`82,5 kg`) in Swedish, `.` kept in CSV exports and inputs.
 - [ ] **M28 Rest timer in the background & category defaults** — A web page can't reliably schedule an

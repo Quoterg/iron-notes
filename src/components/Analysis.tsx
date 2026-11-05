@@ -7,7 +7,7 @@ import { effectiveOf } from '../effort';
 import { GOALS, periodMuscles } from '../lib/volume';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
 import { setsBetween } from '../lib/db';
-import { type Key, locale, t } from '../lib/i18n';
+import { catName, exName, type Key, locale, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { distance, num, weight, wToUser } from '../lib/units';
 import { open } from '../nav';
@@ -156,7 +156,7 @@ export default function Analysis() {
                       {/* Opens the exercise for today (history/graph/records cover any period); logging there writes to today. */}
                       <button class="entry" onClick={() => open({ kind: 'exercise', id: e.exerciseId, date: today })}>
                         <Dot color={catById.value.get(ex.categoryId)?.color} />
-                        <span class="entry-name">{ex.name}</span>
+                        <span class="entry-name">{exName(ex)}</span>
                         <span class="muted small num">
                           {e.workouts} × · {e.sets} {t('sets')}
                           {e.lastOrm != null && ` · ${t('est1rm')} ${num(wToUser(e.lastOrm, st.unit), 1)} ${st.unit}`}
@@ -195,7 +195,7 @@ function CategoryBars({ cats, by }: { cats: { categoryId: string; sets: number; 
         return (
           <li key={c.categoryId}>
             <span class="cat-bar-head">
-              <span>{cat?.name ?? '–'}</span>
+              <span>{cat ? catName(cat) : '–'}</span>
               <b class="num">{by === 'sets' ? c.sets : weight(c.volume, st)}</b>
             </span>
             <span class="track">

@@ -1,5 +1,5 @@
 // Stored units (kg, km, s) ↔ what the user sees, and set formatting.
-import { t } from './i18n';
+import { decimalComma, t } from './i18n';
 import { fmtTime, round } from './calc';
 import { type DistUnit, type ExerciseType, fieldsOf, type LoadType, type Settings, type WeightUnit, type WorkoutSet } from './model';
 
@@ -14,8 +14,10 @@ export const dFromUser = (v: number, u: DistUnit): number => (u === 'mi' ? v * K
 /** A number without trailing zeros: 82.5, 80, 1.25. */
 export const num = (x: number, d = 2): string => String(round(x, d));
 
-export const weight = (kg: number, s: Settings): string => `${num(wToUser(kg, s.unit))} ${s.unit}`;
-export const distance = (km: number, s: Settings): string => `${num(dToUser(km, s.dist), s.dist === 'm' ? 0 : 2)} ${s.dist}`;
+/** A number as shown: rounded, with a decimal comma in Swedish (`num` stays for inputs and CSV). */
+export const dnum = (x: number, d = 2): string => (decimalComma() ? num(x, d).replace('.', ',') : num(x, d));
+export const weight = (kg: number, s: Settings): string => `${dnum(wToUser(kg, s.unit))} ${s.unit}`;
+export const distance = (km: number, s: Settings): string => `${dnum(dToUser(km, s.dist), s.dist === 'm' ? 0 : 2)} ${s.dist}`;
 
 /** Default weight step for the +/- buttons. */
 export const defaultIncrement = (u: WeightUnit): number => (u === 'lb' ? 5 : 2.5);

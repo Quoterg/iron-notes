@@ -2,7 +2,7 @@
 import { useState } from 'preact/hooks';
 import { dayLabel } from '../app';
 import { uid } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { exName, t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
 import { back, open, stack } from '../nav';
 import { date, exById, routines, toast, view } from '../state';
@@ -72,7 +72,7 @@ export default function RoutineSheet({ id }: { id: string }) {
               )}
             </div>
             <p class="muted small">
-              {d.items.length ? d.items.map((it) => exById.value.get(it.exerciseId)?.name).filter(Boolean).join(', ') : t('emptyRoutineDay')}
+              {d.items.length ? d.items.map((it) => exById.value.get(it.exerciseId)).filter(Boolean).map((e) => exName(e!)).join(', ') : t('emptyRoutineDay')}
             </p>
             {d.items.length > 0 && (
               <button class="btn primary wide" onClick={() => void log(d.id)}>

@@ -58,6 +58,10 @@ export type Lang = 'en' | 'sv';
 interface Pack {
   strings: Partial<Record<Key, string>>;
   types: Record<string, string>;
+  /** Starter names by their stored (English) name in lower case: exercises, categories, body measures. */
+  exercises: Record<string, string>;
+  categories: Record<string, string>;
+  metrics: Record<string, string>;
 }
 let sv: Pack | null = null;
 /** The language shown; components re-render when it changes (t() reads it). */
@@ -108,6 +112,21 @@ export function allLabels(key: Key): string[] {
   const s = sv?.strings[key];
   return s && s !== en ? [en, s] : [en];
 }
+
+/** Keep the starter library's gym-English names even in Swedish (setting). */
+export const gymEnglish = signal(false);
+const shown = (table: 'exercises' | 'categories' | 'metrics', name: string) =>
+  (lang.value === 'sv' && !(table === 'exercises' && gymEnglish.value) ? sv?.[table][name.toLowerCase()] : undefined) ?? name;
+/**
+ * Display names: a starter exercise, category or body measure in the UI language; anything the user
+ * named or renamed as stored. Stored names never change (programs, imports and backups use them).
+ */
+export const exName = (e: { name: string }): string => shown('exercises', e.name);
+export const catName = (c: { name: string }): string => shown('categories', c.name);
+export const metricName = (m: { name: string }): string => shown('metrics', m.name);
+
+/** Displayed numbers use a decimal comma in Swedish (inputs and CSV keep the dot). */
+export const decimalComma = (): boolean => lang.value === 'sv';
 
 /** The pack's exercise-type names (strings-later falls back to English). */
 export const packTypes = (): Record<string, string> | undefined => (lang.value === 'sv' ? sv?.types : undefined);

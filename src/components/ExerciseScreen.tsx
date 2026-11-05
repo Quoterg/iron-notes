@@ -11,7 +11,7 @@ import { daysBetween, GAP_DAYS } from '../lib/feedback';
 import { Feedback } from './Feedback';
 import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } from '../lib/lyle';
 import { setsBetween } from '../lib/db';
-import { type Key, locale, t } from '../lib/i18n';
+import { catName, exName, type Key, locale, t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type RoutineDay, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, weight as fmtWeight, wFromUser, wToUser } from '../lib/units';
@@ -345,7 +345,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const colors = members.length ? groupColors(daySets.value) : null;
   return (
     <Sheet
-      title={ex.name}
+      title={exName(ex)}
       actions={
         <>
           <button class="btn small" aria-label={t('startTimer')} onClick={() => startTimer(ex.rest ?? st.rest, st.timerSound)}>
@@ -359,7 +359,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     >
       <div class="pad">
         <p class="muted small">
-          <Dot color={cat?.color} /> {cat?.name}
+          <Dot color={cat?.color} /> {cat && catName(cat)}
           {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
         </p>
         {ex.muscles && ex.muscles.primary.length + ex.muscles.secondary.length > 0 && (
@@ -379,12 +379,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
           <div class="chips superset-bar" role="group" aria-label={t('superset')} style={{ borderColor: colors?.get(today[0]?.group ?? '') }}>
             {members.map((m) => (
               <button key={m} class={m === id ? 'chip on' : 'chip'} aria-pressed={m === id} onClick={() => m !== id && replaceTop({ kind: 'exercise', id: m, date })}>
-                {exById.value.get(m)?.name}
+                {exName(exById.value.get(m) ?? { name: '' })}
               </button>
             ))}
           </div>
         )}
-        <div class="chips" role="group" aria-label={ex.name}>
+        <div class="chips" role="group" aria-label={exName(ex)}>
           {TABS.map((k) => (
             <button key={k} class={k === tab ? 'chip on' : 'chip'} aria-pressed={k === tab} onClick={() => setTab(k)}>
               {t(k)}
@@ -436,7 +436,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                     .slice(0, 5)
                     .map((x) => (
                       <button key={x.id} type="button" class="chip" onClick={() => replaceTop({ kind: 'exercise', id: x.id, date })}>
-                        {t('swapTo', { name: x.name })}
+                        {t('swapTo', { name: exName(x) })}
                       </button>
                     ))}
               </div>

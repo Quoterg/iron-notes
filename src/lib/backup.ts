@@ -94,6 +94,7 @@ export function validateBackup(b: unknown): Backup {
     if (st.diet === 'build' || st.diet === 'maintain' || st.diet === 'cut') settings.diet = st.diet;
     if (st.lang === 'en' || st.lang === 'sv') settings.lang = st.lang;
     if (typeof st.roundPlates === 'boolean') settings.roundPlates = st.roundPlates;
+    if (typeof st.gymEnglish === 'boolean') settings.gymEnglish = st.gymEnglish;
     const pr = st.program;
     if (pr && isStr(pr.routineId)) {
       const wd = Array.isArray(pr.weekdays) ? pr.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : undefined;

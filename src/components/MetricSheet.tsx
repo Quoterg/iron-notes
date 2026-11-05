@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addEntry, entries, loadBody, loadEntries, metrics, removeEntry, removeMetric, renameMetric } from '../body-state';
 import { isoDate, parseIso } from '../lib/calc';
 import { fmtBody, fromUser, toUser, trend, unitOf } from '../lib/body';
-import { locale, t } from '../lib/i18n';
+import { locale, metricName, t } from '../lib/i18n';
 import { num } from '../lib/units';
 import { back } from '../nav';
 import { settings, toast } from '../state';
@@ -52,7 +52,7 @@ export default function MetricSheet({ id }: { id: string }) {
   }
 
   return (
-    <Sheet title={m.name}>
+    <Sheet title={metricName(m)}>
       <div class="pad">
         <form class="card form" onSubmit={save}>
           <div class="grid2">
@@ -72,7 +72,7 @@ export default function MetricSheet({ id }: { id: string }) {
 
         {chart && chart.pts.length >= 2 && (
           <div class="card">
-            <LineChart title={unit ? `${m.name} (${unit})` : m.name} points={chart.pts} trend={chart.tr} fmt={(v) => num(v, 1)} countWord={t('entriesCount')} />
+            <LineChart title={unit ? `${metricName(m)} (${unit})` : metricName(m)} points={chart.pts} trend={chart.tr} fmt={(v) => num(v, 1)} countWord={t('entriesCount')} />
           </div>
         )}
 

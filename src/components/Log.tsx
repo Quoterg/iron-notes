@@ -3,7 +3,7 @@
 import { loadOf, volumeWeight } from '../lib/load';
 import { useMemo, useState } from 'preact/hooks';
 import { dayTotals } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { exName, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { setText, weight } from '../lib/units';
 import { open } from '../nav';
@@ -96,7 +96,7 @@ export function Log() {
                     <input
                       type="checkbox"
                       class="tick"
-                      aria-label={`${t('selectExercise')}: ${ex.name}`}
+                      aria-label={`${t('selectExercise')}: ${exName(ex)}`}
                       checked={picked.has(id)}
                       onChange={(e) => {
                         const p = new Set(picked);
@@ -108,7 +108,7 @@ export function Log() {
                   )}
                   <button class="ex-head" onClick={() => open({ kind: 'exercise', id, date: d })}>
                     <Dot color={catById.value.get(ex.categoryId)?.color} />
-                    <h2>{ex.name}</h2>
+                    <h2>{exName(ex)}</h2>
                   </button>
                   {grouping && g && (
                     <button class="btn small" onClick={() => withWorkout((w) => w.ungroupExercise(id))}>
@@ -117,10 +117,10 @@ export function Log() {
                   )}
                   {reordering && (
                     <span class="move">
-                      <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => withWorkout((w) => w.moveExercise(id, -1))}>
+                      <button class="btn icon small" aria-label={`${t('moveUp')}: ${exName(ex)}`} disabled={i === 0} onClick={() => withWorkout((w) => w.moveExercise(id, -1))}>
                         ↑
                       </button>
-                      <button class="btn icon small" aria-label={`${t('moveDown')}: ${ex.name}`} disabled={i === ids.length - 1} onClick={() => withWorkout((w) => w.moveExercise(id, 1))}>
+                      <button class="btn icon small" aria-label={`${t('moveDown')}: ${exName(ex)}`} disabled={i === ids.length - 1} onClick={() => withWorkout((w) => w.moveExercise(id, 1))}>
                         ↓
                       </button>
                     </span>

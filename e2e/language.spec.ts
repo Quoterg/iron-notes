@@ -20,8 +20,14 @@ test('Swedish: chosen in Settings, kept after a reload, back to English', async 
   await expect(page.getByRole('button', { name: 'Starta ett pass' })).toBeVisible();
   await page.getByRole('button', { name: 'Starta ett pass' }).click();
   await page.getByRole('searchbox').fill('flat barbell');
-  await page.getByRole('button', { name: 'Flat Barbell Bench Press', exact: true }).click();
-  await expect(page.getByLabel('Vikt (kg)', { exact: true })).toBeVisible(); // exercise names stay as stored
+  // Starter exercises show their Swedish name; the English one still finds them.
+  await page.getByRole('button', { name: 'Bänkpress med skivstång', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Bänkpress med skivstång' })).toBeVisible();
+  await expect(page.getByText('No sets logged yet.').or(page.getByText('Inga set loggade än.'))).toBeVisible();
+  await page.getByLabel('Vikt (kg)', { exact: true }).fill('82,5');
+  await page.getByLabel('Reps', { exact: true }).fill('5');
+  await page.getByRole('button', { name: 'Spara' }).click();
+  await expect(page.locator('div:not([hidden]) > .sheet .sets li').first()).toContainText('82,5 kg × 5'); // decimal comma
   await page.getByRole('button', { name: /Tillbaka/ }).click();
 
   await page.getByRole('button', { name: 'Inställningar', exact: true }).click();

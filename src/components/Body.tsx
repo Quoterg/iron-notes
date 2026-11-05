@@ -3,7 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { addMetric, latest, loadBody, metrics } from '../body-state';
 import { parseIso } from '../lib/calc';
 import { fmtBody, latestChange, toUser } from '../lib/body';
-import { type Key, locale, t } from '../lib/i18n';
+import { type Key, locale, metricName, t } from '../lib/i18n';
 import type { BodyKind } from '../lib/model';
 import { num } from '../lib/units';
 import { open } from '../nav';
@@ -42,7 +42,7 @@ export default function Body() {
             return (
               <li key={m.id}>
                 <button class="entry" onClick={() => open({ kind: 'metric', id: m.id })}>
-                  <span class="entry-name">{m.name}</span>
+                  <span class="entry-name">{metricName(m)}</span>
                   {lc ? (
                     <span class="num body-latest">
                       <b>{fmtBody(lc.latest.value, m.kind, st)}</b>

@@ -2,7 +2,7 @@
 // opens exercises and categories for editing.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { recentExerciseIds } from '../lib/db';
-import { allLabels, type Key, lang, t } from '../lib/i18n';
+import { allLabels, catName, exName, gymEnglish, type Key, lang, t } from '../lib/i18n';
 import type { Exercise, Routine, RoutineDay } from '../lib/model';
 import { fold, searchIndex, searchIndexed } from '../lib/muscles';
 import { open, replaceTop } from '../nav';
@@ -40,8 +40,8 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
 
   // Built once per library / language change; a keystroke only matches (old phones, big libraries).
   const index = useMemo(
-    () => searchIndex(exercises.value, (cid) => catById.value.get(cid)?.name, (m) => allLabels(`mu_${m}` as Key)),
-    [exercises.value, catById.value, lang.value],
+    () => searchIndex(exercises.value, (cid) => { const c = catById.value.get(cid); return c && `${c.name} ${catName(c)}`; }, (m) => allLabels(`mu_${m}` as Key), (e) => exName(e)),
+    [exercises.value, catById.value, lang.value, gymEnglish.value],
   );
 
   let body;
@@ -63,7 +63,7 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
     body = (
       <>
         <button class="cat-back" onClick={() => setCat(null)}>
-          ‹ <Dot color={c.color} /> {c.name}
+          ‹ <Dot color={c.color} /> {catName(c)}
         </button>
         <ExerciseList list={exercises.value.filter((e) => e.categoryId === cat)} onPick={pick} />
       </>
@@ -94,7 +94,7 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
             <li key={c.id} class="row-li">
               <button class="result entry" onClick={() => setCat(c.id)}>
                 <Dot color={c.color} />
-                <span class="entry-name">{c.name}</span>
+                <span class="entry-name">{catName(c)}</span>
                 <span class="count">{counts.get(c.id) ?? 0}</span>
               </button>
             </li>
@@ -129,7 +129,7 @@ function ExerciseList({ list, onPick, showCat }: { list: Exercise[]; onPick: (e:
         <li key={e.id} class="pick-row">
           <button class="result entry" onClick={() => onPick(e)}>
             {showCat && <Dot color={catById.value.get(e.categoryId)?.color} />}
-            <span class="entry-name">{e.name}</span>
+            <span class="entry-name">{exName(e)}</span>
           </button>
           <button
             class={e.favorite ? 'star on' : 'star'}

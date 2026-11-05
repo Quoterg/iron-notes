@@ -1,4 +1,5 @@
 // A workout as plain text, for sharing (messages, notes).
+import { exName } from './i18n';
 import { loadOf } from './load';
 import type { Exercise, Settings, WorkoutSet } from './model';
 import { setText } from './units';
@@ -7,7 +8,7 @@ export function workoutText(title: string, groups: { ex: Exercise; sets: Workout
   const lines = [title];
   if (comment) lines.push(comment);
   for (const { ex, sets } of groups) {
-    lines.push('', ex.name);
+    lines.push('', exName(ex));
     for (const s of sets) lines.push(`  ${setText(s, ex.type, st, loadOf(ex))}${s.comment ? ` (${s.comment})` : ''}`);
   }
   return lines.join('\n');

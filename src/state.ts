@@ -3,7 +3,7 @@
 import { computed, signal } from '@preact/signals';
 import { byOrder, isoDate, recordIds } from './lib/calc';
 import * as db from './lib/db';
-import { applyLang } from './lib/i18n';
+import { applyLang, gymEnglish } from './lib/i18n';
 import { DEFAULT_SETTINGS, type Category, type Exercise, type Routine, type Settings, type WorkoutSet } from './lib/model';
 
 export type View = 'log' | 'calendar' | 'routines' | 'body' | 'settings';
@@ -28,8 +28,10 @@ export const updateReady = signal(false);
 
 export async function loadSettings(): Promise<void> {
   settings.value = await db.getSettings();
+  gymEnglish.value = !!settings.value.gymEnglish;
 }
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {
+  if ('gymEnglish' in patch) gymEnglish.value = !!patch.gymEnglish;
   settings.value = { ...settings.value, ...patch };
   await db.putSettings(settings.value);
 }
