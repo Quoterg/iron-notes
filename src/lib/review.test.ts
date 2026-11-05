@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Exercise, Routine, WorkoutSet } from './model';
-import { alternatives, exerciseChanges, soreness, swapInRoutine, toSwap } from './review';
+import { alternatives, exerciseChanges, reviewRange, soreness, swapInRoutine, toSwap } from './review';
 
 let n = 0;
 const set = (exerciseId: string, date: string, weight: number, reps: number, x: Partial<WorkoutSet> = {}): WorkoutSet => ({ id: String(++n), date, exerciseId, order: n, weight, reps, ...x });
@@ -16,7 +16,16 @@ describe('exercise changes over a cycle', () => {
     expect(out.map((c) => c.exerciseId)).toEqual(['bench', 'row', 'curl']);
     expect(out[0].change).toBeCloseTo(90 / 80 - 1, 5);
     expect(out[0].sessions).toBe(3);
-    expect(out[2]).toMatchObject({ change: null, sessions: 1, trend: 'none' });
+    expect(out[2]).toMatchObject({ change: null, sessions: 1, trend: 'none', kind: 'load' });
+  });
+  it('one scale per exercise: loaded sets in kg when there are any, else reps', () => {
+    const pull = new Map([['pull', [set('pull', '2026-10-05', 0, 8), set('pull', '2026-10-12', 90, 5), set('pull', '2026-10-19', 92.5, 5)]]]);
+    const [c] = exerciseChanges(pull, '2026-10-01', '2026-10-31');
+    expect(c.kind).toBe('load');
+    expect(c.sessions).toBe(2); // the body-weight-only session isn't on this scale
+    expect(c.first).toBeCloseTo(105, 0);
+    const bw = new Map([['pull', [set('pull', '2026-10-05', 0, 8), set('pull', '2026-10-12', 0, 10)]]]);
+    expect(exerciseChanges(bw, '2026-10-01', '2026-10-31')[0]).toMatchObject({ kind: 'reps', first: 8, last: 10 });
   });
   it('to swap: no progress over three sessions, weaker/stalled, or joint pain', () => {
     const row = out.find((c) => c.exerciseId === 'row')!;
@@ -46,6 +55,19 @@ describe('swaps', () => {
     const s = swapInRoutine(r, 'b', 'i');
     expect(s.days.flatMap((d) => d.items.map((i) => i.exerciseId))).toEqual(['i', 'i', 'd']);
     expect(s.days[0].items[0].sets).toEqual([{ reps: 8 }]);
+    const withWeight: Routine = { ...r, days: [{ id: 'a', name: 'A', items: [{ exerciseId: 'b', sets: [{ reps: 8, weight: 100 }] }] }] };
+    expect(swapInRoutine(withWeight, 'b', 'i').days[0].items[0].sets).toEqual([{ reps: 8 }]); // the old weight isn't the new exercise's
     expect(r.days[0].items[0].exerciseId).toBe('b'); // the original stays
   });
 });
+
+describe('review dates', () => {
+  const cycle = { start: '2026-10-05', weeks: 6 };
+  it('a running cycle up to today; a finished one to its last day; the last n weeks', () => {
+    expect(reviewRange('cycle', cycle, '2026-10-20')).toEqual({ from: '2026-10-05', to: '2026-10-20' });
+    expect(reviewRange('cycle', cycle, '2026-12-01')).toEqual({ from: '2026-10-05', to: '2026-11-15' });
+    expect(reviewRange(4, cycle, '2026-10-28')).toEqual({ from: '2026-10-01', to: '2026-10-28' });
+    expect(reviewRange('cycle', undefined, '2026-10-28')).toEqual({ from: '2026-09-17', to: '2026-10-28' }); // no cycle: 6 weeks
+  });
+});
+

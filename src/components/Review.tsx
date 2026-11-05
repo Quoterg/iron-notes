@@ -2,17 +2,17 @@
 // reps per muscle per week, readiness answers, and swaps for stalled, weaker or joint-flagged exercises
 // (one tap in the program's routine when the exercise is in it). One date-range read of the sets.
 import { useEffect, useState } from 'preact/hooks';
-import { addDays, isoDate } from '../lib/calc';
+import { isoDate } from '../lib/calc';
 import { effectiveOf } from '../effort';
 import { setsBetween } from '../lib/db';
 import { type Key, t } from '../lib/i18n';
 import { loadOf, usesBodyWeight, withRealLoad } from '../lib/load';
 import { cycleWeek } from '../lib/lyle';
 import type { Exercise, MuscleId, WorkoutSet } from '../lib/model';
-import { alternatives, exerciseChanges, soreness, swapInRoutine, toSwap, type ExerciseChange } from '../lib/review';
+import { alternatives, exerciseChanges, reviewRange, soreness, swapInRoutine, toSwap, type ExerciseChange } from '../lib/review';
 import { num, weight } from '../lib/units';
 import { GOALS, periodMuscles } from '../lib/volume';
-import { replaceTop } from '../nav';
+import { open } from '../nav';
 import { bodyWeights, exById, exercises, routines, settings, toast } from '../state';
 import { loadRoutines, saveRoutine } from '../workout';
 import { Sheet } from './Sheet';
@@ -21,7 +21,8 @@ type Span = 'cycle' | 4 | 6 | 8;
 
 interface Data {
   changes: ExerciseChange[];
-  muscles: ReturnType<typeof periodMuscles>;
+  /** Null until the effective reps are worked out (Strength shows before). */
+  muscles: ReturnType<typeof periodMuscles> | null;
   sore: Map<MuscleId, [number, number, number]>;
 }
 
@@ -31,9 +32,7 @@ export default function Review() {
   const cycle = st.mode === 'lyle' ? st.cycle : undefined;
   const [span, setSpan] = useState<Span>(cycle ? 'cycle' : 6);
   // The cycle's own dates (up to today while it runs), or the last n weeks.
-  const from = span === 'cycle' && cycle ? cycle.start : addDays(today, -7 * (span === 'cycle' ? 6 : span) + 1);
-  const cycleEnd = cycle ? addDays(cycle.start, cycle.weeks * 7 - 1) : today;
-  const to = span === 'cycle' && cycleEnd < today ? cycleEnd : today;
+  const { from, to } = reviewRange(span, cycle, today);
   const [data, setData] = useState<Data | null>(null);
 
   useEffect(() => {
@@ -41,14 +40,17 @@ export default function Review() {
     setData(null);
     void (async () => {
       const sets = (await setsBetween(from, to)).filter((s) => !s.planned);
-      const at = sets.some((s) => usesBodyWeight(loadOf(exById.value.get(s.exerciseId)))) ? await bodyWeights() : () => undefined;
+      const exs = exById.value;
+      const at = sets.some((s) => usesBodyWeight(loadOf(exs.get(s.exerciseId)))) ? await bodyWeights() : () => undefined;
       const by = new Map<string, WorkoutSet[]>();
-      for (const s of sets) if (exById.value.get(s.exerciseId)?.type.includes('reps')) by.get(s.exerciseId)?.push(s) ?? by.set(s.exerciseId, [s]);
-      const real = new Map([...by].map(([id, list]) => [id, withRealLoad(list, loadOf(exById.value.get(id)), at)]));
-      const eff = await effectiveOf(sets);
-      const muscles = periodMuscles(sets, (id) => exById.value.get(id)?.muscles, (s) => eff(s).n, GOALS[st.mode], from, to);
+      for (const s of sets) if (exs.get(s.exerciseId)?.type.includes('reps')) by.get(s.exerciseId)?.push(s) ?? by.set(s.exerciseId, [s]);
+      const real = new Map([...by].map(([id, list]) => [id, withRealLoad(list, loadOf(exs.get(id)), at)]));
       if (st.program) await loadRoutines();
-      if (live) setData({ changes: exerciseChanges(real, from, to, st.formula), muscles, sore: soreness(sets, (id) => exById.value.get(id)?.muscles, from, to) });
+      if (!live) return;
+      const base = { changes: exerciseChanges(real, from, to, st.formula), sore: soreness(sets, (id) => exs.get(id)?.muscles, from, to) };
+      setData({ ...base, muscles: null });
+      const eff = await effectiveOf(sets);
+      if (live) setData({ ...base, muscles: periodMuscles(sets, (id) => exs.get(id)?.muscles, (s) => eff(s).n, GOALS[st.mode], from, to) });
     })();
     return () => {
       live = false;
@@ -66,9 +68,9 @@ export default function Review() {
   }
 
   const spans: Span[] = cycle ? ['cycle', 4, 6, 8] : [4, 6, 8];
-  // Weight and reps: e1RM in the user's unit; reps-only exercises: their best reps.
-  const changeText = (c: ExerciseChange, ex: Exercise) =>
-    ex.type === 'weight,reps' ? `${weight(c.first, st)} → ${weight(c.last, st)}` : `${Math.round(c.first)} → ${Math.round(c.last)}`;
+  // e1RM of the real load in the user's unit, or best reps (body weight alone): the exercise's one scale.
+  const changeText = (c: ExerciseChange) =>
+    c.kind === 'load' ? `${weight(c.first, st)} → ${weight(c.last, st)}` : `${Math.round(c.first)} → ${Math.round(c.last)} ${t('reps').toLowerCase()}`;
 
   return (
     <Sheet title={t('review')}>
@@ -98,7 +100,7 @@ export default function Review() {
                     <li key={c.exerciseId} class="entry entry-static">
                       <span class="entry-name">{ex.name}</span>
                       <span class="muted small num">
-                        {changeText(c, ex)}
+                        {changeText(c)}
                         {c.change != null &&
                           (Math.abs(c.change) < 0.0005 ? (
                             <b class="delta"> ±0 %</b>
@@ -113,21 +115,22 @@ export default function Review() {
               </ul>
             </section>
 
-            {data.muscles.list.length > 0 && (
+            {data.muscles && data.muscles.list.length > 0 && (
               <section class="card">
                 <h2>{t('effPerMuscle')}</h2>
                 <ul class="mu-bars">
                   {data.muscles.list.map((m) => {
+                    const mu = data.muscles!;
                     const s = data.sore.get(m.muscle);
                     return (
                       <li key={m.muscle}>
                         <span class="mu-name">{t(`mu_${m.muscle}` as Key)}</span>
                         <span class="mu-track">
-                          <span class="mu-fill" style={{ width: `${(m.total / data.muscles.list[0].total) * 100}%` }} />
+                          <span class="mu-fill" style={{ width: `${(m.total / mu.list[0].total) * 100}%` }} />
                         </span>
-                        <span class="mu-num num">{Math.round(m.total / data.muscles.weeks)}</span>
+                        <span class="mu-num num">{Math.round(m.total / mu.weeks)}</span>
                         <span class="mu-sessions small">
-                          {t('effPerWeek', { n: Math.round(m.total / data.muscles.weeks) })} · {m.sessions === 1 ? t('mainSession1') : t('mainSessions', { n: m.sessions })}
+                          {t('effPerWeek', { n: Math.round(m.total / mu.weeks) })} · {m.sessions === 1 ? t('mainSession1') : t('mainSessions', { n: m.sessions })}
                           {s && s[2] > 0 && ` · ${t('stillSoreN', { n: s[2], of: s[0] + s[1] + s[2] })}`}
                         </span>
                       </li>
@@ -167,7 +170,7 @@ function SwapList(p: { changes: ExerciseChange[]; inProgram: ReadonlySet<string>
             <div class="chips">
               {alts.length ? (
                 alts.map((a) => (
-                  <button key={a.id} class="chip" onClick={() => (swapHere ? p.onSwap(ex, a) : replaceTop({ kind: 'exercise', id: a.id, date: isoDate(new Date()) }))}>
+                  <button key={a.id} class="chip" onClick={() => (swapHere ? p.onSwap(ex, a) : open({ kind: 'exercise', id: a.id, date: isoDate(new Date()) }))}>
                     {swapHere ? t('swapInProgram', { name: a.name }) : a.name}
                   </button>
                 ))
