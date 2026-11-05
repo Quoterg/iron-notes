@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addEntry, entries, loadBody, loadEntries, metrics, removeEntry, removeMetric, renameMetric } from '../body-state';
 import { isoDate, parseIso } from '../lib/calc';
 import { fmtBody, fromUser, toUser, trend, unitOf } from '../lib/body';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import { num } from '../lib/units';
 import { back } from '../nav';
 import { settings, toast } from '../state';
@@ -13,7 +13,7 @@ import { Sheet } from './Sheet';
 const PAGE = 30;
 /** Stable empty list (a fresh [] each render would re-run the chart memo). */
 const EMPTY: never[] = [];
-const longDate = (d: string) => parseIso(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const longDate = (d: string) => parseIso(d).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function MetricSheet({ id }: { id: string }) {
   useEffect(() => {

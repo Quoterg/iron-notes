@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { isoDate } from '../lib/calc';
 import { effectiveOf } from '../effort';
-import { t, type Key } from '../lib/i18n';
+import { type Key, locale, t } from '../lib/i18n';
 import { MUSCLES } from '../lib/muscles';
 import type { MuscleId } from '../lib/model';
 import { GOALS, lastWeeks, statusOf, weeks, type WeekMuscle } from '../lib/volume';
@@ -35,7 +35,7 @@ export default function Muscles() {
   const trained = MUSCLES.filter((m) => starts.some((w) => data?.get(w)?.get(m)));
   // Bars share one scale: the goal's top per session times the week's sessions, or the largest total.
   const scale = Math.max(1, ...trained.map((m) => thisWeek?.get(m)?.total ?? 0), goal ? goal.max * 2 : 0);
-  const day = (d: string) => new Date(d + 'T00:00').toLocaleDateString(undefined, { weekday: 'short' });
+  const day = (d: string) => new Date(d + 'T00:00').toLocaleDateString(locale(), { weekday: 'short' });
 
   return (
     <Sheet title={t('muscles')}>

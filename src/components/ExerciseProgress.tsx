@@ -2,7 +2,7 @@
 // (sets in date/order), computed only while the tab is shown.
 import { useMemo, useState } from 'preact/hooks';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
-import { t, type Key } from '../lib/i18n';
+import { type Key, locale, t } from '../lib/i18n';
 import type { Exercise, Settings, WorkoutSet } from '../lib/model';
 import { bestOrm, bests, dailySeries, METRICS, metricsFor, rangeStart, repMaxTable, workouts, type Kind, type Metric, type Range } from '../lib/progress';
 import { distance, dToUser, KM_PER_MI, num, setText, weight, wToUser } from '../lib/units';
@@ -10,8 +10,8 @@ import { open } from '../nav';
 import { Trophy } from './icons';
 import { LineChart } from './LineChart';
 
-const longDate = (d: string) => parseIso(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-const shortDate = (d: string) => parseIso(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const longDate = (d: string) => parseIso(d).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const shortDate = (d: string) => parseIso(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** Seconds per km → seconds per the user's distance unit (per km for metres). */
 const pacePerUnit = (secPerKm: number, s: Settings) => (s.dist === 'mi' ? secPerKm * KM_PER_MI : secPerKm);

@@ -1,6 +1,7 @@
 // All UI strings go through t(). English only for now. Only the first screen's strings are here; the
 // later screens' strings are a lazy chunk (strings-later.ts) that every lazy screen loads with its code
 // (lazy.tsx), as in Iron Log. i18n.test.ts checks first-paint code only uses keys from here.
+import { signal } from '@preact/signals';
 import type { later as LaterTable } from './strings-later';
 
 const core = {
@@ -50,8 +51,51 @@ export function setLater(table: Later): void {
   laterStrings = table;
 }
 
+// ---- Language: English is built in; Swedish is a lazy pack (lang/sv.ts), loaded before it's shown ----
+export type Lang = 'en' | 'sv';
+interface Pack {
+  strings: Partial<Record<Key, string>>;
+  types: Record<string, string>;
+}
+let sv: Pack | null = null;
+/** The language shown; components re-render when it changes (t() reads it). */
+export const lang = signal<Lang>('en');
+
+/** The phone's language if we have it (Norwegian reads Swedish), else English. */
+export function detectLang(): Lang {
+  const l = (typeof navigator === 'undefined' ? '' : navigator.language ?? '').toLowerCase().slice(0, 2);
+  return l === 'sv' || l === 'nb' || l === 'nn' || l === 'no' ? 'sv' : 'en';
+}
+
+const LANG_KEY = 'iron-notes-lang';
+/** The language used last on this device: a startup hint (settings stay the truth). */
+export function lastLang(): Lang | undefined {
+  try {
+    const l = localStorage.getItem(LANG_KEY);
+    return l === 'en' || l === 'sv' ? l : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Loads the language's pack if needed, then shows it. */
+export async function setLang(l: Lang): Promise<void> {
+  if (l === 'sv' && !sv) sv = (await import('./lang/sv')).default;
+  lang.value = l;
+  if (typeof document !== 'undefined') document.documentElement.lang = l;
+  try {
+    localStorage.setItem(LANG_KEY, l);
+  } catch {
+    // private mode etc.: only the startup hint is lost
+  }
+}
+
+/** The pack's exercise-type names (strings-later falls back to English). */
+export const packTypes = (): Record<string, string> | undefined => (lang.value === 'sv' ? sv?.types : undefined);
+
 export function t(key: Key, vars?: Record<string, string | number>): string {
-  let s: string = (core as Record<string, string>)[key] ?? (laterStrings as Record<string, string>)[key] ?? key;
+  const pack = lang.value === 'sv' ? sv?.strings : undefined;
+  let s: string = pack?.[key] ?? (core as Record<string, string>)[key] ?? (laterStrings as Record<string, string>)[key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
   return s;
 }
@@ -59,4 +103,5 @@ export function t(key: Key, vars?: Record<string, string | number>): string {
 /** Keys of the first screen's table (for tests). */
 export const coreKeys = (): string[] => Object.keys(core);
 
-export const locale = (): string | undefined => undefined; // the browser's
+/** Locale for dates: Swedish when shown in Swedish, else the browser's. */
+export const locale = (): string | undefined => (lang.value === 'sv' ? 'sv-SE' : undefined);

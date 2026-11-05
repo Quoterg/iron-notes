@@ -5,16 +5,26 @@
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
-- **Phase 2 goal (owner, 2026-10-28):** better than the RP Hypertrophy app, fast on old phones, two modes
-  (Dorian HIT, Lyle effective reps). Design and every answered question: docs/TRAINING-MODES.md.
-- Order agreed 2026-10-29: M16 → M15 → M17 → M18 → M19 → M20 → M12 Android → M11 Swedish → M21 sync.
 - **Owner action (M12b):** create the upload key and build/sign the Android app (docs/ANDROID.md); then
   `pnpm assetlinks`, commit, deploy. Optional Play listing.
-- Next: **M11 Languages** (Swedish), then M21 device sync.
-- Perf note: initial JS 19.9 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
-- Deferred perf (PR #11 review): duplicate keys for a FitNotes import come from reading all sets; a key-only
-  cursor pass and an indexOf-based CSV parser would help only past ~50k sets / multi-MB files.
+- Next: **M21 Device sync** (QR + direct encrypted WebRTC like Iron Log, no server, no account).
+- Follow-ups: decimal comma in Swedish for displayed numbers (needs a display-only formatter: `num()` also
+  writes CSV and input values); Swedish names for the starter library would need a stable key per
+  exercise (programs match by name).
+- Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M11 Languages (Swedish)
+
+- `src/lib/lang/sv.ts`: every string (first screen and later screens) and the exercise-type names in
+  Swedish; a lazy chunk (7.2 KB gzip). `sv.test.ts`: same keys as English, same placeholders.
+- `i18n.ts`: `lang` signal, `setLang` (loads the pack, sets `<html lang>`, remembers the last language as a
+  startup hint), `detectLang` (sv, and Norwegian, → Swedish; else English), `locale()` → sv-SE for dates.
+  `t()` reads the pack first, then English.
+- Startup loads the hinted pack alongside the database, before the first render; `settings.lang` (Auto ·
+  English · Svenska, validated in backups) wins. All 17 `toLocale…String(undefined…)` dates follow it.
+- Exercise and category names are the user's data and stay as stored (starter library in gym English).
+- Checks: 199 unit tests, 30 e2e (new language.spec), initial JS 20.6 KB, Lighthouse passes.
 
 ## 2026-10-29 — M12a Android project
 

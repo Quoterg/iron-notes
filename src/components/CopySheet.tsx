@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { byOrder, parseIso } from '../lib/calc';
 import { recentWorkoutDates, setsBetween } from '../lib/db';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { back } from '../nav';
 import { catById, exById, toast } from '../state';
@@ -11,7 +11,7 @@ import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
 const PAGE = 15;
-const label = (d: string) => parseIso(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const label = (d: string) => parseIso(d).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 interface Day {
   date: string;

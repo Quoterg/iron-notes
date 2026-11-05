@@ -3,7 +3,7 @@ import { exportAll, importAll, validateBackup } from '../lib/backup';
 import { isoDate, parseIso } from '../lib/calc';
 import { inLight, lightEnd } from '../lib/cycle';
 import { allSets, clearAll, importRows } from '../lib/db';
-import { t, type Key } from '../lib/i18n';
+import { detectLang, type Key, locale, setLang, t } from '../lib/i18n';
 import { CYCLE_WEEKS, cycleWeek, DEFAULT_CYCLE, RUN_UP } from '../lib/lyle';
 import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
@@ -66,7 +66,7 @@ function LightWeek() {
   const on = inLight(l, today);
   return (
     <div class="cycle">
-      <p class="muted small">{on ? t('lightUntil', { date: parseIso(lightEnd(l!)).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) }) : t('lightHint')}</p>
+      <p class="muted small">{on ? t('lightUntil', { date: parseIso(lightEnd(l!)).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' }) }) : t('lightHint')}</p>
       <button class="btn wide" onClick={() => void saveSettings({ light: on ? undefined : { start: today } })}>
         {t(on ? 'endLight' : 'startLight')}
       </button>
@@ -122,6 +122,20 @@ export default function Settings() {
         </label>
         <Check label="autoTimer" checked={s.autoTimer} onChange={(autoTimer) => void saveSettings({ autoTimer })} />
         <Check label="timerSound" checked={s.timerSound} onChange={(timerSound) => void saveSettings({ timerSound })} />
+      </section>
+
+      <section class="card">
+        <h2>{t('language')}</h2>
+        <Choice<'auto' | 'en' | 'sv'>
+          label={t('language')}
+          hideLabel
+          options={[['auto', t('langAuto')], ['en', 'English'], ['sv', 'Svenska']]}
+          value={s.lang ?? 'auto'}
+          onPick={(v) => {
+            void saveSettings({ lang: v === 'auto' ? undefined : v });
+            void setLang(v === 'auto' ? detectLang() : v);
+          }}
+        />
       </section>
 
       <section class="card">

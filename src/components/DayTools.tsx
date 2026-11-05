@@ -1,7 +1,7 @@
 // The day's workout tools under the log: copy, reorder, superset, share, delete. A lazy chunk: it
 // isn't needed to show the day, so it loads right after the first paint.
 import { parseIso } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { open } from '../nav';
 import { date, dayComment, daySets, exById, settings, toast } from '../state';
@@ -24,7 +24,7 @@ export default function DayTools({ groups, reordering, setReordering, grouping, 
 
   async function share() {
     const { workoutText } = await import('../lib/share');
-    const title = parseIso(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const title = parseIso(d).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const text = workoutText(title, ids.map((id) => ({ ex: exById.value.get(id)!, sets: groups.get(id)! })), settings.value, dayComment.value);
     try {
       if (navigator.share) return void (await navigator.share({ text }));

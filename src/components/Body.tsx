@@ -3,14 +3,14 @@ import { useEffect, useState } from 'preact/hooks';
 import { addMetric, latest, loadBody, metrics } from '../body-state';
 import { parseIso } from '../lib/calc';
 import { fmtBody, latestChange, toUser } from '../lib/body';
-import { t, type Key } from '../lib/i18n';
+import { type Key, locale, t } from '../lib/i18n';
 import type { BodyKind } from '../lib/model';
 import { num } from '../lib/units';
 import { open } from '../nav';
 import { settings } from '../state';
 
 const KINDS: BodyKind[] = ['weight', 'percent', 'length', 'number'];
-const shortDate = (d: string) => parseIso(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+const shortDate = (d: string) => parseIso(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 
 export default function Body() {
   const [name, setName] = useState('');

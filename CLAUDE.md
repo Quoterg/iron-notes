@@ -49,7 +49,8 @@ pnpm assetlinks                # android/twa-manifest.json fingerprints → publ
   is a lazy chunk (`lazyView` in src/app.tsx), prefetched when idle.
 - User data stays on device (IndexedDB, `src/lib/db.ts`); weights in kg, distances in km, time in
   seconds — convert only for display (`src/lib/units.ts`). No analytics, no third-party requests.
-- All UI strings go through `t()` in `src/lib/i18n.ts`.
+- All UI strings go through `t()` in `src/lib/i18n.ts`; every new key also goes into the Swedish pack
+  `src/lib/lang/sv.ts` (a test fails otherwise).
 - Pure logic (records, 1RM, future effective reps) lives in `src/lib/*.ts` with unit tests.
 - Keep the CSP strict (`src/csp.ts`): no inline scripts except the hashed theme boot; never build
   `style="…"` strings (Preact `style={{}}` is fine).

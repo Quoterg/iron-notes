@@ -1,5 +1,5 @@
 import { addDays, isoDate, parseIso } from './lib/calc';
-import { t } from './lib/i18n';
+import { locale, t } from './lib/i18n';
 import { Log } from './components/Log';
 import { RestTimer } from './components/RestTimer';
 import { lazyView } from './lazy';
@@ -169,5 +169,5 @@ export function dayLabel(d: string): string {
   if (d === today) return t('today');
   if (d === addDays(today, -1)) return t('yesterday');
   if (d === addDays(today, 1)) return t('tomorrow');
-  return parseIso(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return parseIso(d).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
