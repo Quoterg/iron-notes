@@ -1,5 +1,5 @@
 // Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
-import { db, getSettings, metaKey, type SyncStore } from './db';
+import { changeTime, db, getSettings, metaKey, type SyncStore } from './db';
 import { MUSCLES, normalizeMuscles } from './muscles';
 import { cleanPlates } from './tools';
 import { DEFAULT_SETTINGS, TYPES, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
@@ -143,9 +143,8 @@ export async function importAll(b: unknown): Promise<void> {
   if (hasMetrics) ops.push(tx.objectStore('kv').put({ key: 'bodySeeded', value: true }));
   // Device sync: the restored data is this device's newest (records only another device has come back
   // at the next sync; nothing here deletes them there).
-  const mt = Date.now();
   const meta = tx.objectStore('meta');
-  const stamp = (store: SyncStore, key: string) => ops.push(meta.put({ mt }, metaKey(store, key)));
+  const stamp = (store: SyncStore, key: string) => ops.push(meta.put({ mt: changeTime() }, metaKey(store, key)));
   for (const c of x.categories) stamp('categories', c.id);
   for (const e of x.exercises) stamp('exercises', e.id);
   for (const st of x.sets) stamp('sets', st.id);

@@ -32,8 +32,16 @@ export const KEY_PATH: Record<SyncStore, string> = { categories: 'id', exercises
 export const metaKey = (store: SyncStore, key: string): string => `${store}:${key}`;
 
 let lastMt = 0;
-/** A change time, strictly increasing on this device (two writes in one millisecond stay ordered). */
-const changeTime = () => (lastMt = Math.max(lastMt + 1, Date.now()));
+/**
+ * A change time, strictly increasing on this device (two writes in one millisecond stay ordered). A bulk
+ * write of N records in one millisecond runs N ms ahead — harmless (the receiving side caps times 5 min
+ * ahead), and never behind a change already seen from another device (see `sawChangeTime`).
+ */
+export const changeTime = (): number => (lastMt = Math.max(lastMt + 1, Date.now()));
+/** A change time applied from another device (possibly ahead of this clock): later local edits beat it. */
+export function sawChangeTime(mt: number): void {
+  lastMt = Math.max(lastMt, mt);
+}
 type MetaTx = { objectStore(name: 'meta'): { put(v: Meta, k: string): Promise<unknown> } };
 /** Records a change of a synced record in the same transaction (every write goes through here). */
 function stamp(tx: MetaTx, store: SyncStore, key: string, del = false): Promise<unknown> {
@@ -93,7 +101,8 @@ export function db(): Promise<IDBPDatabase<Schema>> {
               if (await tx.objectStore('kv').get('settings')) await meta.put({ mt: 1 }, metaKey('kv', 'settings'));
               continue;
             }
-            for (const key of await tx.objectStore(store).getAllKeys()) await meta.put({ mt: 1 }, metaKey(store, String(key)));
+            // Queued, not awaited one by one: a big history upgrades in one pass on an old phone.
+            await Promise.all((await tx.objectStore(store).getAllKeys()).map((key) => meta.put({ mt: 1 }, metaKey(store, String(key)))));
           }
         }
       }
@@ -420,5 +429,7 @@ export async function getComment(date: string): Promise<string> {
 export async function putComment(date: string, text: string): Promise<void> {
   const tx = (await db()).transaction(['comments', 'meta'], 'readwrite');
   const t = text.trim();
+  // An empty field over no comment changes nothing (no tombstone filling the log).
+  if (!t && !(await tx.objectStore('comments').get(date))) return void (await tx.done);
   await Promise.all([t ? tx.objectStore('comments').put({ date, text: t }) : tx.objectStore('comments').delete(date), stamp(tx, 'comments', date, !t), tx.done]);
 }

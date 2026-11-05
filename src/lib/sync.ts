@@ -65,8 +65,10 @@ export async function changesFor(theirs: Summary, mine?: Summary): Promise<Chang
   mine ??= await summarize();
   const wanted = Object.entries(mine).filter(([k, mt]) => mt > (theirs[k] ?? -1));
   if (!wanted.length) return [];
-  const stores = [...new Set(wanted.flatMap(([k]) => split(k)?.[0] ?? []))];
-  const { meta, records } = await readForSync(stores);
+  const { meta, records } = await readForSync(wanted.flatMap(([k]): [SyncStore, string][] => {
+    const sk = split(k);
+    return sk ? [sk] : [];
+  }));
   const out: Change[] = [];
   // The library before what refers to it: the other device matches categories, exercises and measures
   // by name first (see applyChanges), then maps what refers to them.

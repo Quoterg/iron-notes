@@ -162,5 +162,70 @@ describe('device-to-device sync', () => {
     expect((await a.db.setsOn('2026-11-01')).find((s) => s.id === 'sb2')?.exerciseId).toBe('xa');
     expect(await syncPair(a, b)).toEqual([0, 0]);
   });
+
+  it('a local edit after a change from a clock ahead still wins (skew within the 5-minute cap)', async () => {
+    const a = await device();
+    const b = await device();
+    // B's clock is 3 minutes ahead of A's: its edit carries B's time.
+    at(100_000 + 3 * 60_000);
+    await b.db.putSet(set('s', 90));
+    at(100_000);
+    await syncPair(a, b);
+    // A minute later (real time), the user edits it on A: A's stamp must still beat B's time.
+    at(100_000 + 60_000);
+    await a.db.putSet(set('s', 95));
+    await syncPair(a, b);
+    expect((await b.db.setsOn('2026-11-01'))[0].weight).toBe(95);
+  });
+
+  it('every deleting writer leaves tombstones; CSV import and restore stamp what they write', async () => {
+    const a = await device();
+    await a.db.putLibrary([{ id: 'c', name: 'Chest', color: '#f0566a', order: 0 }], [{ id: 'bench', name: 'Bench', categoryId: 'c', type: 'weight,reps' }]);
+    await a.db.putSets([set('s1'), set('s2', 100, '2026-11-02')]);
+    await a.db.putComment('2026-11-02', 'heavy');
+    await a.db.putMetrics([{ id: 'm', name: 'Body weight', kind: 'weight', order: 0 }]);
+    await a.db.putEntry({ id: 'e', metricId: 'm', date: '2026-11-01', value: 80, at: 1 });
+    await a.db.deleteDay('2026-11-02');
+    await a.db.deleteExercise('bench');
+    await a.db.deleteMetric('m');
+    const meta = await a.sync.summarize();
+    const del = async () => {
+      const { readForSync } = await import('./db-sync');
+      return (await readForSync([])).meta;
+    };
+    const m = await del();
+    for (const k of ['sets:s1', 'sets:s2', 'comments:2026-11-02', 'exercises:bench', 'metrics:m', 'body:e']) expect([k, m.get(k)?.del]).toEqual([k, true]);
+    expect(meta['categories:c']).toBeGreaterThan(0);
+    // CSV import stamps its rows.
+    await a.db.importRows([], [{ id: 'x', name: 'Row', categoryId: 'c', type: 'weight,reps' }], [{ ...set('csv'), exerciseId: 'x' }]);
+    const m2 = await del();
+    expect(m2.get('sets:csv')?.del).toBeUndefined();
+    expect(m2.get('exercises:x')?.mt).toBeGreaterThan(0);
+    // An empty comment over none leaves no tombstone.
+    await a.db.putComment('2026-12-01', '  ');
+    expect((await del()).has('comments:2026-12-01')).toBe(false);
+  });
+
+  it('a restore restarts the log: no stale tombstones, restored records newest', async () => {
+    const a = await device();
+    const backup = await import('./backup');
+    await a.db.putSet(set('gone'));
+    await a.db.deleteSet('gone');
+    at(5_000_000);
+    await backup.importAll({ app: 'iron-notes', version: 1, categories: [], exercises: [], sets: [set('r1')] });
+    const s = await a.sync.summarize(5_000_000);
+    expect(s['sets:gone']).toBeUndefined();
+    expect(s['sets:r1']).toBeGreaterThanOrEqual(5_000_000);
+    expect(s['kv:settings']).toBeGreaterThanOrEqual(5_000_000);
+  });
+
+  it('tombstones older than 90 days are pruned by a summary', async () => {
+    const a = await device();
+    at(1_000_000);
+    await a.db.putSet(set('old'));
+    await a.db.deleteSet('old');
+    expect((await a.sync.summarize(1_000_000 + 89 * 864e5))['sets:old']).toBeDefined();
+    expect((await a.sync.summarize(1_000_000 + 91 * 864e5))['sets:old']).toBeUndefined();
+  });
 });
 
