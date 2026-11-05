@@ -147,7 +147,12 @@ export default function Settings() {
             void setLang(v === 'auto' ? detectLang() : v);
           }}
         />
-        {lang.value === 'sv' && <Check label="gymEnglish" checked={!!s.gymEnglish} onChange={(gymEnglish) => void saveSettings({ gymEnglish })} />}
+        {lang.value === 'sv' && (
+          <>
+            <Check label="gymEnglish" checked={!!s.gymEnglish} onChange={(gymEnglish) => void saveSettings({ gymEnglish })} />
+            <p class="muted small">{t('gymEnglishHint')}</p>
+          </>
+        )}
       </section>
 
       <section class="card">

@@ -80,7 +80,7 @@ export default function CopySheet({ date }: { date: string }) {
                   {day.groups.length} {t('exercises').toLowerCase()}
                 </span>
               </button>
-              {!isOpen && <p class="muted small copy-names">{day.groups.map(([id]) => exById.value.get(id)!.name).join(', ')}</p>}
+              {!isOpen && <p class="muted small copy-names">{day.groups.map(([id]) => exName(exById.value.get(id)!)).join(', ')}</p>}
               {isOpen && (
                 <div class="form">
                   {day.groups.map(([id, sets]) => {

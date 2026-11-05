@@ -30,6 +30,12 @@ test('Swedish: chosen in Settings, kept after a reload, back to English', async 
   await expect(page.locator('div:not([hidden]) > .sheet .sets li').first()).toContainText('82,5 kg × 5'); // decimal comma
   await page.getByRole('button', { name: /Tillbaka/ }).click();
 
+  // The copy sheet lists the day's exercises by their shown names too.
+  await page.getByRole('button', { name: 'Nästa dag' }).click();
+  await page.getByRole('button', { name: 'Kopiera ett tidigare pass' }).click();
+  await expect(page.locator('.copy-names').first()).toHaveText('Bänkpress med skivstång');
+  await page.getByRole('button', { name: /Tillbaka/ }).click();
+
   await page.getByRole('button', { name: 'Inställningar', exact: true }).click();
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Log', exact: true })).toBeVisible();

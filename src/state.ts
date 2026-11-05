@@ -1,9 +1,9 @@
 // Shared app state as Preact signals. Screens read these; writes go through the functions here so the
 // day view, records and the open exercise stay in step.
-import { computed, signal } from '@preact/signals';
+import { computed, effect, signal } from '@preact/signals';
 import { byOrder, isoDate, recordIds } from './lib/calc';
 import * as db from './lib/db';
-import { applyLang, gymEnglish } from './lib/i18n';
+import { applyLang, byShownName, gymEnglish, lang } from './lib/i18n';
 import { DEFAULT_SETTINGS, type Category, type Exercise, type Routine, type Settings, type WorkoutSet } from './lib/model';
 
 export type View = 'log' | 'calendar' | 'routines' | 'body' | 'settings';
@@ -37,7 +37,6 @@ export async function saveSettings(patch: Partial<Settings>): Promise<void> {
 }
 
 const byCatOrder = (a: Category, b: Category) => a.order - b.order || a.name.localeCompare(b.name);
-const byName = (a: Exercise, b: Exercise) => a.name.localeCompare(b.name);
 
 export async function loadLibrary(): Promise<void> {
   let lib = await db.getLibrary();
@@ -49,7 +48,7 @@ export async function loadLibrary(): Promise<void> {
     await db.markSeeded();
   } else if (lib.categories.length) void db.isSeeded().then((s) => (s ? undefined : db.markSeeded())); // installs from before the flag
   categories.value = lib.categories.sort(byCatOrder);
-  exercises.value = lib.exercises.sort(byName);
+  exercises.value = byShownName(lib.exercises);
   void mapMusclesOnce().then(mapLoadsOnce);
 }
 
@@ -121,7 +120,7 @@ export async function setFavorite(e: Exercise, favorite: boolean): Promise<void>
 
 export async function saveExercise(e: Exercise): Promise<void> {
   await db.putExercise(e);
-  exercises.value = [...exercises.value.filter((x) => x.id !== e.id), e].sort(byName);
+  exercises.value = byShownName([...exercises.value.filter((x) => x.id !== e.id), e]);
   await refreshRecords(e.id); // the type may have changed
 }
 export async function removeExercise(id: string): Promise<void> {
@@ -286,3 +285,12 @@ export async function reloadAll(): Promise<void> {
   setsVersion.value++;
   await loadDay(date.value);
 }
+
+// Lists follow the shown names: re-sorted when the language or the gym-English setting changes.
+effect(() => {
+  void lang.value;
+  void gymEnglish.value;
+  const list = exercises.peek();
+  if (list.length) exercises.value = byShownName(list);
+});
+

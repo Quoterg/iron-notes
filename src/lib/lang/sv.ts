@@ -420,6 +420,7 @@ const strings: Record<Key, string> = {
   notifyDenied: 'Aviseringar är blockerade för Iron Notes: tillåt dem i telefonens inställningar.',
   new_16a: 'Vila per kategori (t.ex. längre för ben), och en valfri avisering när vilan är slut med skärmen släckt.',
   gymEnglish: 'Gym-engelska namn på startövningarna',
+  gymEnglishHint: 'Används bara när appen är på svenska; namn du gett egna övningar ändras aldrig.',
   new_15a: 'På svenska: startövningar, kategorier och kroppsmått har svenska namn (gym-engelska med en inställning), och tal visas med decimalkomma.',
   review: 'Utvärdering',
   reviewCycle: 'Utvärdera cykeln',

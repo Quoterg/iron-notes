@@ -14,7 +14,8 @@ export const dFromUser = (v: number, u: DistUnit): number => (u === 'mi' ? v * K
 /** A number without trailing zeros: 82.5, 80, 1.25. */
 export const num = (x: number, d = 2): string => String(round(x, d));
 
-/** A number as shown: rounded, with a decimal comma in Swedish (`num` stays for inputs and CSV). */
+/** A number as shown: rounded, with a decimal comma in Swedish (`num` stays for inputs and CSV). Reads the
+ *  language when called, so text built outside a component (share text) follows the current one. */
 export const dnum = (x: number, d = 2): string => (decimalComma() ? num(x, d).replace('.', ',') : num(x, d));
 export const weight = (kg: number, s: Settings): string => `${dnum(wToUser(kg, s.unit))} ${s.unit}`;
 export const distance = (km: number, s: Settings): string => `${dnum(dToUser(km, s.dist), s.dist === 'm' ? 0 : 2)} ${s.dist}`;

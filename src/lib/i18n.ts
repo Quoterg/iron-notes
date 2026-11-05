@@ -125,6 +125,13 @@ export const exName = (e: { name: string }): string => shown('exercises', e.name
 export const catName = (c: { name: string }): string => shown('categories', c.name);
 export const metricName = (m: { name: string }): string => shown('metrics', m.name);
 
+/** Exercises in alphabetical order of their shown names (each name worked out once, not per comparison). */
+export function byShownName<T extends { id: string; name: string }>(list: readonly T[]): T[] {
+  const names = new Map(list.map((e) => [e.id, exName(e)]));
+  const loc = lang.value === 'sv' ? 'sv-SE' : undefined;
+  return [...list].sort((a, b) => names.get(a.id)!.localeCompare(names.get(b.id)!, loc));
+}
+
 /** Displayed numbers use a decimal comma in Swedish (inputs and CSV keep the dot). */
 export const decimalComma = (): boolean => lang.value === 'sv';
 

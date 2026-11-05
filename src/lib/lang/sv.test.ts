@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyLang, catName, coreStrings, exName, gymEnglish, lang, metricName, t } from '../i18n';
+import { applyLang, byShownName, catName, coreStrings, exName, gymEnglish, lang, metricName, t } from '../i18n';
 import { defaultMetrics } from '../body';
 import { starterLibrary } from '../seed';
 import { dnum } from '../units';
@@ -59,6 +59,24 @@ describe('starter names in Swedish', () => {
     await applyLang('en');
     expect(exName({ name: 'Flat Barbell Bench Press' })).toBe('Flat Barbell Bench Press');
     expect(dnum(82.5)).toBe('82.5');
+  });
+});
+
+describe('order by shown name', () => {
+  afterEach(() => {
+    lang.value = 'en';
+  });
+  it('Swedish order in Swedish (å ä ö last), English order in English', async () => {
+    const list = [
+      { id: '1', name: 'Deadlift' }, // Marklyft
+      { id: '2', name: 'Leg Press' }, // Benpress
+      { id: '3', name: 'Neck Thing' },
+      { id: '4', name: 'Öland Row' },
+      { id: '5', name: 'Arnold Press' }, // Arnoldpress
+    ];
+    expect(byShownName(list).map((e) => e.id)).toEqual(['5', '1', '2', '3', '4']);
+    await applyLang('sv');
+    expect(byShownName(list).map((e) => exName(e))).toEqual(['Arnoldpress', 'Benpress', 'Marklyft', 'Neck Thing', 'Öland Row']);
   });
 });
 
