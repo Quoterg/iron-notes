@@ -530,7 +530,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 </button>
               )}
               {fields.includes('weight') && (
-                <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight })}>
+                <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight, reps: values?.reps })}>
                   {t('tools')}
                 </button>
               )}
@@ -590,9 +590,27 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 <ol class="setlist prev">
                   {prev.map((s) => (
                     <li key={s.id}>
-                      <span>{setText(s, ex.type, st)}</span>
-                      {rec?.has(s.id) && <Trophy />}
-                      {s.comment && <span class="note-line">{s.comment}</span>}
+                      <button
+                        type="button"
+                        class="prev-set"
+                        onClick={() => {
+                          // Copies the set into the form to log it again; what was typed comes back with Undo.
+                          // As a seed (`own` false): a warm-up copies as a working set, and Lyle mode never
+                          // prefills RIR.
+                          const before = form;
+                          setSel(null);
+                          const seeded = toForm(s, st);
+                          setForm((f) => ({ ...seeded, rir: lyle ? '' : seeded.rir, comment: f.comment }));
+                          toast(t('setCopied'), { label: t('undo'), run: () => setForm(before) });
+                        }}
+                      >
+                        <span>
+                          {setText(s, ex.type, st)}
+                          {hasReps && <Effort s={s} />}
+                        </span>
+                        {rec?.has(s.id) && <Trophy />}
+                        {s.comment && <span class="note-line">{s.comment}</span>}
+                      </button>
                     </li>
                   ))}
                 </ol>

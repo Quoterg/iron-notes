@@ -1,9 +1,10 @@
 // Categories → exercises, with search across all. Picks an exercise to log on `date`, or (manage)
 // opens exercises and categories for editing.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { recentExerciseIds } from '../lib/db';
-import { t } from '../lib/i18n';
+import { allLabels, type Key, lang, t } from '../lib/i18n';
 import type { Exercise, Routine, RoutineDay } from '../lib/model';
+import { fold, searchIndex, searchIndexed } from '../lib/muscles';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
 import { catById, categories, exById, exercises, routines, setFavorite, toast } from '../state';
@@ -12,9 +13,6 @@ import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
 const RECENT = 8;
-
-/** Lower case without accents, so "presse" finds "Pressé". */
-const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export default function Picker({ date, manage, routine }: { date?: string; manage?: boolean; routine?: { routineId: string; dayId: string } }) {
   const [q, setQ] = useState('');
@@ -40,13 +38,16 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
     else replaceTop({ kind: 'exercise', id: e.id, date });
   };
 
+  // Built once per library / language change; a keystroke only matches (old phones, big libraries).
+  const index = useMemo(
+    () => searchIndex(exercises.value, (cid) => catById.value.get(cid)?.name, (m) => allLabels(`mu_${m}` as Key)),
+    [exercises.value, catById.value, lang.value],
+  );
+
   let body;
   if (query) {
     const words = query.split(/\s+/);
-    const hits = exercises.value.filter((e) => {
-      const n = fold(e.name);
-      return words.every((w) => n.includes(w));
-    });
+    const hits = searchIndexed(index, query);
     const wHits = workouts.filter(({ r, d }) => words.every((w) => fold(`${d.name} ${r.name}`).includes(w)));
     body =
       hits.length || wHits.length ? (

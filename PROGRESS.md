@@ -15,6 +15,15 @@
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## 2026-11-05 — Gym QoL (PR #27)
+
+- Exercise search also matches category and muscles (primary before secondary), in every loaded language
+  (`allLabels`: English always, Swedish when its pack is loaded — no extra download); the folded index is
+  built once per library/language change (`searchIndex`), a keystroke only matches (`searchIndexed`).
+- "Last time" sets show their effort and copy into the form on a tap (Undo restores what was typed).
+- Calculators get the set's reps too (1–15; longer sets keep the default 5).
+- Statistics: "Most trained exercises" rows open the exercise (for today).
+
 ## 2026-11-05 — M11 Languages (Swedish)
 
 - `src/lib/lang/sv.ts`: every string (first screen and later screens) and the exercise-type names in

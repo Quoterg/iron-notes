@@ -413,6 +413,7 @@ const strings: Record<Key, string> = {
   yourProgram: 'Ditt program',
   trainingDays: 'Träningsdagar',
   restDay: 'Vilodag i ditt program.',
+  setCopied: 'Setet kopierat till formuläret.',
   language: 'Språk',
   langAuto: 'Auto',
 };

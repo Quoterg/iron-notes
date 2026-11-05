@@ -21,8 +21,8 @@ export type Screen =
   | { kind: 'category'; id?: string }
   /** The workout comment of `date`. */
   | { kind: 'comment'; date: string }
-  /** Calculators (1RM, plates, warm-up); `weight` (kg) prefills them. */
-  | { kind: 'tools'; weight?: number }
+  /** Calculators (1RM, plates, warm-up); `weight` (kg) and `reps` prefill them. */
+  | { kind: 'tools'; weight?: number; reps?: number }
   /** What's new since the last update. */
   | { kind: 'whatsnew'; since: number }
   /** Training statistics. */

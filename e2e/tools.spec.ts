@@ -12,16 +12,17 @@ test('calculators: plates and warm-up from the logging screen, 1RM table, own pl
   await page.getByRole('searchbox').fill('barbell squat');
   await page.getByRole('button', { name: 'Barbell Squat' }).click();
   await page.getByLabel('Weight (kg)', { exact: true }).fill('140');
-  await page.getByLabel('Reps', { exact: true }).fill('5');
+  await page.getByLabel('Reps', { exact: true }).fill('8');
   await sheet.getByRole('button', { name: 'Calculators' }).click();
 
-  // Prefilled with 140 kg: plates per side on a 20 kg bar.
+  // Prefilled with 140 kg and 8 reps from the logging screen: plates per side on a 20 kg bar.
   await expect(sheet.getByLabel('Weight (kg)')).toHaveValue('140');
   await expect(sheet.locator('.plate')).toHaveText(['25', '25', '10']);
   await sheet.getByRole('button', { name: 'Warm-up', exact: true }).click();
   await expect(sheet.locator('.setlist li')).toHaveText(['20 kg × 10', '55 kg × 5', '82.5 kg × 3', '110 kg × 2', '140 kg — working set']);
 
   await sheet.getByRole('button', { name: '1RM', exact: true }).click();
+  await expect(sheet.getByLabel('Reps')).toHaveValue('8');
   await sheet.getByLabel('Reps').fill('5');
   await expect(sheet.locator('.hero-num')).toContainText('163.3');
   await expect(sheet.locator('table.data tbody tr').first()).toContainText('100 %');

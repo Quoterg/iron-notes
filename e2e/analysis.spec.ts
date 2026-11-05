@@ -47,4 +47,8 @@ test('statistics: totals, categories and top exercises for a period', async ({ p
   // This week only (yesterday may belong to it or not): at least today's workout.
   await sheet.getByRole('button', { name: 'Week', exact: true }).click();
   await expect(stats).toContainText('Workouts');
+
+  // Tapping a top exercise opens its exercise screen.
+  await sheet.locator('.entries button').first().click();
+  await expect(sheet.getByRole('button', { name: 'Records' })).toBeVisible();
 });

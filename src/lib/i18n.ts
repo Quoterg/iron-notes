@@ -97,6 +97,16 @@ export async function applyLang(pref: Lang | undefined): Promise<void> {
   if (want !== lang.value) await setLang(want).catch(() => {});
 }
 
+/**
+ * A string in every language loaded: English always (built in), Swedish when its pack is loaded. For
+ * search, where lifters mix languages (a Swedish UI, English gym terms). Loads nothing itself.
+ */
+export function allLabels(key: Key): string[] {
+  const en = (core as Record<string, string>)[key] ?? (laterStrings as Record<string, string>)[key] ?? key;
+  const s = sv?.strings[key];
+  return s && s !== en ? [en, s] : [en];
+}
+
 /** The pack's exercise-type names (strings-later falls back to English). */
 export const packTypes = (): Record<string, string> | undefined => (lang.value === 'sv' ? sv?.types : undefined);
 
