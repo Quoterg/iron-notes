@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Muscles, WorkoutSet } from './model';
-import { dayMuscles, GOALS, lastWeeks, statusOf, weekOf, weeks } from './volume';
+import { dayMuscles, GOALS, lastWeeks, periodMuscles, statusOf, weekOf, weeks } from './volume';
 
 const M: Record<string, Muscles> = {
   bench: { primary: ['chest'], secondary: ['triceps', 'frontDelts'] },
@@ -62,3 +62,23 @@ describe('weeks', () => {
     expect(w.get('2026-10-19')!.get('chest')).toEqual({ total: 8, sessions: [] }); // 8 direct: extra work
   });
 });
+
+describe('a period (Statistics)', () => {
+  it('per muscle totals and main sessions, most first; total effective reps; weeks in the period', () => {
+    const sets = [
+      ...[1, 2, 3].map(() => set('bench', '2026-10-05', 8)),
+      ...[1, 2, 3].map(() => set('bench', '2026-10-12', 8)),
+      set('dips', '2026-10-13', 8),
+      set('bench', '2026-09-30', 8), // before the period
+    ];
+    const p = periodMuscles(sets, of, eff, GOALS.dorian, '2026-10-05', '2026-10-18');
+    expect(p.list[0]).toEqual({ muscle: 'chest', total: 24 + 24 + 4, sessions: 2 });
+    expect(p.list.find((m) => m.muscle === 'triceps')).toEqual({ muscle: 'triceps', total: 12 + 12 + 8, sessions: 0 });
+    expect(p.total).toBe(56);
+    expect(p.weeks).toBe(2);
+  });
+  it('"All": the period starts with the first workout', () => {
+    expect(periodMuscles([set('bench', '2026-10-12', 8)], of, eff, null, '', '2026-10-18').weeks).toBe(1);
+  });
+});
+

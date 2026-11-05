@@ -9,12 +9,21 @@
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
-- Next: **M24 Plate badges & loadable targets**; also asked: effective reps per muscle in Statistics.
+- Next: **M24 Plate badges & loadable targets**.
 - Follow-ups: decimal comma in Swedish for displayed numbers (needs a display-only formatter: `num()` also
   writes CSV and input values); Swedish names for the starter library would need a stable key per
   exercise (programs match by name).
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — Statistics: effective reps (owner's question)
+
+- `periodMuscles` (lib/volume.ts): per muscle over the period (direct + half the secondary share), main
+  sessions, total effective reps, weeks in the period ("All" starts at the first workout).
+- Statistics: "Effective reps" tile (≈ in Standard mode) and an "Effective reps per muscle" card (bars,
+  per-week average, main sessions; button to the Muscles screen). Same numbers as the day log and Muscles
+  (`effectiveOf`, load types included).
+- Checks: 214 unit tests, 33 e2e, initial JS 21.4 KB, Lighthouse passes.
 
 ## 2026-11-05 — M25 Load types
 

@@ -54,3 +54,23 @@ test('statistics: totals, categories and top exercises for a period', async ({ p
   await sheet.locator('.entries button').first().click();
   await expect(sheet.getByRole('button', { name: 'Records' })).toBeVisible();
 });
+
+test('statistics: effective reps for the period and per muscle', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'Log', exact: true }).click();
+  // Three heavy sets to failure: 8 effective reps each (chest direct; triceps and front delts half).
+  await log(page, 'flat barbell', 'Flat Barbell Bench Press', [['100', '8'], ['100', '8'], ['100', '8']]);
+
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  await page.getByRole('button', { name: 'Statistics' }).click();
+  const sheet = page.locator('div:not([hidden]) > .sheet');
+  await expect(sheet.locator('.stat').filter({ hasText: 'Effective reps' })).toContainText('24');
+  const rows = sheet.locator('.mu-bars li');
+  await expect(rows.first()).toContainText('Chest');
+  await expect(rows.first().locator('.mu-num')).toHaveText('24');
+  await expect(rows.first()).toContainText('1 main session');
+  await expect(rows.filter({ hasText: 'Triceps' }).locator('.mu-num')).toHaveText('12');
+});
+

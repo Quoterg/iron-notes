@@ -91,4 +91,43 @@ export function weeks(
   return out;
 }
 
+
+export interface PeriodMuscle {
+  muscle: MuscleId;
+  /** Direct + indirect effective reps in the period. */
+  total: number;
+  /** Main sessions in the period. */
+  sessions: number;
+}
+
+/**
+ * Effective reps per muscle over a period (Statistics), by muscle total, most first; `weeks` is the
+ * period's length in weeks (at least 1) for a per-week average.
+ */
+export function periodMuscles(
+  sets: readonly WorkoutSet[],
+  musclesOf: (exerciseId: string) => Muscles | undefined,
+  effective: (s: WorkoutSet) => number,
+  goal: Goal | null,
+  from: string,
+  to: string,
+): { list: PeriodMuscle[]; total: number; weeks: number } {
+  const byDate = new Map<string, WorkoutSet[]>();
+  for (const s of sets) if (!s.planned && s.date >= from && s.date <= to) byDate.get(s.date)?.push(s) ?? byDate.set(s.date, [s]);
+  const out = new Map<MuscleId, PeriodMuscle>();
+  let total = 0;
+  for (const day of byDate.values()) {
+    for (const d of dayMuscles(day, musclesOf, effective, goal)) {
+      const m = out.get(d.muscle) ?? out.set(d.muscle, { muscle: d.muscle, total: 0, sessions: 0 }).get(d.muscle)!;
+      m.total += d.direct + d.indirect;
+      if (d.main) m.sessions++;
+    }
+    for (const s of day) total += effective(s);
+  }
+  const first = from || [...byDate.keys()].sort()[0] || to;
+  const days = Math.round((Date.parse(to + 'T00:00Z') - Date.parse(first + 'T00:00Z')) / 86_400_000) + 1;
+  return { list: [...out.values()].sort((a, b) => b.total - a.total), total, weeks: Math.max(1, days / 7) };
+}
+
 export type { MuscleTotal };
+

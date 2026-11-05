@@ -3,6 +3,8 @@
 import { loadOf, usesBodyWeight } from '../lib/load';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { periodStart, summarize, type Period } from '../lib/analysis';
+import { effectiveOf } from '../effort';
+import { GOALS, periodMuscles } from '../lib/volume';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
 import { setsBetween } from '../lib/db';
 import { type Key, locale, t } from '../lib/i18n';
@@ -42,6 +44,20 @@ export default function Analysis() {
     if (sets?.some((s) => usesBodyWeight(loadOf(exById.value.get(s.exerciseId))))) void bodyWeights().then((f) => setBwAt(() => f));
   }, [sets]);
 
+  // Effective reps per muscle in the period: the same numbers as the day log and the Muscles screen.
+  const [er, setEr] = useState<ReturnType<typeof periodMuscles> | null>(null);
+  useEffect(() => {
+    let live = true;
+    setEr(null);
+    if (sets)
+      void effectiveOf(sets).then((eff) => {
+        if (live) setEr(periodMuscles(sets, (id) => exById.value.get(id)?.muscles, (s) => eff(s).n, GOALS[st.mode], range.from, range.to));
+      });
+    return () => {
+      live = false;
+    };
+  }, [sets, st.mode, st.formula]);
+
   const sum = useMemo(
     () => (sets ? summarize(sets, (id) => exById.value.get(id), range.from, range.to, st.weekStart, st.formula, bwAt) : null),
     [sets, st.weekStart, st.formula, bwAt],
@@ -79,6 +95,7 @@ export default function Analysis() {
               <Stat label={t('statSets')} value={String(sum.totals.sets)} />
               <Stat label={t('repsCol')} value={String(sum.totals.reps)} />
               <Stat label={t('statVolume')} value={weight(sum.totals.volume, st)} />
+              {er && er.total > 0 && <Stat label={t('statEffective')} value={`${st.mode === 'standard' ? '≈' : ''}${Math.round(er.total)}`} />}
               {sum.totals.time > 0 && <Stat label={t('time')} value={fmtTime(sum.totals.time)} />}
               {sum.totals.distance > 0 && <Stat label={t('distance')} value={distance(sum.totals.distance, st)} />}
             </div>
@@ -103,6 +120,30 @@ export default function Analysis() {
               </div>
               <CategoryBars cats={sum.categories} by={by} />
             </div>
+
+            {er && er.list.length > 0 && (
+              <div class="card">
+                <h2>{t('effPerMuscle')}</h2>
+                <p class="muted small">{t('effPerMuscleHint', { weeks: num(er.weeks, 1) })}</p>
+                <ul class="mu-bars">
+                  {er.list.map((m) => (
+                    <li key={m.muscle}>
+                      <span class="mu-name">{t(`mu_${m.muscle}` as Key)}</span>
+                      <span class="mu-track">
+                        <span class="mu-fill" style={{ width: `${(m.total / er.list[0].total) * 100}%` }} />
+                      </span>
+                      <span class="mu-num num">{Math.round(m.total)}</span>
+                      <span class="mu-sessions small">
+                        {t('effPerWeek', { n: Math.round(m.total / er.weeks) })} · {m.sessions === 1 ? t('mainSession1') : t('mainSessions', { n: m.sessions })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button class="btn wide" onClick={() => open({ kind: 'muscles' })}>
+                  {t('muscles')}
+                </button>
+              </div>
+            )}
 
             <div class="card">
               <h2>{t('topExercises')}</h2>
