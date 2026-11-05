@@ -26,7 +26,8 @@ export const METRICS: Record<Metric, MetricDef> = {
   orm: { kind: 'weight', needs: ['weight', 'reps'], add: (a, s, f) => max(a, oneRM(s.weight ?? 0, s.reps ?? 0, f)) },
   maxWeight: { kind: 'weight', needs: ['weight'], add: (a, s) => max(a, s.weight) },
   maxReps: { kind: 'reps', needs: ['reps'], add: (a, s) => max(a, s.reps) },
-  volume: { kind: 'weight', needs: ['weight', 'reps'], add: (a, s) => sum(a, (s.weight ?? 0) * (s.reps ?? 0)) },
+  // `vol`: the volume weight of a load-mapped copy (lib/load.ts): both dumbbells, no body weight.
+  volume: { kind: 'weight', needs: ['weight', 'reps'], add: (a, s) => sum(a, ((s as { vol?: number }).vol ?? s.weight ?? 0) * (s.reps ?? 0)) },
   totalReps: { kind: 'reps', needs: ['reps'], add: (a, s) => sum(a, s.reps) },
   maxDistance: { kind: 'distance', needs: ['distance'], add: (a, s) => max(a, s.distance) },
   totalDistance: { kind: 'distance', needs: ['distance'], add: (a, s) => sum(a, s.distance) },

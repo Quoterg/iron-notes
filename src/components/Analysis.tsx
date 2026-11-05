@@ -1,5 +1,6 @@
 // Training statistics for a period: totals, categories, workouts per week, most frequent exercises.
 // One index-range read of the period's sets; everything else is computed in memory.
+import { loadOf, usesBodyWeight } from '../lib/load';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { periodStart, summarize, type Period } from '../lib/analysis';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
@@ -8,7 +9,7 @@ import { type Key, locale, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { distance, num, weight, wToUser } from '../lib/units';
 import { open } from '../nav';
-import { catById, exById, settings } from '../state';
+import { bodyWeights, catById, exById, settings } from '../state';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
@@ -35,9 +36,15 @@ export default function Analysis() {
     };
   }, [range.from, range.to]);
 
+  // Body weight by date (only when a body-weight exercise is in the period: one read, cached).
+  const [bwAt, setBwAt] = useState<(d: string) => number | undefined>(() => () => undefined);
+  useEffect(() => {
+    if (sets?.some((s) => usesBodyWeight(loadOf(exById.value.get(s.exerciseId))))) void bodyWeights().then((f) => setBwAt(() => f));
+  }, [sets]);
+
   const sum = useMemo(
-    () => (sets ? summarize(sets, (id) => exById.value.get(id), range.from, range.to, st.weekStart, st.formula) : null),
-    [sets, st.weekStart, st.formula],
+    () => (sets ? summarize(sets, (id) => exById.value.get(id), range.from, range.to, st.weekStart, st.formula, bwAt) : null),
+    [sets, st.weekStart, st.formula, bwAt],
   );
 
   return (

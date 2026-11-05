@@ -1,4 +1,5 @@
 // Create or edit an exercise: name, category, type, weight step, rest time and notes.
+import { LOAD_TYPES, usesBodyWeight } from '../lib/load';
 import { useEffect, useState } from 'preact/hooks';
 import { uid, isoDate } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
@@ -6,7 +7,7 @@ import { DORIAN_TOP } from '../lib/targets';
 import { cycleWeek, repRange } from '../lib/lyle';
 import { t, type Key } from '../lib/i18n';
 import { typeName } from '../lib/strings-later';
-import { TYPES, type Exercise, type ExerciseType, type Muscles } from '../lib/model';
+import { TYPES, type Exercise, type ExerciseType, type LoadType, type Muscles } from '../lib/model';
 import { cycle, defaultMuscles, MUSCLES, stateOf } from '../lib/muscles';
 import { defaultIncrement, num } from '../lib/units';
 import { replaceTop, replaceTopTwo, stack } from '../nav';
@@ -20,6 +21,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [cat, setCat] = useState(old?.categoryId ?? categoryId ?? categories.value[0]?.id ?? '');
   const [type, setType] = useState<ExerciseType>(old?.type ?? 'weight,reps');
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
+  const [load, setLoad] = useState<LoadType>(old?.load ?? 'total');
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [repTop, setRepTop] = useState(old?.repTop != null ? String(old.repTop) : '');
   const [repBottom, setRepBottom] = useState(old?.repBottom != null ? String(old.repBottom) : '');
@@ -41,6 +43,8 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
     if (!n) return setError(t('nameRequired'));
     if (exercises.value.some((x) => x.id !== id && x.name.toLowerCase() === n.toLowerCase())) return setError(t('nameTaken'));
     const inc = parseFloat(increment.replace(',', '.'));
+    const base = used ? old!.type : type;
+    const loadedType: ExerciseType = base === 'reps' && (load === 'bodyweight' || load === 'assisted') ? 'weight,reps' : base;
     const r = parseInt(rest, 10);
     const top = parseInt(repTop, 10);
     const bottom = parseInt(repBottom, 10);
@@ -49,10 +53,12 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       id: id ?? uid(),
       name: n,
       categoryId: cat,
-      type: used ? old!.type : type,
+      // A reps-only exercise made "body weight + load" gains a weight field (its old sets: + 0 kg).
+      type: loadedType,
       notes: notes.trim() || undefined,
       muscles: muscles ?? (old ? old.muscles : defaultMuscles(n)),
       increment: inc > 0 ? inc : undefined,
+      load: loadedType.includes('weight') && load !== 'total' ? load : undefined,
       rest: r > 0 ? r : undefined,
       repTop: top > 0 ? Math.min(top, 100) : undefined,
       repBottom: bottom > 0 ? Math.min(bottom, 100) : undefined,
@@ -107,6 +113,18 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
           </select>
         </div>
         {!!used && <p class="muted small">{t('typeLocked')}</p>}
+        {((used ? old!.type : type).includes('weight') || (used ? old!.type : type) === 'reps') && (
+          <label>
+            {t('loadType')}
+            <select value={load} onChange={(e) => setLoad(e.currentTarget.value as LoadType)}>
+              {LOAD_TYPES.filter((l) => (used ? old!.type : type) !== 'reps' || l === 'total' || usesBodyWeight(l)).map((l) => (
+                <option key={l} value={l}>
+                  {t(`load_${l}` as Key)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {(used ? old!.type : type).includes('weight') && (
           <label>
             {t('increment')} ({st.unit})

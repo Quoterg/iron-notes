@@ -1,6 +1,7 @@
 // Body measures state: a lazy module, loaded with the Body tab (not part of the first paint).
 // The Body list needs only each measure's latest two dates (an indexed read per measure); a measure's
 // full history is read when its screen opens and then kept in memory and updated in place.
+import { bodyWeightsChanged } from './state';
 import { signal } from '@preact/signals';
 import { uid } from './lib/calc';
 import * as db from './lib/db';
@@ -56,6 +57,7 @@ const nextAt = () => (lastAt = Math.max(lastAt + 1, Date.now()));
 export async function addEntry(metricId: string, date: string, value: number): Promise<void> {
   const e: BodyEntry = { id: uid(), metricId, date, value, at: nextAt() };
   await db.putEntry(e);
+  bodyWeightsChanged();
   await loadEntries(metricId);
   raw.set(metricId, [...raw.get(metricId)!.filter((x) => x.id !== e.id), e]);
   await publish(metricId);
@@ -63,11 +65,14 @@ export async function addEntry(metricId: string, date: string, value: number): P
 /** Deletes an entry (an earlier one of the same date shows again); returns an undo. */
 export async function removeEntry(e: BodyEntry): Promise<() => Promise<void>> {
   await db.deleteEntry(e.id);
+  bodyWeightsChanged();
   await loadEntries(e.metricId);
   raw.set(e.metricId, raw.get(e.metricId)!.filter((x) => x.id !== e.id));
   await publish(e.metricId);
   return async () => {
     await db.putEntry(e);
+    bodyWeightsChanged();
+  bodyWeightsChanged();
     raw.set(e.metricId, [...raw.get(e.metricId)!, e]);
     await publish(e.metricId);
   };

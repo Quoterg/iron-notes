@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { oneRM, recordIds } from './calc';
-import { bodyWeightAt, realLoad, volumeWeight, withDefaultLoads, withRealLoad } from './load';
+import { bodyWeightAt, realLoad, volumeWeight, withRealLoad } from './load';
+import { withDefaultLoads } from './load-defaults';
 import type { BodyEntry, Exercise, WorkoutSet } from './model';
 import { starterLibrary } from './seed';
 
@@ -56,9 +57,11 @@ describe('calculations on real-load copies', () => {
     expect(real.map((s) => s.weight)).toEqual([50, 60]);
     expect([...recordIds(real, 'weight,reps')]).toEqual(['2026-10-08208']);
   });
-  it('total and per hand: the same array (no copies)', () => {
+  it('total: the same array (no copies); per hand: volume both hands, load per hand', () => {
     const sets = [set('2026-10-01', 30, 8)];
-    expect(withRealLoad(sets, 'perHand', at)).toBe(sets);
+    expect(withRealLoad(sets, 'total', at)).toBe(sets);
+    expect(withRealLoad(sets, 'perHand', at)[0]).toMatchObject({ weight: 30, vol: 60 });
+    expect(withRealLoad([set('2026-10-01', 20, 8)], 'bodyweight', at)[0]).toMatchObject({ weight: 100, vol: 20 });
   });
 });
 

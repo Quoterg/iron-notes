@@ -87,12 +87,13 @@ export function isComplete(s: Partial<WorkoutSet>, type: ExerciseType): boolean 
 }
 
 /** Totals of a day's sets (only sets with weight and reps count toward volume). */
-export function dayTotals(sets: readonly WorkoutSet[]) {
+/** `vw`: the weight that counts in volume (both dumbbells, no body weight); default the entered weight. */
+export function dayTotals(sets: readonly WorkoutSet[], vw: (s: WorkoutSet) => number = (s) => s.weight ?? 0) {
   let reps = 0;
   let volume = 0;
   for (const s of sets) {
     reps += s.reps ?? 0;
-    volume += (s.weight ?? 0) * (s.reps ?? 0);
+    volume += vw(s) * (s.reps ?? 0);
   }
   return { sets: sets.length, reps, volume };
 }

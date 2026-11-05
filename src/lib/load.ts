@@ -47,45 +47,15 @@ export function volumeWeight(weight: number | undefined, t: LoadType): number {
   return weight ?? 0;
 }
 
-/** Copies of `sets` with `weight` = the real load (the same array when nothing changes). */
-export function withRealLoad(sets: readonly WorkoutSet[], t: LoadType, bwAt: (date: string) => number | undefined): readonly WorkoutSet[] {
-  if (!usesBodyWeight(t)) return sets;
-  return sets.map((s) => ({ ...s, weight: realLoad(s.weight, t, bwAt(s.date)) }));
+/** A read-only copy for calculations: `weight` is the real load, `vol` the weight that counts in volume. */
+export type LoadedSet = WorkoutSet & { vol?: number };
+
+/** Copies of `sets` with the real load and volume weight (the same array for total loads). */
+export function withRealLoad(sets: readonly WorkoutSet[], t: LoadType, bwAt: (date: string) => number | undefined): readonly LoadedSet[] {
+  if (t === 'total') return sets;
+  return sets.map((s) => ({ ...s, weight: realLoad(s.weight, t, bwAt(s.date)), vol: volumeWeight(s.weight, t) }));
 }
 
 /** Whether a body-weight load type is missing its body weight (the screen shows a hint). */
 export const needsBodyWeight = (t: LoadType, bwAt: (date: string) => number | undefined, date: string): boolean =>
   usesBodyWeight(t) && bwAt(date) == null;
-
-/** Starter exercises and their load type (by name, lower case). Body-weight ones were reps-only before. */
-export const DEFAULT_LOADS: Record<string, LoadType> = {
-  'seated dumbbell press': 'perHand',
-  'arnold press': 'perHand',
-  'lateral dumbbell raise': 'perHand',
-  'front dumbbell raise': 'perHand',
-  'dumbbell curl': 'perHand',
-  'hammer curl': 'perHand',
-  'flat dumbbell bench press': 'perHand',
-  'incline dumbbell bench press': 'perHand',
-  'dumbbell fly': 'perHand',
-  'one arm dumbbell row': 'perHand',
-  dips: 'bodyweight',
-  'pull up': 'bodyweight',
-  'chin up': 'bodyweight',
-  'push up': 'bodyweight',
-};
-
-/**
- * Starter exercises without a load type yet, with their default (others untouched). A body-weight one
- * that was reps-only gains a weight field for the added load (its old sets read as + 0 kg).
- */
-export function withDefaultLoads(list: readonly Exercise[]): Exercise[] {
-  const out: Exercise[] = [];
-  for (const e of list) {
-    const d = e.load == null ? DEFAULT_LOADS[e.name.toLowerCase()] : undefined;
-    if (!d) continue;
-    if (d === 'perHand' && e.type === 'weight,reps') out.push({ ...e, load: d });
-    else if (d === 'bodyweight' && (e.type === 'reps' || e.type === 'weight,reps')) out.push({ ...e, load: d, type: 'weight,reps' });
-  }
-  return out;
-}

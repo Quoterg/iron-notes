@@ -1,5 +1,6 @@
 // Training statistics over a period: totals, per-category breakdown, workouts per week, most frequent
 // exercises and their progress. Pure, one pass over the period's sets.
+import { loadOf, realLoad, volumeWeight } from './load';
 import { addDays, oneRM, parseIso } from './calc';
 import type { Exercise, WorkoutSet } from './model';
 
@@ -62,6 +63,7 @@ export function summarize(
   to: string,
   weekStart: 0 | 1,
   formula: 'epley' | 'brzycki' = 'epley',
+  bwAt: (date: string) => number | undefined = () => undefined,
 ): Summary {
   const totals: Totals = { workouts: 0, sets: 0, reps: 0, volume: 0, time: 0, distance: 0 };
   const days = new Set<string>();
@@ -74,7 +76,8 @@ export function summarize(
     days.add(s.date);
     totals.sets++;
     totals.reps += s.reps ?? 0;
-    const vol = (s.weight ?? 0) * (s.reps ?? 0);
+    const load = loadOf(ex);
+    const vol = volumeWeight(s.weight, load) * (s.reps ?? 0);
     totals.volume += vol;
     totals.time += s.time ?? 0;
     totals.distance += s.distance ?? 0;
@@ -87,7 +90,7 @@ export function summarize(
     e.days.add(s.date);
     if (ex.type === 'weight,reps') {
       // Best estimated 1RM on the earliest and on the latest day with a weighted set (sets come in any order).
-      const orm = oneRM(s.weight ?? 0, s.reps ?? 0, formula);
+      const orm = oneRM(realLoad(s.weight, load, bwAt(s.date)) ?? 0, s.reps ?? 0, formula);
       if (orm > 0) {
         if (e.ormFirst === undefined || s.date < e.ormFirst) (e.ormFirst = s.date), (e.firstOrm = orm);
         else if (s.date === e.ormFirst) e.firstOrm = Math.max(e.firstOrm!, orm);

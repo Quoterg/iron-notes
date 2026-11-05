@@ -1,4 +1,5 @@
 // Routines: named plans with days of exercises and planned sets. Pure helpers; storage in db.ts.
+import { loadOf, usesBodyWeight } from './load';
 import { fmtTime, uid } from './calc';
 import { t } from './i18n';
 import { fieldsOf, type Exercise, type PlannedSet, type RoutineDay, type RoutineItem, type Settings, type WorkoutSet } from './model';
@@ -8,7 +9,9 @@ import { distance, setText, weight } from './units';
 /** Default plan for a newly added exercise: 3 sets of 8–10 reps, or 1 set for cardio/time work. */
 export function defaultPlan(ex: Exercise): PlannedSet[] {
   const f = fieldsOf(ex.type);
-  if (f.includes('reps')) return Array.from({ length: 3 }, () => ({ reps: f.includes('weight') ? 8 : 10 }));
+  // Weighted sets 3 × 8; body-weight work (with or without added load) 3 × 10.
+  const weighted = f.includes('weight') && !usesBodyWeight(loadOf(ex));
+  if (f.includes('reps')) return Array.from({ length: 3 }, () => ({ reps: weighted ? 8 : 10 }));
   return [{}];
 }
 
@@ -18,7 +21,7 @@ export function planSummary(sets: PlannedSet[], ex: Exercise, st: Settings): str
   const f = fieldsOf(ex.type);
   const p = sets[0];
   const same = sets.every((s) => s.weight === p.weight && s.reps === p.reps && s.distance === p.distance && s.time === p.time);
-  if (!same) return sets.map((s) => setText({ ...s } as WorkoutSet, ex.type, st)).join(', ');
+  if (!same) return sets.map((s) => setText({ ...s } as WorkoutSet, ex.type, st, loadOf(ex))).join(', ');
   const parts = [f.includes('reps') ? `${sets.length} × ${p.reps ?? '–'}` : t(sets.length === 1 ? 'oneSet' : 'nSets', { n: sets.length })];
   if (f.includes('weight') && p.weight != null) parts.push(weight(p.weight, st));
   if (f.includes('distance') && p.distance != null) parts.push(distance(p.distance, st));

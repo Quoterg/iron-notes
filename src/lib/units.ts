@@ -1,6 +1,7 @@
 // Stored units (kg, km, s) ↔ what the user sees, and set formatting.
+import { t } from './i18n';
 import { fmtTime, round } from './calc';
-import { fieldsOf, type DistUnit, type ExerciseType, type Settings, type WeightUnit, type WorkoutSet } from './model';
+import { type DistUnit, type ExerciseType, fieldsOf, type LoadType, type Settings, type WeightUnit, type WorkoutSet } from './model';
 
 export const KG_PER_LB = 0.45359237;
 export const KM_PER_MI = 1.609344;
@@ -20,10 +21,17 @@ export const distance = (km: number, s: Settings): string => `${num(dToUser(km, 
 export const defaultIncrement = (u: WeightUnit): number => (u === 'lb' ? 5 : 2.5);
 
 /** One set as text: "80 kg × 5", "12 reps", "5 km · 25:00". */
-export function setText(set: WorkoutSet, type: ExerciseType, s: Settings): string {
+export function setText(set: WorkoutSet, type: ExerciseType, s: Settings, load: LoadType = 'total'): string {
   const f = fieldsOf(type);
   const dash = '–';
-  if (type === 'weight,reps') return `${set.weight != null ? weight(set.weight, s) : dash} × ${set.reps ?? dash}`;
+  if (type === 'weight,reps') {
+    const r = set.reps ?? dash;
+    // "30 kg/hand × 10", "BW + 20 kg × 8", "BW × 15", "BW − 25 kg × 8"
+    if (load === 'bodyweight') return `${t('bwShort')}${set.weight ? ` + ${weight(set.weight, s)}` : ''} × ${r}`;
+    if (load === 'assisted') return `${t('bwShort')}${set.weight ? ` − ${weight(set.weight, s)}` : ''} × ${r}`;
+    if (load === 'perHand') return `${set.weight != null ? weight(set.weight, s) + t('perHandShort') : dash} × ${r}`;
+    return `${set.weight != null ? weight(set.weight, s) : dash} × ${r}`;
+  }
   return f
     .map((k) => {
       const v = set[k];
