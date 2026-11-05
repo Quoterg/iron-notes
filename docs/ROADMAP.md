@@ -137,7 +137,7 @@ sync last (it has to carry every field the milestones before it add).
 - [x] **M30 Iron Log bridge (backup import)** — Import body weight (and energy trend, if present) from an
   Iron Log backup file to drive the diet phase and recovery feedback. The two apps live on different
   origins and can't read each other's storage; live sync waits for M21 on both sides.
-- [ ] **M23 Muscle body map & drill-down** — Hand-written SVG front/back figure on the Muscles screen,
+- [x] **M23 Muscle body map & drill-down** — Hand-written SVG front/back figure on the Muscles screen,
   coloured by this week's effective-rep status; tap a region or bar for the exercises that contributed,
   and pick an exercise for an under-trained muscle in one tap.
 - [x] **M26 Session duration & workout summary** — Workout span from the first to the last set; duration,
