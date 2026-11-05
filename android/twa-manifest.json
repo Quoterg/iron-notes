@@ -24,7 +24,9 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "orientation": "portrait",
-  "fingerprints": [],
+  "fingerprints": [
+    { "name": "upload key", "value": "66:CB:16:19:44:AF:78:5A:D2:3A:4F:6B:99:DE:50:4C:03:59:76:76:27:91:81:F3:DE:03:A3:B1:82:C8:8F:BB" }
+  ],
   "appVersionCode": 1,
   "appVersionName": "1.0.0",
   "signingKey": { "path": "./android.keystore", "alias": "ironnotes" },

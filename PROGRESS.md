@@ -5,8 +5,9 @@
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
-- **Owner action (M12b):** create the upload key and build/sign the Android app (docs/ANDROID.md); then
-  `pnpm assetlinks`, commit, deploy. Optional Play listing.
+- Android 1.0.0 signed by the owner and on GitHub Releases (v1.0.0); assetlinks.json with the upload-key
+  fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
+  listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Next: **M21 Device sync** (QR + direct encrypted WebRTC like Iron Log, no server, no account).
 - Follow-ups: decimal comma in Swedish for displayed numbers (needs a display-only formatter: `num()` also
   writes CSV and input values); Swedish names for the starter library would need a stable key per
