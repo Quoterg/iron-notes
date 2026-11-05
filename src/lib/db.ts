@@ -15,6 +15,29 @@ interface Schema extends DBSchema {
   /** v4: body measures and their entries. */
   metrics: { key: string; value: BodyMetric };
   body: { key: string; value: BodyEntry; indexes: { metric: string; metricDate: [string, string, number] } };
+  /** v5: the change log for device sync — per synced record (`store:key`) its last change, or a deletion. */
+  meta: { key: string; value: Meta };
+}
+
+/** A synced record's last change (ms) — or its deletion (a tombstone, kept for a while). */
+export interface Meta {
+  mt: number;
+  del?: true;
+}
+/** The stores that sync between devices (`records` is a cache, `kv` only its settings row). */
+export type SyncStore = 'categories' | 'exercises' | 'sets' | 'comments' | 'routines' | 'metrics' | 'body' | 'kv';
+export const SYNC_STORES: SyncStore[] = ['categories', 'exercises', 'sets', 'comments', 'routines', 'metrics', 'body', 'kv'];
+/** Each synced store's key field. */
+export const KEY_PATH: Record<SyncStore, string> = { categories: 'id', exercises: 'id', sets: 'id', comments: 'date', routines: 'id', metrics: 'id', body: 'id', kv: 'key' };
+export const metaKey = (store: SyncStore, key: string): string => `${store}:${key}`;
+
+let lastMt = 0;
+/** A change time, strictly increasing on this device (two writes in one millisecond stay ordered). */
+const changeTime = () => (lastMt = Math.max(lastMt + 1, Date.now()));
+type MetaTx = { objectStore(name: 'meta'): { put(v: Meta, k: string): Promise<unknown> } };
+/** Records a change of a synced record in the same transaction (every write goes through here). */
+function stamp(tx: MetaTx, store: SyncStore, key: string, del = false): Promise<unknown> {
+  return tx.objectStore('meta').put(del ? { mt: changeTime(), del: true } : { mt: changeTime() }, metaKey(store, key));
 }
 
 export interface StoredRecords {
@@ -35,8 +58,8 @@ export function setBlockedHandler(fn: () => void): void {
 }
 
 export function db(): Promise<IDBPDatabase<Schema>> {
-  return (dbp ??= openDB<Schema>(DB_NAME, 4, {
-    upgrade(d, oldVersion, _newVersion, tx) {
+  return (dbp ??= openDB<Schema>(DB_NAME, 5, {
+    async upgrade(d, oldVersion, _newVersion, tx) {
       if (oldVersion < 1) {
         d.createObjectStore('categories', { keyPath: 'id' });
         d.createObjectStore('exercises', { keyPath: 'id' });
@@ -59,6 +82,20 @@ export function db(): Promise<IDBPDatabase<Schema>> {
         body.createIndex('metric', 'metricId');
         // A measure's entries by date (and entry time): its latest dates are a short reverse-cursor walk.
         body.createIndex('metricDate', ['metricId', 'date', 'at']);
+      }
+      if (oldVersion < 5) {
+        // Every existing record gets an old change time: any real edit on either device wins over it,
+        // and a record only one device has still travels (the other has none).
+        const meta = d.createObjectStore('meta');
+        if (oldVersion >= 1) {
+          for (const store of SYNC_STORES) {
+            if (store === 'kv') {
+              if (await tx.objectStore('kv').get('settings')) await meta.put({ mt: 1 }, metaKey('kv', 'settings'));
+              continue;
+            }
+            for (const key of await tx.objectStore(store).getAllKeys()) await meta.put({ mt: 1 }, metaKey(store, String(key)));
+          }
+        }
       }
     },
     // A newer version opened elsewhere: step aside so it can upgrade, then start the new version here too.
@@ -86,7 +123,8 @@ export async function getSettings(): Promise<Settings> {
   return { ...DEFAULT_SETTINGS, ...(row?.value as Partial<Settings> | undefined) };
 }
 export async function putSettings(s: Settings): Promise<void> {
-  await (await db()).put('kv', { key: 'settings', value: s });
+  const tx = (await db()).transaction(['kv', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('kv').put({ key: 'settings', value: s }), stamp(tx, 'kv', 'settings'), tx.done]);
 }
 
 // ---- Library ----
@@ -120,35 +158,40 @@ export async function getLibrary(): Promise<{ categories: Category[]; exercises:
   return { categories, exercises };
 }
 export async function putCategory(c: Category): Promise<void> {
-  await (await db()).put('categories', c);
+  const tx = (await db()).transaction(['categories', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('categories').put(c), stamp(tx, 'categories', c.id), tx.done]);
 }
 export async function deleteCategory(id: string): Promise<void> {
-  await (await db()).delete('categories', id);
+  const tx = (await db()).transaction(['categories', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('categories').delete(id), stamp(tx, 'categories', id, true), tx.done]);
 }
 export async function putExercise(e: Exercise): Promise<void> {
-  await (await db()).put('exercises', e);
+  const tx = (await db()).transaction(['exercises', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('exercises').put(e), stamp(tx, 'exercises', e.id), tx.done]);
 }
 /** Deletes an exercise and every set logged for it. */
 export async function deleteExercise(id: string): Promise<void> {
   const d = await db();
-  const tx = d.transaction(['exercises', 'sets', 'records'], 'readwrite');
+  const tx = d.transaction(['exercises', 'sets', 'records', 'meta'], 'readwrite');
   const keys = await tx.objectStore('sets').index('exercise').getAllKeys(id);
   await Promise.all([
-    ...keys.map((k) => tx.objectStore('sets').delete(k)),
+    ...keys.flatMap((k) => [tx.objectStore('sets').delete(k), stamp(tx, 'sets', k, true)]),
     tx.objectStore('exercises').delete(id),
+    stamp(tx, 'exercises', id, true),
     tx.objectStore('records').delete(id),
     tx.done,
   ]);
 }
 /** Gives these exercises their muscles only where the stored record still has none (one transaction). */
 export async function putMusclesIfMissing(list: Exercise[]): Promise<Exercise[]> {
-  const tx = (await db()).transaction('exercises', 'readwrite');
+  const tx = (await db()).transaction(['exercises', 'meta'], 'readwrite');
   const written: Exercise[] = [];
   for (const e of list) {
-    const cur = await tx.store.get(e.id);
+    const cur = await tx.objectStore('exercises').get(e.id);
     if (cur && !cur.muscles && e.muscles) {
       const next = { ...cur, muscles: e.muscles };
-      await tx.store.put(next);
+      await tx.objectStore('exercises').put(next);
+      await stamp(tx, 'exercises', next.id);
       written.push(next);
     }
   }
@@ -157,14 +200,15 @@ export async function putMusclesIfMissing(list: Exercise[]): Promise<Exercise[]>
 }
 /** Writes load types (and the type a body-weight exercise gains) only where none is stored yet. */
 export async function putLoadsIfMissing(list: Exercise[]): Promise<Exercise[]> {
-  const tx = (await db()).transaction('exercises', 'readwrite');
+  const tx = (await db()).transaction(['exercises', 'meta'], 'readwrite');
   const written: Exercise[] = [];
   for (const e of list) {
-    const cur = await tx.store.get(e.id);
+    const cur = await tx.objectStore('exercises').get(e.id);
     if (cur && cur.load == null && e.load) {
       // Only a reps-only or weight-and-reps type is converted; anything else (changed elsewhere) stays.
       const next = { ...cur, load: e.load, type: cur.type === 'reps' || cur.type === 'weight,reps' ? e.type : cur.type };
-      await tx.store.put(next);
+      await tx.objectStore('exercises').put(next);
+      await stamp(tx, 'exercises', next.id);
       written.push(next);
     }
   }
@@ -173,10 +217,10 @@ export async function putLoadsIfMissing(list: Exercise[]): Promise<Exercise[]> {
 }
 export async function putLibrary(categories: Category[], exercises: Exercise[]): Promise<void> {
   const d = await db();
-  const tx = d.transaction(['categories', 'exercises'], 'readwrite');
+  const tx = d.transaction(['categories', 'exercises', 'meta'], 'readwrite');
   await Promise.all([
-    ...categories.map((c) => tx.objectStore('categories').put(c)),
-    ...exercises.map((e) => tx.objectStore('exercises').put(e)),
+    ...categories.flatMap((c) => [tx.objectStore('categories').put(c), stamp(tx, 'categories', c.id)]),
+    ...exercises.flatMap((e) => [tx.objectStore('exercises').put(e), stamp(tx, 'exercises', e.id)]),
     tx.done,
   ]);
 }
@@ -196,27 +240,37 @@ export async function countSetsOf(exerciseId: string): Promise<number> {
   return (await db()).countFromIndex('sets', 'exercise', exerciseId);
 }
 export async function putSet(s: WorkoutSet): Promise<void> {
-  await (await db()).put('sets', s);
+  const tx = (await db()).transaction(['sets', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('sets').put(s), stamp(tx, 'sets', s.id), tx.done]);
 }
 export async function deleteSet(id: string): Promise<void> {
-  await (await db()).delete('sets', id);
+  const tx = (await db()).transaction(['sets', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('sets').delete(id), stamp(tx, 'sets', id, true), tx.done]);
 }
 /** Writes several sets in one transaction (copy a workout, reorder). */
 export async function putSets(sets: WorkoutSet[]): Promise<void> {
-  const tx = (await db()).transaction('sets', 'readwrite');
-  await Promise.all([...sets.map((s) => tx.store.put(s)), tx.done]);
+  const tx = (await db()).transaction(['sets', 'meta'], 'readwrite');
+  await Promise.all([...sets.flatMap((s) => [tx.objectStore('sets').put(s), stamp(tx, 'sets', s.id)]), tx.done]);
 }
 /** Deletes a day's sets and comment in one transaction; returns them (for undo). */
 export async function deleteDay(date: string): Promise<{ sets: WorkoutSet[]; comment?: DayComment }> {
-  const tx = (await db()).transaction(['sets', 'comments'], 'readwrite');
+  const tx = (await db()).transaction(['sets', 'comments', 'meta'], 'readwrite');
   const [sets, comment] = await Promise.all([tx.objectStore('sets').index('date').getAll(date), tx.objectStore('comments').get(date)]);
-  await Promise.all([...sets.map((s) => tx.objectStore('sets').delete(s.id)), tx.objectStore('comments').delete(date), tx.done]);
+  await Promise.all([
+    ...sets.flatMap((s) => [tx.objectStore('sets').delete(s.id), stamp(tx, 'sets', s.id, true)]),
+    ...(comment ? [tx.objectStore('comments').delete(date), stamp(tx, 'comments', date, true)] : []),
+    tx.done,
+  ]);
   return { sets, comment };
 }
 /** Puts back what deleteDay removed. */
 export async function restoreDay(sets: WorkoutSet[], comment?: DayComment): Promise<void> {
-  const tx = (await db()).transaction(['sets', 'comments'], 'readwrite');
-  await Promise.all([...sets.map((s) => tx.objectStore('sets').put(s)), ...(comment ? [tx.objectStore('comments').put(comment)] : []), tx.done]);
+  const tx = (await db()).transaction(['sets', 'comments', 'meta'], 'readwrite');
+  await Promise.all([
+    ...sets.flatMap((s) => [tx.objectStore('sets').put(s), stamp(tx, 'sets', s.id)]),
+    ...(comment ? [tx.objectStore('comments').put(comment), stamp(tx, 'comments', comment.date)] : []),
+    tx.done,
+  ]);
 }
 /** The latest `limit` dates with sets, newest first, other than `except` (one key cursor, no set reads). */
 export async function recentWorkoutDates(limit: number, except?: string): Promise<string[]> {
@@ -265,10 +319,12 @@ export async function getRoutines(): Promise<Routine[]> {
   return (await db()).getAll('routines');
 }
 export async function putRoutine(r: Routine): Promise<void> {
-  await (await db()).put('routines', r);
+  const tx = (await db()).transaction(['routines', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('routines').put(r), stamp(tx, 'routines', r.id), tx.done]);
 }
 export async function deleteRoutine(id: string): Promise<void> {
-  await (await db()).delete('routines', id);
+  const tx = (await db()).transaction(['routines', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('routines').delete(id), stamp(tx, 'routines', id, true), tx.done]);
 }
 
 // ---- Body measures ----
@@ -276,14 +332,19 @@ export async function getMetrics(): Promise<BodyMetric[]> {
   return (await db()).getAll('metrics');
 }
 export async function putMetrics(list: BodyMetric[]): Promise<void> {
-  const tx = (await db()).transaction('metrics', 'readwrite');
-  await Promise.all([...list.map((m) => tx.store.put(m)), tx.done]);
+  const tx = (await db()).transaction(['metrics', 'meta'], 'readwrite');
+  await Promise.all([...list.flatMap((m) => [tx.objectStore('metrics').put(m), stamp(tx, 'metrics', m.id)]), tx.done]);
 }
 /** Deletes a measure and all its entries. */
 export async function deleteMetric(id: string): Promise<void> {
-  const tx = (await db()).transaction(['metrics', 'body'], 'readwrite');
+  const tx = (await db()).transaction(['metrics', 'body', 'meta'], 'readwrite');
   const keys = await tx.objectStore('body').index('metric').getAllKeys(id);
-  await Promise.all([...keys.map((k) => tx.objectStore('body').delete(k)), tx.objectStore('metrics').delete(id), tx.done]);
+  await Promise.all([
+    ...keys.flatMap((k) => [tx.objectStore('body').delete(k), stamp(tx, 'body', k, true)]),
+    tx.objectStore('metrics').delete(id),
+    stamp(tx, 'metrics', id, true),
+    tx.done,
+  ]);
 }
 export async function entriesOf(metricId: string): Promise<BodyEntry[]> {
   return (await db()).getAllFromIndex('body', 'metric', metricId);
@@ -300,10 +361,12 @@ export async function latestEntries(metricId: string, dates: number): Promise<Bo
   return out.reverse();
 }
 export async function putEntry(e: BodyEntry): Promise<void> {
-  await (await db()).put('body', e);
+  const tx = (await db()).transaction(['body', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('body').put(e), stamp(tx, 'body', e.id), tx.done]);
 }
 export async function deleteEntry(id: string): Promise<void> {
-  await (await db()).delete('body', id);
+  const tx = (await db()).transaction(['body', 'meta'], 'readwrite');
+  await Promise.all([tx.objectStore('body').delete(id), stamp(tx, 'body', id, true), tx.done]);
 }
 
 // ---- Whole-database operations (Settings → Your data) ----
@@ -316,19 +379,19 @@ export async function allSets(): Promise<WorkoutSet[]> {
 }
 /** Adds imported categories, exercises and sets in one transaction (all or nothing); records are refilled lazily. */
 export async function importRows(categories: Category[], exercises: Exercise[], sets: WorkoutSet[]): Promise<void> {
-  const tx = (await db()).transaction(['categories', 'exercises', 'sets', 'records'], 'readwrite');
+  const tx = (await db()).transaction(['categories', 'exercises', 'sets', 'records', 'meta'], 'readwrite');
   await Promise.all([
-    ...categories.map((c) => tx.objectStore('categories').put(c)),
-    ...exercises.map((e) => tx.objectStore('exercises').put(e)),
+    ...categories.flatMap((c) => [tx.objectStore('categories').put(c), stamp(tx, 'categories', c.id)]),
+    ...exercises.flatMap((e) => [tx.objectStore('exercises').put(e), stamp(tx, 'exercises', e.id)]),
     tx.objectStore('records').clear(),
   ]);
   // In chunks: a big FitNotes history is tens of thousands of puts; the transaction stays open throughout.
-  for (let i = 0; i < sets.length; i += 2000) await Promise.all(sets.slice(i, i + 2000).map((s) => tx.objectStore('sets').put(s)));
+  for (let i = 0; i < sets.length; i += 2000) await Promise.all(sets.slice(i, i + 2000).flatMap((s) => [tx.objectStore('sets').put(s), stamp(tx, 'sets', s.id)]));
   await tx.done;
 }
 /** Deletes everything (one transaction). The next start is a first start: starter library and measures again. */
 export async function clearAll(): Promise<void> {
-  const names = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines', 'metrics', 'body'] as const;
+  const names = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines', 'metrics', 'body', 'meta'] as const;
   const tx = (await db()).transaction(names, 'readwrite');
   await Promise.all([...names.map((n) => tx.objectStore(n).clear()), tx.done]);
 }
@@ -355,7 +418,63 @@ export async function getComment(date: string): Promise<string> {
   return (await (await db()).get('comments', date))?.text ?? '';
 }
 export async function putComment(date: string, text: string): Promise<void> {
-  const d = await db();
-  if (text.trim()) await d.put('comments', { date, text: text.trim() });
-  else await d.delete('comments', date);
+  const tx = (await db()).transaction(['comments', 'meta'], 'readwrite');
+  const t = text.trim();
+  await Promise.all([t ? tx.objectStore('comments').put({ date, text: t }) : tx.objectStore('comments').delete(date), stamp(tx, 'comments', date, !t), tx.done]);
+}
+
+// ---- Device sync (lib/sync.ts): the change log ----
+/** Every synced record's last change, pruning tombstones older than `cutoff` (one cursor walk). */
+export async function summarizeMeta(cutoff: number): Promise<Record<string, number>> {
+  const tx = (await db()).transaction('meta', 'readwrite');
+  const out: Record<string, number> = {};
+  let cur = await tx.store.openCursor();
+  while (cur) {
+    if (cur.value.del && cur.value.mt < cutoff) await cur.delete();
+    else out[cur.key] = cur.value.mt;
+    cur = await cur.continue();
+  }
+  await tx.done;
+  return out;
+}
+/** The change log and the synced stores' records, for building what another device lacks. */
+export async function readForSync(stores: SyncStore[]): Promise<{ meta: Map<string, Meta>; records: Map<SyncStore, Map<string, unknown>> }> {
+  const tx = (await db()).transaction([...SYNC_STORES, 'meta']);
+  const meta = new Map<string, Meta>();
+  let cur = await tx.objectStore('meta').openCursor();
+  while (cur) {
+    meta.set(cur.key, cur.value);
+    cur = await cur.continue();
+  }
+  const records = new Map<SyncStore, Map<string, unknown>>();
+  for (const store of stores) {
+    const all: unknown[] = store === 'kv' ? [await tx.objectStore('kv').get('settings')].filter((x) => x !== undefined) : await tx.objectStore(store).getAll();
+    records.set(store, new Map(all.map((v) => [String((v as Record<string, unknown>)[KEY_PATH[store]]), v])));
+  }
+  await tx.done;
+  return { meta, records };
+}
+/**
+ * Writes another device's changes where they're newer than the local copy (one transaction); returns
+ * the applied ones. `merge` adjusts a record against the local one (settings keep device-local keys).
+ * The records cache is cleared when sets or exercises changed.
+ */
+export async function applySynced(
+  changes: { k: string; mt: number; del?: true; store: SyncStore; key: string; v?: unknown }[],
+  merge: (store: SyncStore, incoming: unknown, local: unknown) => unknown,
+): Promise<{ k: string; store: SyncStore }[]> {
+  const tx = (await db()).transaction([...SYNC_STORES, 'records', 'meta'], 'readwrite');
+  const applied: { k: string; store: SyncStore }[] = [];
+  for (const c of changes) {
+    const local = (await tx.objectStore('meta').get(c.k))?.mt ?? -1;
+    if (c.mt <= local) continue;
+    const os = tx.objectStore(c.store) as unknown as { get(k: string): Promise<unknown>; put(v: unknown): Promise<unknown>; delete(k: string): Promise<void> };
+    if (c.del) await os.delete(c.key);
+    else await os.put(merge(c.store, c.v, await os.get(c.key)));
+    await tx.objectStore('meta').put(c.del ? { mt: c.mt, del: true } : { mt: c.mt }, c.k);
+    applied.push({ k: c.k, store: c.store });
+  }
+  if (applied.some((a) => a.store === 'sets' || a.store === 'exercises')) await tx.objectStore('records').clear();
+  await tx.done;
+  return applied;
 }
