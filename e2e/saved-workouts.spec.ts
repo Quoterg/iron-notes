@@ -11,6 +11,8 @@ async function log(page: Page, search: string, name: string, sets: [string, stri
   await page.getByRole('button', { name: /Start a workout|\+ Add exercise/ }).click();
   await page.getByRole('searchbox').fill(search);
   await page.getByRole('button', { name, exact: true }).click();
+  // Wait for the history (prefill) before typing: a late prefill mid-fill would append to the value.
+  await expect(page.locator('div:not([hidden]) > .sheet').getByText('No sets logged yet.').or(page.locator('div:not([hidden]) > .sheet .sets li').first())).toBeVisible();
   for (const [w, r] of sets) {
     await page.getByLabel('Weight (kg)', { exact: true }).fill(w);
     await page.getByLabel('Reps', { exact: true }).fill(r);
