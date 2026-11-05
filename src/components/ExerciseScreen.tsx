@@ -9,7 +9,7 @@ import { daysBetween, GAP_DAYS } from '../lib/feedback';
 import { Feedback } from './Feedback';
 import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } from '../lib/lyle';
 import { setsBetween } from '../lib/db';
-import { t, type Key } from '../lib/i18n';
+import { type Key, locale, t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type RoutineDay, type Settings, type WorkoutSet } from '../lib/model';
 import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, weight as fmtWeight, wFromUser, wToUser } from '../lib/units';
@@ -337,7 +337,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       <div class="pad">
         <p class="muted small">
           <Dot color={cat?.color} /> {cat?.name}
-          {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
+          {date !== isoDate(new Date()) && ` · ${parseIso(date).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`}
         </p>
         {ex.muscles && ex.muscles.primary.length + ex.muscles.secondary.length > 0 && (
           <p class="muted small">
@@ -585,7 +585,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
             {prev.length > 0 && (
               <div class="card prev-card">
                 <h2 class="small muted">
-                  {t('lastTime')} · {new Date(prev[0].date + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {t('lastTime')} · {new Date(prev[0].date + 'T00:00').toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })}
                 </h2>
                 <ol class="setlist prev">
                   {prev.map((s) => (

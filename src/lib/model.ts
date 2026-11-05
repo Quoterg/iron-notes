@@ -174,6 +174,8 @@ export interface Settings {
   program?: { routineId: string; lastDayId?: string; weekdays?: number[] };
   /** Diet phase: a cut makes holding the weight a success (feedback). Unset = maintaining. */
   diet?: 'build' | 'maintain' | 'cut';
+  /** UI language; unset = the phone's (Auto). */
+  lang?: 'en' | 'sv';
 }
 
 export const DEFAULT_SETTINGS: Settings = {

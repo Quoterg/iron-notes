@@ -5,8 +5,8 @@ import { applyTheme, watchSystemTheme } from './lib/theme';
 import { initNav, open, stack } from './nav';
 import { LATEST } from './changelog-id';
 import { getNumber, hasAnySets, setBlockedHandler, setNumber } from './lib/db';
-import { t } from './lib/i18n';
-import { date, loadDay, loadLibrary, loadSettings, updateReady } from './state';
+import { applyLang, detectLang, lastLang, setLang, t } from './lib/i18n';
+import { date, loadDay, loadLibrary, loadSettings, settings, updateReady } from './state';
 import './styles.css';
 
 async function start() {
@@ -25,7 +25,10 @@ async function start() {
   applyTheme(); // the boot script already set it; this also sets the bar colour
   watchSystemTheme();
   performance.mark('in:start');
-  await Promise.all([loadSettings(), loadLibrary()]);
+  // The language pack (Swedish only; English is built in) loads alongside the database.
+  const hint = setLang(lastLang() ?? detectLang()).catch(() => {});
+  await Promise.all([loadSettings(), loadLibrary(), hint]);
+  await applyLang(settings.value.lang);
   document.getElementById('db-blocked')?.remove();
   performance.mark('in:library');
   render(<App />, document.getElementById('app')!);

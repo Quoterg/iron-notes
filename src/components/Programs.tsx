@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { cycleWeek } from '../lib/lyle';
 import { isoDate } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
 import { buildProgram, TEMPLATES, type Template } from '../lib/programs';
 import { exercises, routines, saveExercise, saveSettings, settings, toast } from '../state';
@@ -42,7 +42,7 @@ export default function Programs() {
 
   // Weekdays in the calendar's order; names from a known week (25 Oct 2026 is a Sunday).
   const order = Array.from({ length: 7 }, (_, i) => (i + st.weekStart) % 7);
-  const dayName = (wd: number) => new Date(Date.UTC(2026, 9, 25 + wd)).toLocaleDateString(undefined, { weekday: 'short', timeZone: 'UTC' });
+  const dayName = (wd: number) => new Date(Date.UTC(2026, 9, 25 + wd)).toLocaleDateString(locale(), { weekday: 'short', timeZone: 'UTC' });
   const days = p?.weekdays ?? [];
 
   return (

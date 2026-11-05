@@ -1,5 +1,5 @@
 // Strings of the screens after the first one: a lazy chunk, loaded with any of those screens (lazy.tsx).
-import { setLater } from './i18n';
+import { packTypes, setLater } from './i18n';
 import type { ExerciseType } from './model';
 
 export const later = {
@@ -372,6 +372,9 @@ export const later = {
   yourProgram: 'Your program',
   trainingDays: 'Training days',
   restDay: 'Rest day in your program.',
+  language: 'Language',
+  langAuto: 'Auto',
+  new_11a: 'Svenska: choose the language in Settings (Auto follows the phone).',
 } as const;
 
 setLater(later);
@@ -388,4 +391,4 @@ const TYPE_NAMES: Record<ExerciseType, string> = {
   distance: 'Distance',
   time: 'Time',
 };
-export const typeName = (type: ExerciseType): string => TYPE_NAMES[type];
+export const typeName = (type: ExerciseType): string => packTypes()?.[type] ?? TYPE_NAMES[type];

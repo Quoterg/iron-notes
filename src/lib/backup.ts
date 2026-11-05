@@ -91,6 +91,7 @@ export function validateBackup(b: unknown): Backup {
     if (c && typeof c.start === 'string' && DATE.test(c.start) && (c.weeks === 6 || c.weeks === 8)) settings.cycle = { start: c.start, weeks: c.weeks };
     if (st.light && typeof st.light.start === 'string' && DATE.test(st.light.start)) settings.light = { start: st.light.start };
     if (st.diet === 'build' || st.diet === 'maintain' || st.diet === 'cut') settings.diet = st.diet;
+    if (st.lang === 'en' || st.lang === 'sv') settings.lang = st.lang;
     const pr = st.program;
     if (pr && isStr(pr.routineId)) {
       const wd = Array.isArray(pr.weekdays) ? pr.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : undefined;

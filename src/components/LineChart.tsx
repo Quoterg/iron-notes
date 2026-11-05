@@ -1,7 +1,7 @@
 // One measure over time, like Iron Log's chart: hand-written SVG (no chart library), dots joined by a
 // line, crosshair + readout on pointer and keyboard, and every value also as a table.
 import { useState } from 'preact/hooks';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import { niceScale, TIME_STEPS, type Point } from '../lib/progress';
 
 const W = 320;
@@ -10,7 +10,7 @@ const PAD = { top: 10, right: 12, bottom: 22, left: 40 };
 const DAY = 86_400_000;
 const time = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
 const shortDate = (d: string, withYear = false) =>
-  new Date(time(d)).toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' });
+  new Date(time(d)).toLocaleDateString(locale(), { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' });
 
 /** Max dots drawn: beyond this (long histories) keep the min and max point per x-bucket. */
 const MAX_DOTS = 120;

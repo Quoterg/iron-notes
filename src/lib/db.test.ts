@@ -77,6 +77,9 @@ describe('restore validation', () => {
     expect(b.settings.unit).toBe('kg');
     expect(b.settings.rest).toBe(90);
     expect(b.settings.autoTimer).toBe(false);
+    const l = (v: unknown) => backup.validateBackup({ app: 'iron-notes', version: 1, categories: [], exercises: [], sets: [], settings: { lang: v } }).settings.lang;
+    expect(l('sv')).toBe('sv');
+    expect(l('xx')).toBeUndefined(); // unknown language: Auto
   });
 
   it('round-trips routines and rejects malformed ones; older backups without routines restore', async () => {

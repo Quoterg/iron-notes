@@ -4,7 +4,7 @@ import { isoDate, parseIso } from '../lib/calc';
 import { phaseOn } from '../lib/cycle';
 import { addMonths, monthBounds, monthGrid, monthOf } from '../lib/calendar';
 import { setsBetween } from '../lib/db';
-import { t } from '../lib/i18n';
+import { locale, t } from '../lib/i18n';
 import { open } from '../nav';
 import { catById, date, exById, loadDay, settings, setsVersion, view } from '../state';
 
@@ -63,8 +63,8 @@ export default function Calendar() {
   const today = isoDate(new Date());
   const grid = monthGrid(month, weekStart);
   const cats = catById.value;
-  const title = parseIso(`${month}-01`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const weekdays = grid.slice(0, 7).map((d) => parseIso(d).toLocaleDateString(undefined, { weekday: 'narrow' }));
+  const title = parseIso(`${month}-01`).toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
+  const weekdays = grid.slice(0, 7).map((d) => parseIso(d).toLocaleDateString(locale(), { weekday: 'narrow' }));
   const count = days?.size ?? 0;
   // Switch once the day is loaded: the log never flashes the previous day.
   const pick = async (d: string) => {
@@ -100,7 +100,7 @@ export default function Calendar() {
                 const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === today && 'today', d === date.value && 'cur', dayCats.length && 'has', ph && `ph-${ph.phase}`]
                   .filter(Boolean)
                   .join(' ');
-                const label = parseIso(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+                const label = parseIso(d).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
                 const names = dayCats.map((c) => cats.get(c)?.name).filter(Boolean).join(', ');
                 return (
                   <button key={d} class={cls} aria-label={names ? `${label}: ${names}` : label} onClick={() => void pick(d)}>

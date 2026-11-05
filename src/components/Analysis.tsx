@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { periodStart, summarize, type Period } from '../lib/analysis';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
 import { setsBetween } from '../lib/db';
-import { t, type Key } from '../lib/i18n';
+import { type Key, locale, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { distance, num, weight, wToUser } from '../lib/units';
 import { catById, exById, settings } from '../state';
@@ -164,7 +164,7 @@ const H = 110;
 function WeekBars({ weeks }: { weeks: { start: string; workouts: number }[] }) {
   const max = Math.max(1, ...weeks.map((w) => w.workouts));
   const bw = (W - 24) / weeks.length;
-  const label = (d: string) => parseIso(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const label = (d: string) => parseIso(d).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
   const total = weeks.reduce((a, w) => a + w.workouts, 0);
   return (
     <figure class="chart">
