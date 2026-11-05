@@ -93,7 +93,8 @@ collection). Data is deleted by "Delete all data" in Settings or by uninstalling
 
 - [x] Project generated and builds (unsigned) — `android/`
 - [x] `pnpm assetlinks` and this guide
-- [ ] Owner: upload key, fingerprint in the manifest, `bubblewrap build`, install the APK and check it
-      opens without a browser bar after `assetlinks.json` is deployed
+- [x] Owner: upload key, fingerprint in the manifest, `bubblewrap build` (2026-11-05)
+- [x] APK 1.0.0 on GitHub Releases: https://github.com/Quoterg/iron-notes/releases/tag/v1.0.0
+- [ ] Check the app opens without a browser bar once `assetlinks.json` is deployed
 - [ ] Owner (optional): Google Play listing with Play App Signing (one-time developer fee), then add
       Play's fingerprint

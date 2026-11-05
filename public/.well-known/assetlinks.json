@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.quoterg.ironnotes",
+      "sha256_cert_fingerprints": [
+        "66:CB:16:19:44:AF:78:5A:D2:3A:4F:6B:99:DE:50:4C:03:59:76:76:27:91:81:F3:DE:03:A3:B1:82:C8:8F:BB"
+      ]
+    }
+  }
+]
