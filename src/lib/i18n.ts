@@ -90,6 +90,13 @@ export async function setLang(l: Lang): Promise<void> {
   }
 }
 
+/** Shows the stored language preference (unset = the phone's): at startup and after a restore or erase. */
+export async function applyLang(pref: Lang | undefined): Promise<void> {
+  const want = pref ?? detectLang();
+  // A pack that can't load (offline before it was ever cached) leaves the UI in English.
+  if (want !== lang.value) await setLang(want).catch(() => {});
+}
+
 /** The pack's exercise-type names (strings-later falls back to English). */
 export const packTypes = (): Record<string, string> | undefined => (lang.value === 'sv' ? sv?.types : undefined);
 
@@ -102,6 +109,8 @@ export function t(key: Key, vars?: Record<string, string | number>): string {
 
 /** Keys of the first screen's table (for tests). */
 export const coreKeys = (): string[] => Object.keys(core);
+/** The first screen's English strings (for tests). */
+export const coreStrings = (): Record<string, string> => ({ ...core });
 
 /** Locale for dates: Swedish when shown in Swedish, else the browser's. */
 export const locale = (): string | undefined => (lang.value === 'sv' ? 'sv-SE' : undefined);

@@ -3,6 +3,7 @@
 import { computed, signal } from '@preact/signals';
 import { byOrder, isoDate, recordIds } from './lib/calc';
 import * as db from './lib/db';
+import { applyLang } from './lib/i18n';
 import { DEFAULT_SETTINGS, type Category, type Exercise, type Routine, type Settings, type WorkoutSet } from './lib/model';
 
 export type View = 'log' | 'calendar' | 'routines' | 'body' | 'settings';
@@ -233,6 +234,7 @@ export async function reloadAll(): Promise<void> {
   records.value = new Map();
   routines.value = null;
   await Promise.all([loadSettings(), loadLibrary()]);
+  await applyLang(settings.value.lang); // a restored (or erased) language preference shows at once
   setsVersion.value++;
   await loadDay(date.value);
 }

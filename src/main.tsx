@@ -5,7 +5,7 @@ import { applyTheme, watchSystemTheme } from './lib/theme';
 import { initNav, open, stack } from './nav';
 import { LATEST } from './changelog-id';
 import { getNumber, hasAnySets, setBlockedHandler, setNumber } from './lib/db';
-import { detectLang, lang, lastLang, setLang, t } from './lib/i18n';
+import { applyLang, detectLang, lastLang, setLang, t } from './lib/i18n';
 import { date, loadDay, loadLibrary, loadSettings, settings, updateReady } from './state';
 import './styles.css';
 
@@ -28,8 +28,7 @@ async function start() {
   // The language pack (Swedish only; English is built in) loads alongside the database.
   const hint = setLang(lastLang() ?? detectLang()).catch(() => {});
   await Promise.all([loadSettings(), loadLibrary(), hint]);
-  const want = settings.value.lang ?? detectLang();
-  if (want !== lang.value) await setLang(want).catch(() => {});
+  await applyLang(settings.value.lang);
   document.getElementById('db-blocked')?.remove();
   performance.mark('in:library');
   render(<App />, document.getElementById('app')!);
