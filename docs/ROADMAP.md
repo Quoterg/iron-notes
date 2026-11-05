@@ -118,7 +118,7 @@ sync last (it has to carry every field the milestones before it add).
   feedback use the real load; targets keep stepping the entered number. Starter dumbbell and body-weight
   exercises switch only where the user hasn't edited them; reps-only Dips/Pull Up/Chin Up/Push Up gain
   an optional added load (old sets = + 0 kg).
-- [ ] **M24 Plate badges & loadable targets** — Optional "Round targets to my plates" setting:
+- [x] **M24 Plate badges & loadable targets** — Optional "Round targets to my plates" setting:
   progression targets (Dorian, Lyle run-up/push, lighter week, gaps) and warm-up chips snap to the
   closest weight loadable with the configured bar and plates (`settings.plates`), with the per-side
   plates under the target.

@@ -1,4 +1,6 @@
 // Gym calculators: 1RM percentages, plates per side, warm-up sets. Pure; values in the user's unit.
+import type { Exercise, Settings } from './model';
+import { wFromUser, wToUser } from './units';
 import { oneRM, round } from './calc';
 
 export type Formula = 'epley' | 'brzycki';
@@ -76,3 +78,58 @@ export const DEFAULT_PLATES = {
   kg: { bar: 20, sizes: [25, 20, 15, 10, 5, 2.5, 1.25] },
   lb: { bar: 45, sizes: [45, 35, 25, 10, 5, 2.5] },
 } as const;
+
+/** Whether `w` can be loaded exactly with the bar and plates (per side, as many of each as needed). */
+const loadable = (w: number, bar: number, sizes: readonly number[]) => w >= bar - 1e-9 && platesPerSide(w, bar, sizes).rest < 1e-6;
+
+/**
+ * The loadable weight closest to `target` (ties go to the lighter one); the bar for anything lighter.
+ * `up`: the lightest loadable weight at or above it (a weight increase must not round back down).
+ * Units as given (the user's). Looks at most 50 smallest steps above for the next loadable weight.
+ */
+export function snapToPlates(target: number, bar: number, sizes: readonly number[], up = false): number {
+  if (!(target > bar)) return bar;
+  const { rest } = platesPerSide(target, bar, sizes);
+  const below = round(target - rest, 4);
+  if (rest < 1e-6) return below;
+  const step = loadStep(sizes);
+  let above: number | undefined;
+  if (Number.isFinite(step) && step > 0) {
+    for (let i = 1; i <= 50 && above === undefined; i++) {
+      const w = round(below + i * (step / 2), 4);
+      if (w > target && loadable(w, bar, sizes)) above = w;
+    }
+  }
+  if (up) return above ?? below;
+  return above !== undefined && above - target < target - below ? above : below;
+}
+
+/** Starter exercises done with a bar and plates (by name), for the "bar and plates" default. */
+export const usesPlatesByName = (name: string): boolean => /barbell|squat|deadlift|hip thrust|close grip bench/i.test(name);
+
+/** The user's bar and plates in their unit (the defaults for it otherwise). */
+export function plateConfig(st: Pick<Settings, 'unit' | 'plates'>): { bar: number; sizes: number[] } {
+  return st.plates?.unit === st.unit ? { bar: st.plates.bar, sizes: st.plates.sizes } : { bar: DEFAULT_PLATES[st.unit].bar, sizes: [...DEFAULT_PLATES[st.unit].sizes] };
+}
+
+/** Whether an exercise's targets round to the bar and plates (setting on, total load, uses plates). */
+export const roundsToPlates = (ex: Pick<Exercise, 'name' | 'load' | 'plates' | 'type'> | undefined, st: Pick<Settings, 'roundPlates'>): boolean =>
+  !!st.roundPlates && !!ex && ex.type.includes('weight') && (ex.load ?? 'total') === 'total' && (ex.plates ?? usesPlatesByName(ex.name));
+
+/** kg → the closest loadable kg for this exercise (`up`: at or above); unchanged when it doesn't round. */
+export function snapperFor(ex: Pick<Exercise, 'name' | 'load' | 'plates' | 'type'> | undefined, st: Pick<Settings, 'unit' | 'plates' | 'roundPlates'>): (kg: number, up?: boolean) => number {
+  if (!roundsToPlates(ex, st)) return (kg) => kg;
+  const cfg = plateConfig(st);
+  // Only above the bar: a lighter target (an empty-bar or fixed-bar lift) is left as it is.
+  return (kg, up = false) => {
+    const u = wToUser(kg, st.unit);
+    return u > cfg.bar ? round(wFromUser(snapToPlates(u, cfg.bar, cfg.sizes, up), st.unit), 3) : kg;
+  };
+}
+
+/**
+ * The "bar and plates" value to store: only an explicit choice (`undefined` = untouched) that differs
+ * from the default for the name, so an untouched new or renamed exercise follows its name.
+ */
+export const platesToStore = (choice: boolean | undefined, name: string): boolean | undefined =>
+  choice === undefined || choice === usesPlatesByName(name) ? undefined : choice;

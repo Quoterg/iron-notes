@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, warmup, weightForReps } from './tools';
+import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, platesToStore, snapperFor, snapToPlates, usesPlatesByName, warmup, weightForReps } from './tools';
 import { validateBackup } from './backup';
 
 describe('1RM', () => {
@@ -70,3 +70,62 @@ describe('limits (review: no freezes)', () => {
     expect(b({ unit: 'st', bar: 20, sizes: [20] }).settings.plates).toBeUndefined();
   });
 });
+
+describe('snapping to plates', () => {
+  const kg = { bar: 20, sizes: [25, 20, 15, 10, 5, 2.5, 1.25] };
+  it('the closest loadable weight; ties to the lighter one; the bar for anything lighter', () => {
+    expect(snapToPlates(101, kg.bar, kg.sizes)).toBe(100);
+    expect(snapToPlates(101.5, kg.bar, kg.sizes)).toBe(102.5);
+    expect(snapToPlates(101.25, kg.bar, kg.sizes)).toBe(100); // tie
+    expect(snapToPlates(82.5, kg.bar, kg.sizes)).toBe(82.5);
+    expect(snapToPlates(15, kg.bar, kg.sizes)).toBe(20);
+  });
+  it('a home set without small plates: steps of 10 kg', () => {
+    expect(snapToPlates(92.5, 20, [20, 10, 5])).toBe(90);
+    expect(snapToPlates(96, 20, [20, 10, 5])).toBe(100);
+    // A weight increase (100 → 102.5) must not round back to 100: up to the next loadable weight.
+    expect(snapToPlates(102.5, 20, [20, 10, 5])).toBe(100);
+    expect(snapToPlates(102.5, 20, [20, 10, 5], true)).toBe(110);
+    expect(snapToPlates(100, 20, [20, 10, 5], true)).toBe(100);
+  });
+  it('barbell lifts by name', () => {
+    expect(usesPlatesByName('Flat Barbell Bench Press')).toBe(true);
+    expect(usesPlatesByName('Romanian Deadlift')).toBe(true);
+    expect(usesPlatesByName('Cable Pushdown')).toBe(false);
+    expect(usesPlatesByName('Leg Press')).toBe(false);
+  });
+});
+
+describe('rounding targets per exercise', () => {
+  const st = { unit: 'kg' as const, roundPlates: true };
+  const bench = { name: 'Flat Barbell Bench Press', type: 'weight,reps' as const };
+  it('barbell lifts round when the setting is on; machines, dumbbells and the setting off do not', () => {
+    expect(snapperFor(bench, st)(101)).toBe(100);
+    expect(snapperFor(bench, { ...st, roundPlates: false })(101)).toBe(101);
+    expect(snapperFor({ name: 'Cable Pushdown', type: 'weight,reps' }, st)(41)).toBe(41);
+    expect(snapperFor({ ...bench, plates: false }, st)(101)).toBe(101);
+    expect(snapperFor({ name: 'Cable Row', type: 'weight,reps', plates: true }, st)(41)).toBe(40);
+    expect(snapperFor({ name: 'Dumbbell Curl', type: 'weight,reps', load: 'perHand' }, st)(13)).toBe(13);
+  });
+  it('in pounds with the user’s own plates', () => {
+    const lb = { unit: 'lb' as const, roundPlates: true, plates: { unit: 'lb' as const, bar: 45, sizes: [45, 25, 10, 5] } };
+    const kg = snapperFor(bench, lb)(100); // 220.5 lb → 225 lb
+    expect(Math.round(kg / 0.45359237)).toBe(225);
+  });
+});
+
+describe('bar and plates: what the editor stores', () => {
+  it('nothing while untouched or equal to the name default; an explicit different choice', () => {
+    expect(platesToStore(undefined, 'Back Squat')).toBeUndefined(); // new, untouched: follows its name
+    expect(platesToStore(true, 'Back Squat')).toBeUndefined();
+    expect(platesToStore(false, 'Back Squat')).toBe(false);
+    expect(platesToStore(true, 'Cable Row')).toBe(true);
+  });
+  it('targets at or below the bar are left as they are', () => {
+    const snap = snapperFor({ name: 'Barbell Curl', type: 'weight,reps' }, { unit: 'kg', roundPlates: true });
+    expect(snap(15)).toBe(15);
+    expect(snap(20)).toBe(20);
+    expect(snap(31)).toBe(30);
+  });
+});
+

@@ -170,6 +170,7 @@ export default function Settings() {
         <h2>{t('logging')}</h2>
         <Check label="markDone" checked={s.markDone} onChange={(markDone) => void saveSettings({ markDone })} />
         <Check label="keepScreenOn" checked={s.keepScreenOn} onChange={(keepScreenOn) => void saveSettings({ keepScreenOn })} />
+        <Check label="roundPlates" checked={!!s.roundPlates} onChange={(roundPlates) => void saveSettings({ roundPlates })} />
         <Choice<'1' | '0'>
           label={t('weekStart')}
           options={[['1', t('monday')], ['0', t('sunday')]]}

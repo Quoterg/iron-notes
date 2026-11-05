@@ -273,6 +273,7 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .mu-spark span { flex: 1; background: var(--accent); border-radius: 2px; opacity: 0.8; }
 .mu-spark span.zero { background: var(--muted); opacity: 0.3; }
 .target { margin: 12px 4px 0; }
+.plates-line { margin: 2px 4px 0; }
 .cycle { margin: 8px 0; }
 .program { padding: 8px 0; border-top: 1px solid var(--card-border); }
 .program:first-of-type { border-top: 0; }

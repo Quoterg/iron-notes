@@ -1,6 +1,7 @@
 // Workout operations that run after a tap or on later screens (copy, reorder, supersets, delete, routines):
 // a lazy chunk, not part of the first paint. Builds on state.ts (cache, records, day reload).
 import { byOrder, previousWorkout, uid } from './lib/calc';
+import { snapperFor } from './lib/tools';
 import * as db from './lib/db';
 import type { RoutineDay, Routine, WorkoutSet } from './lib/model';
 import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, saveSettings, settings, setsVersion } from './state';
@@ -101,6 +102,8 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   // Last workout's sets per exercise (two indexed reads each): fill in the weights the plan leaves open, set by set.
   const last = new Map<string, WorkoutSet[]>();
   await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastWorkoutSets(i.exerciseId))));
+  // Rounded to the bar and plates as on the logging screen (setting; barbell lifts): an increase rounds up.
+  const snapFor = (id: string) => snapperFor(exById.value.get(id), settings.value);
   if (settings.value.mode === 'dorian') {
     // Dorian HIT: from the last normal session (never a lighter week's): sets that reached the top of the
     // range come one weight step up; in a lighter week every working set ~10 % lighter.
@@ -116,7 +119,9 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
         // Last time's sets (one indexed read, done above) unless they are a lighter week's or the day's own.
         const recent = last.get(id) ?? [];
         const base = recent.length && recent[0].date < d && recent.every(progressing) ? recent : previousWorkout((await allSetsOf(id)).filter(progressing), d);
-        last.set(id, light ? base.map((s) => lightSet(s, step)) : progressedSets(base, step, ex.repTop ?? DORIAN_TOP));
+        const next = light ? base.map((s) => lightSet(s, step)) : progressedSets(base, step, ex.repTop ?? DORIAN_TOP);
+        const snap = snapFor(id);
+        last.set(id, next.map((s, i) => (s.weight != null && !s.warmup ? { ...s, weight: snap(s.weight, s.weight > (base[i]?.weight ?? Infinity)) } : s)));
       }),
     );
   }
@@ -138,7 +143,8 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
         const all = runUp || (!first && sets.length) ? (await allSetsOf(id)).filter((s) => !s.planned) : null;
         if (!first && all) first = lastFirstSet(all, d);
         const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(all!, range.bottom, cycle!.start) : 0, first, wFromUser(ex.increment ?? defaultIncrement(u), u), range);
-        if (tg) last.set(id, sets.filter((s) => !s.warmup).map((s) => ({ ...s, weight: tg.weight, reps: tg.reps })));
+        const w = snapFor(id)(tg?.weight ?? 0, tg?.why === 'up');
+        if (tg) last.set(id, sets.filter((s) => !s.warmup).map((s) => ({ ...s, weight: w, reps: tg.reps })));
       }),
     );
   }
