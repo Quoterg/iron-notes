@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, warmup, weightForReps } from './tools';
+import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, snapToPlates, usesPlatesByName, warmup, weightForReps } from './tools';
 import { validateBackup } from './backup';
 
 describe('1RM', () => {
@@ -70,3 +70,25 @@ describe('limits (review: no freezes)', () => {
     expect(b({ unit: 'st', bar: 20, sizes: [20] }).settings.plates).toBeUndefined();
   });
 });
+
+describe('snapping to plates', () => {
+  const kg = { bar: 20, sizes: [25, 20, 15, 10, 5, 2.5, 1.25] };
+  it('the closest loadable weight; ties to the lighter one; the bar for anything lighter', () => {
+    expect(snapToPlates(101, kg.bar, kg.sizes)).toBe(100);
+    expect(snapToPlates(101.5, kg.bar, kg.sizes)).toBe(102.5);
+    expect(snapToPlates(101.25, kg.bar, kg.sizes)).toBe(100); // tie
+    expect(snapToPlates(82.5, kg.bar, kg.sizes)).toBe(82.5);
+    expect(snapToPlates(15, kg.bar, kg.sizes)).toBe(20);
+  });
+  it('a home set without small plates: steps of 10 kg', () => {
+    expect(snapToPlates(92.5, 20, [20, 10, 5])).toBe(90);
+    expect(snapToPlates(96, 20, [20, 10, 5])).toBe(100);
+  });
+  it('barbell lifts by name', () => {
+    expect(usesPlatesByName('Flat Barbell Bench Press')).toBe(true);
+    expect(usesPlatesByName('Romanian Deadlift')).toBe(true);
+    expect(usesPlatesByName('Cable Pushdown')).toBe(false);
+    expect(usesPlatesByName('Leg Press')).toBe(false);
+  });
+});
+

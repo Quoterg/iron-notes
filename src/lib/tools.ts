@@ -76,3 +76,30 @@ export const DEFAULT_PLATES = {
   kg: { bar: 20, sizes: [25, 20, 15, 10, 5, 2.5, 1.25] },
   lb: { bar: 45, sizes: [45, 35, 25, 10, 5, 2.5] },
 } as const;
+
+/** Whether `w` can be loaded exactly with the bar and plates (per side, as many of each as needed). */
+const loadable = (w: number, bar: number, sizes: readonly number[]) => w >= bar - 1e-9 && platesPerSide(w, bar, sizes).rest < 1e-6;
+
+/**
+ * The loadable weight closest to `target` (ties go to the lighter one); the bar for anything lighter.
+ * Units as given (the user's). Looks at most 50 smallest steps above for the next loadable weight.
+ */
+export function snapToPlates(target: number, bar: number, sizes: readonly number[]): number {
+  if (!(target > bar)) return bar;
+  const { rest } = platesPerSide(target, bar, sizes);
+  const below = round(target - rest, 4);
+  if (rest < 1e-6) return below;
+  const step = loadStep(sizes);
+  let above: number | undefined;
+  if (Number.isFinite(step) && step > 0) {
+    for (let i = 1; i <= 50 && above === undefined; i++) {
+      const w = round(below + i * (step / 2), 4);
+      if (w > target && loadable(w, bar, sizes)) above = w;
+    }
+  }
+  return above !== undefined && above - target < target - below ? above : below;
+}
+
+/** Starter exercises done with a bar and plates (by name), for the "bar and plates" default. */
+export const usesPlatesByName = (name: string): boolean => /barbell|squat|deadlift|hip thrust|close grip bench/i.test(name);
+
