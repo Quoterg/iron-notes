@@ -107,3 +107,24 @@ export function resetBody(): void {
   latest.value = new Map();
   entries.value = new Map();
 }
+
+/**
+ * Imports Iron Log body measurements (M30): into the matching measures, skipping dates they already
+ * have. Returns what was written and skipped, and Iron Log fields with no measure to go to.
+ */
+export async function importIronLog(data: import('./lib/ironlog').IronLogData): Promise<{ added: number; skipped: number; missing: string[] }> {
+  await loadBody();
+  const list = metrics.value ?? [];
+  const { planBodyImport } = await import('./lib/ironlog');
+  const dates = new Map(await Promise.all(list.map(async (m) => [m.id, new Set((await db.entriesOf(m.id)).map((e) => e.date))] as const)));
+  const plan = planBodyImport(data, list, (id) => dates.get(id) ?? new Set(), uid, nextAt);
+  await Promise.all(plan.entries.map((e) => db.putEntry(e)));
+  // The touched measures: their full history is read again when opened; the list shows the new latest.
+  const touched = [...new Set(plan.entries.map((e) => e.metricId))];
+  for (const id of touched) raw.delete(id);
+  const last = await Promise.all(touched.map(async (id) => [id, await db.latestEntries(id, 2)] as const));
+  latest.value = new Map([...latest.value, ...last]);
+  if (plan.entries.length) await bodyWeightsChanged();
+  return { added: plan.entries.length, skipped: plan.skipped, missing: plan.missing };
+}
+
