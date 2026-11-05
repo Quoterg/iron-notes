@@ -1,8 +1,18 @@
 // Cycle / block review (M27): what a Lyle cycle or the last weeks did — strength per exercise (first vs
 // last session's best e1RM), readiness answers per muscle, and exercises to swap before the next cycle
 // (stalled, weaker, or flagged for joint pain). Pure; the screen passes real-load sets (lib/load.ts).
+import { addDays } from './calc';
 import { sessions, trendOf, type Trend } from './feedback';
 import type { Exercise, MuscleId, Routine, WorkoutSet } from './model';
+
+/** The review's dates: a Lyle cycle's own (up to today while it runs), or the last `weeks` weeks. */
+export function reviewRange(span: 'cycle' | number, cycle: { start: string; weeks: number } | undefined, today: string): { from: string; to: string } {
+  if (span === 'cycle' && cycle) {
+    const end = addDays(cycle.start, cycle.weeks * 7 - 1);
+    return { from: cycle.start, to: end < today ? end : today };
+  }
+  return { from: addDays(today, -7 * (span === 'cycle' ? 6 : span) + 1), to: today };
+}
 
 export interface ExerciseChange {
   exerciseId: string;
@@ -11,6 +21,8 @@ export interface ExerciseChange {
   last: number;
   /** last / first − 1, or null with one session. */
   change: number | null;
+  /** The scale of `first`/`last`: kg (e1RM of the real load) or reps (body weight alone). */
+  kind: 'load' | 'reps';
   sessions: number;
   trend: Trend;
 }
@@ -24,16 +36,21 @@ export function exerciseChanges(
 ): ExerciseChange[] {
   const out: ExerciseChange[] = [];
   for (const [exerciseId, sets] of byExercise) {
-    const list = sessions(sets.filter((s) => s.date >= from && s.date <= to), formula);
+    const inRange = sets.filter((s) => s.date >= from && s.date <= to);
+    // One scale per exercise: sets with a load (kg) when there are any, else reps — never mixed.
+    const loaded = inRange.filter((s) => s.weight! > 0);
+    const kind = loaded.length ? 'load' : 'reps';
+    const list = sessions(kind === 'load' ? loaded : inRange, formula);
     if (!list.length) continue;
     const first = list[0].score;
     const last = list[list.length - 1].score;
-    out.push({ exerciseId, first, last, change: list.length > 1 && first > 0 ? last / first - 1 : null, sessions: list.length, trend: trendOf(list) });
+    out.push({ exerciseId, first, last, change: list.length > 1 && first > 0 ? last / first - 1 : null, kind, sessions: list.length, trend: trendOf(list) });
   }
   return out.sort((a, b) => (b.change ?? -Infinity) - (a.change ?? -Infinity));
 }
 
-/** Readiness answers per muscle in the period (from the first set of each muscle's day). */
+/** Readiness answers per muscle in the period: every set that carries one (the logger saves it on the first
+ *  set of a muscle's day only). */
 export function soreness(
   sets: readonly WorkoutSet[],
   musclesOf: (exerciseId: string) => { primary: readonly MuscleId[] } | undefined,
@@ -65,7 +82,9 @@ export function alternatives(ex: Exercise, library: readonly Exercise[], exclude
     .slice(0, n);
 }
 
-/** The routine with `from` replaced by `to` in every day (its planned sets kept). */
+/** The routine with `from` replaced by `to` in every day: sets × reps kept, planned weights dropped (they
+ *  were the old exercise's; the new one's come from its own last time). */
 export function swapInRoutine(r: Routine, from: string, to: string): Routine {
-  return { ...r, days: r.days.map((d) => ({ ...d, items: d.items.map((i) => (i.exerciseId === from ? { ...i, exerciseId: to } : i)) })) };
+  const swap = (i: Routine['days'][number]['items'][number]) => ({ ...i, exerciseId: to, sets: i.sets.map(({ weight: _w, ...p }) => p) });
+  return { ...r, days: r.days.map((d) => ({ ...d, items: d.items.map((i) => (i.exerciseId === from ? swap(i) : i)) })) };
 }
