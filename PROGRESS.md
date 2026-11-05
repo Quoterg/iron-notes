@@ -25,6 +25,13 @@
   and "Train it today" — exercises with it as the main muscle, favourites first, opening for today.
 - Checks: 241 unit tests, 38 e2e (new bodymap.spec), initial JS 22.0 KB, CSS 4.8 KB, Lighthouse passes.
 
+## 2026-11-05 — Update check on resume (owner's request)
+
+- The "A new version is ready. Restart" bar (as in Iron Log) was there, but only a start noticed a new
+  version — an installed app is usually resumed, not reloaded. Now coming back to the foreground (at most
+  every 30 minutes) asks the worker to `check`: it fetches the app page, stores a new one with all its
+  assets (`storeAppPage`, as at a start) and the bar appears; `registration.update()` checks sw.js too.
+
 ## 2026-11-05 — M30 Iron Log bridge (backup import)
 
 - `lib/ironlog.ts`: reads an Iron Log backup (`format: 'iron-log-backup'`): body rows (weight 20–400 kg,
