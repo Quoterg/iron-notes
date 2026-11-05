@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import * as backup from './backup';
 import type { Exercise } from './model';
-import { cycle, defaultMuscles, MUSCLES, stateOf, withDefaultMuscles } from './muscles';
+import { cycle, defaultMuscles, MUSCLES, searchExercises, stateOf, withDefaultMuscles } from './muscles';
 import { starterLibrary } from './seed';
 
 describe('muscle map', () => {
@@ -51,5 +51,25 @@ describe('muscle map', () => {
     expect(() => backup.validateBackup(ex({ primary: ['chest'], secondary: ['abs'] }))).not.toThrow();
     expect(() => backup.validateBackup(ex({ primary: ['wings'], secondary: [] }))).toThrow();
     expect(() => backup.validateBackup(ex({ primary: 'chest' }))).toThrow();
+  });
+
+  it('searches by exercise name first, then primary muscles/category, then secondary muscles', () => {
+    const { categories, exercises } = starterLibrary();
+    const catName = (id: string) => categories.find((c) => c.id === id)?.name;
+    const muLabel = (m: string) => (m === 'rearDelts' ? 'Rear delts' : m === 'hamstrings' ? 'Hamstrings' : m);
+
+    // Name match vs primary vs secondary for "triceps":
+    // Overhead Triceps Extension has "triceps" in its name (tier 0);
+    // Cable Pushdown / Skullcrusher / Dips train triceps primarily (tier 1);
+    // Flat Barbell Bench Press trains triceps secondarily (tier 2).
+    const tri = searchExercises(exercises, 'triceps', catName, muLabel).map((e) => e.name);
+    expect(tri[0]).toBe('Overhead Triceps Extension');
+    expect(tri.indexOf('Cable Pushdown')).toBeGreaterThan(0);
+    expect(tri.indexOf('Cable Pushdown')).toBeLessThan(tri.indexOf('Flat Barbell Bench Press'));
+
+    // Multi-word muscle search ("rear delts") finds Face Pull and Rear Delt Fly before rows.
+    const rear = searchExercises(exercises, 'rear delts', catName, muLabel).map((e) => e.name);
+    expect(rear).toContain('Face Pull');
+    expect(rear.indexOf('Face Pull')).toBeLessThan(rear.indexOf('Barbell Row'));
   });
 });

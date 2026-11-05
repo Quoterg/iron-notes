@@ -97,3 +97,40 @@ export function cycle(ms: Muscles | undefined, id: MuscleId): Muscles {
   else if (cur === 'primary') secondary.push(id);
   return { primary: primary.sort(canon), secondary: secondary.sort(canon) };
 }
+
+/** Lower case without accents, so "presse" finds "Pressé". */
+export const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Exercises matching all words of `query` across their name, category and muscles (name matches first,
+ * then primary muscles / category, then secondary muscles).
+ */
+export function searchExercises(
+  list: readonly Exercise[],
+  query: string,
+  categoryName?: (categoryId: string) => string | undefined,
+  muscleName?: (m: MuscleId) => string,
+): Exercise[] {
+  const words = fold(query.trim()).split(/\s+/).filter(Boolean);
+  if (!words.length) return [...list];
+  const scored: { e: Exercise; tier: number }[] = [];
+  for (const e of list) {
+    const name = fold(e.name);
+    if (words.every((w) => name.includes(w))) {
+      scored.push({ e, tier: 0 });
+      continue;
+    }
+    const cat = categoryName ? fold(categoryName(e.categoryId) ?? '') : '';
+    const prim = muscleName && e.muscles ? fold(e.muscles.primary.map(muscleName).join(' ')) : '';
+    const tier1 = `${name} ${cat} ${prim}`;
+    if (words.every((w) => tier1.includes(w))) {
+      scored.push({ e, tier: 1 });
+      continue;
+    }
+    const sec = muscleName && e.muscles ? fold(e.muscles.secondary.map(muscleName).join(' ')) : '';
+    if (sec && words.every((w) => `${tier1} ${sec}`.includes(w))) {
+      scored.push({ e, tier: 2 });
+    }
+  }
+  return scored.sort((a, b) => a.tier - b.tier).map((x) => x.e);
+}

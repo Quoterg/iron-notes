@@ -2,8 +2,9 @@
 // opens exercises and categories for editing.
 import { useEffect, useState } from 'preact/hooks';
 import { recentExerciseIds } from '../lib/db';
-import { t } from '../lib/i18n';
+import { type Key, t } from '../lib/i18n';
 import type { Exercise, Routine, RoutineDay } from '../lib/model';
+import { fold, searchExercises } from '../lib/muscles';
 import { open, replaceTop } from '../nav';
 import { defaultPlan } from '../lib/routines';
 import { catById, categories, exById, exercises, routines, setFavorite, toast } from '../state';
@@ -12,9 +13,6 @@ import { Dot } from './icons';
 import { Sheet } from './Sheet';
 
 const RECENT = 8;
-
-/** Lower case without accents, so "presse" finds "Pressé". */
-const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 export default function Picker({ date, manage, routine }: { date?: string; manage?: boolean; routine?: { routineId: string; dayId: string } }) {
   const [q, setQ] = useState('');
@@ -43,10 +41,12 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
   let body;
   if (query) {
     const words = query.split(/\s+/);
-    const hits = exercises.value.filter((e) => {
-      const n = fold(e.name);
-      return words.every((w) => n.includes(w));
-    });
+    const hits = searchExercises(
+      exercises.value,
+      query,
+      (cid) => catById.value.get(cid)?.name,
+      (m) => t(`mu_${m}` as Key),
+    );
     const wHits = workouts.filter(({ r, d }) => words.every((w) => fold(`${d.name} ${r.name}`).includes(w)));
     body =
       hits.length || wHits.length ? (

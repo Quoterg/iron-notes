@@ -13,6 +13,9 @@ test('favourites and recent exercises at the top of the picker', async ({ page }
   await page.getByRole('searchbox').fill('deadlift');
   // The row of exactly "Deadlift" (the search also finds Romanian Deadlift).
   await sheet.locator('.pick-row', { has: page.getByRole('button', { name: 'Deadlift', exact: true }) }).getByRole('button', { name: 'Favourite' }).click();
+  // Muscle search finds exercises targeting that muscle (e.g. "rear delts" → Face Pull).
+  await page.getByRole('searchbox').fill('rear delts');
+  await expect(sheet.getByRole('button', { name: 'Face Pull', exact: true })).toBeVisible();
   await page.getByRole('searchbox').fill('');
   await expect(sheet.getByText('Favourites', { exact: true })).toBeVisible();
   await sheet.getByRole('button', { name: /Legs/ }).click();

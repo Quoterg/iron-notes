@@ -102,7 +102,7 @@ function ScreenView({ screen: s }: { screen: Screen }) {
     case 'whatsnew':
       return <whatsNewView.Lazy since={s.since} />;
     case 'tools':
-      return <toolsView.Lazy weight={s.weight} />;
+      return <toolsView.Lazy weight={s.weight} reps={s.reps} />;
     case 'analysis':
       return <analysisView.Lazy />;
     case 'muscles':

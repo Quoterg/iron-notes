@@ -7,6 +7,7 @@ import { setsBetween } from '../lib/db';
 import { type Key, locale, t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { distance, num, weight, wToUser } from '../lib/units';
+import { open } from '../nav';
 import { catById, exById, settings } from '../state';
 import { Dot } from './icons';
 import { Sheet } from './Sheet';
@@ -104,7 +105,7 @@ export default function Analysis() {
                   const change = e.firstOrm && e.lastOrm && e.lastOrm !== e.firstOrm ? (e.lastOrm / e.firstOrm - 1) * 100 : null;
                   return (
                     <li key={e.exerciseId}>
-                      <span class="entry entry-static">
+                      <button class="entry" onClick={() => open({ kind: 'exercise', id: e.exerciseId, date: today })}>
                         <Dot color={catById.value.get(ex.categoryId)?.color} />
                         <span class="entry-name">{ex.name}</span>
                         <span class="muted small num">
@@ -112,7 +113,7 @@ export default function Analysis() {
                           {e.lastOrm != null && ` · ${t('est1rm')} ${num(wToUser(e.lastOrm, st.unit), 1)} ${st.unit}`}
                           {change != null && <b class={change > 0 ? 'delta up' : 'delta down'}> {change > 0 ? '+' : '−'}{num(Math.abs(change), 1)} %</b>}
                         </span>
-                      </span>
+                      </button>
                     </li>
                   );
                 })}

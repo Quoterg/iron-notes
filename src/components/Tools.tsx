@@ -11,11 +11,11 @@ type Tab = 'orm' | 'plates' | 'warmup';
 const TABS: Tab[] = ['orm', 'plates', 'warmup'];
 const parse = (v: string) => (/^\d+([.,]\d+)?$/.test(v.trim()) ? Number(v.trim().replace(',', '.')) : NaN);
 
-export default function Tools({ weight }: { weight?: number }) {
+export default function Tools({ weight, reps: initReps }: { weight?: number; reps?: number }) {
   const st = settings.value;
   const [tab, setTab] = useState<Tab>(weight ? 'plates' : 'orm');
   const [w, setW] = useState(weight ? num(wToUser(weight, st.unit), 2) : '');
-  const [reps, setReps] = useState('5');
+  const [reps, setReps] = useState(initReps && initReps > 0 ? String(initReps) : '5');
   const cfg = st.plates?.unit === st.unit ? st.plates : { unit: st.unit, ...DEFAULT_PLATES[st.unit], sizes: [...DEFAULT_PLATES[st.unit].sizes] };
   const target = parse(w);
   const tooHeavy = target > MAX_TARGET;

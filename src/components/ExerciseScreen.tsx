@@ -530,7 +530,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 </button>
               )}
               {fields.includes('weight') && (
-                <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight })}>
+                <button type="button" class="link" onClick={() => open({ kind: 'tools', weight: values?.weight, reps: values?.reps })}>
                   {t('tools')}
                 </button>
               )}
@@ -590,9 +590,23 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 <ol class="setlist prev">
                   {prev.map((s) => (
                     <li key={s.id}>
-                      <span>{setText(s, ex.type, st)}</span>
-                      {rec?.has(s.id) && <Trophy />}
-                      {s.comment && <span class="note-line">{s.comment}</span>}
+                      <button
+                        type="button"
+                        class="prev-set"
+                        aria-label={`${t('lastTime')}: ${setText(s, ex.type, st)}`}
+                        onClick={() => {
+                          setSel(null);
+                          const seeded = toForm(s, st);
+                          setForm((f) => ({ ...seeded, rir: lyle ? '' : seeded.rir, comment: f.comment }));
+                        }}
+                      >
+                        <span>
+                          {setText(s, ex.type, st)}
+                          {hasReps && <Effort s={s} />}
+                        </span>
+                        {rec?.has(s.id) && <Trophy />}
+                        {s.comment && <span class="note-line">{s.comment}</span>}
+                      </button>
                     </li>
                   ))}
                 </ol>

@@ -32,6 +32,10 @@ test('history, graph and records of an exercise', async ({ page }) => {
   await page.locator('.ex-head').click();
   // The open sheet only (the day log stays mounted underneath).
   const sheet = page.locator('div:not([hidden]) > .sheet');
+  // Tapping a set in "Last time" copies its weight and reps into the form.
+  await sheet.getByRole('button', { name: 'Last time: 85 kg × 5' }).click();
+  await expect(sheet.getByLabel('Weight (kg)', { exact: true })).toHaveValue('85');
+  await expect(sheet.getByLabel('Reps', { exact: true })).toHaveValue('5');
   await page.getByRole('button', { name: 'History' }).click();
   await expect(sheet.locator('.ex-card')).toHaveCount(3);
   await expect(sheet.locator('.ex-card').first()).toContainText('90 kg × 3');
