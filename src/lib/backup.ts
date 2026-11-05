@@ -43,6 +43,7 @@ const optRep = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as 
 const validExercise = (e: Exercise) =>
   isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest) && optRep(e.repTop) && optRep(e.repBottom) &&
   (e.favorite === undefined || typeof e.favorite === 'boolean') && (e.joint === undefined || typeof e.joint === 'boolean') &&
+  (e.load === undefined || e.load === 'total' || e.load === 'perHand' || e.load === 'bodyweight' || e.load === 'assisted') &&
   (e.muscles === undefined ||
     (!!e.muscles && Array.isArray(e.muscles.primary) && Array.isArray(e.muscles.secondary) &&
       [...e.muscles.primary, ...e.muscles.secondary].every((x) => MUSCLES.includes(x))));

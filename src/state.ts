@@ -48,7 +48,53 @@ export async function loadLibrary(): Promise<void> {
   } else if (lib.categories.length) void db.isSeeded().then((s) => (s ? undefined : db.markSeeded())); // installs from before the flag
   categories.value = lib.categories.sort(byCatOrder);
   exercises.value = lib.exercises.sort(byName);
-  void mapMusclesOnce();
+  void mapMusclesOnce().then(mapLoadsOnce);
+}
+
+/** Installs from before load types: starter dumbbell and body-weight exercises get theirs, once. */
+async function mapLoadsOnce() {
+  if (await db.getFlag('loadsMapped')) return;
+  const { withDefaultLoads } = await import('./lib/load-defaults');
+  const mapped = await db.putLoadsIfMissing(withDefaultLoads(exercises.value));
+  if (mapped.length) {
+    const byId = new Map(mapped.map((e) => [e.id, e]));
+    exercises.value = exercises.value.map((e) => byId.get(e.id) ?? e);
+    // Their records were ranked by reps (or the entered weight): rank them by the real load now.
+    await Promise.all(mapped.filter((e) => e.load === 'bodyweight' || e.load === 'assisted').map((e) => refreshRecords(e.id)));
+  }
+  await db.setFlag('loadsMapped');
+}
+
+// Body weight by date (the first weight measure of the Body screen), read once until an entry changes.
+let bw: Promise<(date: string) => number | undefined> | null = null;
+export function bodyWeights(): Promise<(date: string) => number | undefined> {
+  return (bw ??= (async () => {
+    const m = (await db.getMetrics()).filter((x) => x.kind === 'weight').sort((a, b) => a.order - b.order)[0];
+    const { bodyWeightAt } = await import('./lib/load');
+    return bodyWeightAt(m ? await db.entriesOf(m.id) : []);
+  })());
+}
+/**
+ * After a body entry is added or removed: body-weight exercises' real loads change, so their stored
+ * records are dropped and rebuilt from the sets on next use.
+ */
+export async function bodyWeightsChanged(): Promise<void> {
+  bw = null;
+  const ids = exercises.value.filter((e) => e.load === 'bodyweight' || e.load === 'assisted').map((e) => e.id);
+  if (!ids.length) return;
+  await Promise.all(ids.map((id) => db.deleteRecords(id)));
+  const m = new Map(records.value);
+  for (const id of ids) m.delete(id);
+  records.value = m;
+}
+
+/** An exercise's sets as calculations see them: real load (body weight ±) and volume weight. */
+export async function loadedSetsOf(exerciseId: string): Promise<readonly WorkoutSet[]> {
+  const sets = await allSetsOf(exerciseId);
+  const t = exById.value.get(exerciseId)?.load ?? 'total';
+  if (t === 'total') return sets;
+  const { withRealLoad } = await import('./lib/load');
+  return withRealLoad(sets, t, await bodyWeights());
 }
 
 /** Installs from before the muscle map: give known exercises their muscles, once (never overwrites). */
@@ -135,7 +181,7 @@ export async function loadRecords(ids: string[]): Promise<void> {
     todo.map(async (id) => {
       const stored = await db.getRecords(id);
       if (stored) return [id, new Set(stored.ids)] as const;
-      const r = recordIds(await allSetsOf(id), exById.value.get(id)!.type, true);
+      const r = recordIds(await loadedSetsOf(id), exById.value.get(id)!.type, true);
       void db.putRecordsIfAbsent({ exerciseId: id, ids: [...r] }); // never over a fresher refresh
       return [id, r] as const;
     }),
@@ -149,7 +195,7 @@ export async function loadRecords(ids: string[]): Promise<void> {
 async function refreshRecords(exerciseId: string): Promise<void> {
   const ex = exById.value.get(exerciseId);
   if (!ex) return;
-  const r = recordIds(await allSetsOf(exerciseId), ex.type, true);
+  const r = recordIds(await loadedSetsOf(exerciseId), ex.type, true);
   await db.putRecords({ exerciseId, ids: [...r] });
   records.value = new Map(records.value).set(exerciseId, r);
 }

@@ -1,5 +1,6 @@
 // Log sets of one exercise on one day: fields for the exercise type with +/- steppers, Save/Clear
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
+import { loadOf, needsBodyWeight, usesBodyWeight, withRealLoad } from '../lib/load';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
 import { MAX_RIR, setEffective } from '../lib/effective';
@@ -15,7 +16,7 @@ import { startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, weight as fmtWeight, wFromUser, wToUser } from '../lib/units';
 import { groupColors, groupMembers, groupOf, nextInGroup } from '../lib/groups';
 import { open, replaceTop } from '../nav';
-import { allSetsOf, catById, date as shownDate, daySets, exById, exercises, loadRecords, nextOrder, records, removeSet, saveExercise, saveSet, setsVersion, settings, toast } from '../state';
+import { allSetsOf, bodyWeights, catById, date as shownDate, daySets, exById, exercises, loadRecords, nextOrder, records, removeSet, saveExercise, saveSet, setsVersion, settings, toast } from '../state';
 import { isDone } from '../lib/routines';
 import { Graph, History, Records } from './ExerciseProgress';
 import { Dot, Trophy } from './icons';
@@ -36,6 +37,9 @@ interface Form {
 }
 type Tab = 'track' | 'history' | 'graph' | 'records';
 const TABS: Tab[] = ['track', 'history', 'graph', 'records'];
+
+/** The weight field's label by load type. */
+const WEIGHT_LABEL = { total: 'weight', perHand: 'weightPerHand', bodyweight: 'addedWeight', assisted: 'assistance' } as const;
 
 const EMPTY: Form = { weight: '', reps: '', distance: '', min: '', sec: '', comment: '', rir: '', after: '', warmup: false };
 
@@ -65,6 +69,8 @@ function toForm(s: WorkoutSet, st: Settings, own = false): Form {
 function fromForm(f: Form, ex: Exercise, st: Settings): Partial<WorkoutSet> | null {
   const out: Partial<WorkoutSet> = {};
   for (const field of fieldsOf(ex.type)) {
+    // Body weight + load: an empty weight is body weight alone.
+    if (field === 'weight' && f.weight.trim() === '' && loadOf(ex) === 'bodyweight') continue;
     if (field === 'time') {
       const m = parse(f.min) ?? 0;
       const s = parse(f.sec) ?? 0;
@@ -136,6 +142,16 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const today = all?.filter((s) => s.date === date) ?? [];
   // Sets that count: not a routine's planned ones (filtered once, shared with the tabs).
   const counted = useMemo(() => all?.filter(isDone) ?? null, [all]);
+  // Body weight by date, read only for body-weight load types (one read, cached until an entry changes).
+  const load = loadOf(ex);
+  const [bwAt, setBwAt] = useState<((d: string) => number | undefined) | null>(() => (usesBodyWeight(load) ? null : () => undefined));
+  useEffect(() => {
+    if (usesBodyWeight(load)) void bodyWeights().then((f) => setBwAt(() => f));
+    else setBwAt(() => () => undefined);
+  }, [load]);
+  /** Calculations' view of the history: real load (body weight ±) and volume weight; never saved. Held
+   *  back until the body weight is read, so no numbers without it flash on a slow phone. */
+  const real = useMemo(() => (counted && bwAt ? withRealLoad(counted, load, bwAt) : null), [counted, load, bwAt]);
   // "Last time" means sets actually done.
   const prev = counted ? previousWorkout(counted, date) : [];
   /** The next planned set of a routine logged today: Save fills it in. */
@@ -257,12 +273,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   // working sets estimates the effort of sets logged without one.
   const effOf = useMemo(() => {
     const out = new Map<string, ReturnType<typeof setEffective>>();
-    if (!counted) return out;
+    if (!real) return out;
     let best = 0;
-    for (const s of counted) if (!s.warmup) best = Math.max(best, oneRM(s.weight ?? 0, s.reps ?? 0, st.formula));
-    for (const s of counted) if (s.date === date) out.set(s.id, setEffective(s, best, st.formula));
+    for (const s of real) if (!s.warmup) best = Math.max(best, oneRM(s.weight ?? 0, s.reps ?? 0, st.formula));
+    for (const s of real) if (s.date === date) out.set(s.id, setEffective(s, best, st.formula));
     return out;
-  }, [counted, date, st.formula]);
+  }, [real, date, st.formula]);
   let effToday = 0;
   if (hasReps) for (const e of effOf.values()) effToday += e.n;
 
@@ -279,7 +295,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
         ? { ...planned, ...values, comment, planned: undefined, done: true, sore: firstForMuscle && sore != null ? sore : undefined }
         : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id), sore: firstForMuscle && sore != null ? sore : undefined };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
-      if (counted!.some((x) => x.id !== s.id) && recordIds([...all.filter((x) => x.id !== s.id), s], ex.type).has(s.id)) toast(t('newRecord'));
+      const withNew = withRealLoad([...all.filter((x) => x.id !== s.id), s], load, bwAt ?? (() => undefined));
+      if (counted!.some((x) => x.id !== s.id) && recordIds(withNew, ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
       // Dorian HIT: after a working set the form moves on to the next set's target (a reverse pyramid's
       // back-off set is lighter); reps after failure never carry over.
@@ -368,9 +385,10 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
             </button>
           ))}
         </div>
+        {/* History shows what was typed; graphs and records compare the real load (body weight ±, both dumbbells' volume). */}
         {tab === 'history' && counted && <History ex={ex} all={counted} rec={rec} st={st} />}
-        {tab === 'graph' && counted && <Graph ex={ex} all={counted} st={st} />}
-        {tab === 'records' && counted && <Records ex={ex} all={counted} st={st} />}
+        {tab === 'graph' && real && <Graph ex={ex} all={real} st={st} />}
+        {tab === 'records' && real && <Records ex={ex} all={real} st={st} />}
         {tab === 'track' && (
           <>
             {firstForMuscle && !selected && (
@@ -399,7 +417,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                 )}
               </div>
             )}
-            {(dorian || lyle) && !selected && counted && <Feedback ex={ex} date={date} counted={counted} />}
+            {(dorian || lyle) && !selected && real && <Feedback ex={ex} date={date} counted={real} />}
+            {bwAt && needsBodyWeight(load, bwAt, date) && <p class="hint small">{t('needBodyWeight')}</p>}
             {(dorian || lyle) && (
               <div class="chips">
                 <button type="button" class={ex.joint ? 'chip on' : 'chip'} aria-pressed={!!ex.joint} onClick={() => void saveExercise({ ...ex, joint: ex.joint ? undefined : true })}>
@@ -483,7 +502,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
               }}
             >
               {fields.includes('weight') && (
-                <Stepper id="f-weight" label={`${t('weight')} (${st.unit})`} value={form.weight} onChange={set('weight')} step={inc} />
+                <Stepper id="f-weight" label={`${t(WEIGHT_LABEL[load])} (${st.unit})`} value={form.weight} onChange={set('weight')} step={inc} />
               )}
               {fields.includes('reps') && <Stepper id="f-reps" label={t('reps')} value={form.reps} onChange={set('reps')} step={1} integer />}
               {fields.includes('distance') && (
@@ -553,7 +572,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                       <button type="button" class="set-row" onClick={() => select(s)} aria-pressed={sel === s.id}>
                         <span class="n">{i + 1}</span>
                         <span class="v">
-                          {setText(s, ex.type, st)}
+                          {setText(s, ex.type, st, load)}
                           {hasReps && <Effort s={s} />}
                           {s.comment && <span class="c">{s.comment}</span>}
                         </span>
@@ -605,7 +624,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                         }}
                       >
                         <span>
-                          {setText(s, ex.type, st)}
+                          {setText(s, ex.type, st, load)}
                           {hasReps && <Effort s={s} />}
                         </span>
                         {rec?.has(s.id) && <Trophy />}

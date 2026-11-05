@@ -1,5 +1,6 @@
 // The exercise screen's History, Graph and Records tabs. All work from the exercise's cached history
 // (sets in date/order), computed only while the tab is shown.
+import { loadOf } from '../lib/load';
 import { useMemo, useState } from 'preact/hooks';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
 import { type Key, locale, t } from '../lib/i18n';
@@ -43,7 +44,7 @@ export function History({ ex, all, rec, st }: { ex: Exercise; all: WorkoutSet[];
           <ol class="setlist">
             {w.sets.map((s) => (
               <li key={s.id}>
-                <span>{setText(s, ex.type, st)}</span>
+                <span>{setText(s, ex.type, st, loadOf(ex))}</span>
                 {rec?.has(s.id) && <Trophy />}
                 {s.comment && <span class="note-line">{s.comment}</span>}
               </li>
@@ -62,7 +63,7 @@ export function History({ ex, all, rec, st }: { ex: Exercise; all: WorkoutSet[];
 
 const RANGES: Range[] = ['1m', '3m', '6m', '1y', 'all'];
 
-export function Graph({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Settings }) {
+export function Graph({ ex, all, st }: { ex: Exercise; all: readonly WorkoutSet[]; st: Settings }) {
   const metrics = metricsFor(ex.type);
   const [metric, setMetric] = useState<Metric>(metrics[0]);
   const [range, setRange] = useState<Range>('3m');
@@ -107,7 +108,7 @@ export function Graph({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Se
   );
 }
 
-export function Records({ ex, all, st }: { ex: Exercise; all: WorkoutSet[]; st: Settings }) {
+export function Records({ ex, all, st }: { ex: Exercise; all: readonly WorkoutSet[]; st: Settings }) {
   const strength = ex.type === 'weight,reps';
   const orm = useMemo(() => (strength ? bestOrm(all, st.formula) : null), [all, st.formula, strength]);
   const table = useMemo(() => (strength ? repMaxTable(all, 15).filter((r) => r.set) : []), [all, strength]);

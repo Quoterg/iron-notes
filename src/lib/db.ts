@@ -155,6 +155,22 @@ export async function putMusclesIfMissing(list: Exercise[]): Promise<Exercise[]>
   await tx.done;
   return written;
 }
+/** Writes load types (and the type a body-weight exercise gains) only where none is stored yet. */
+export async function putLoadsIfMissing(list: Exercise[]): Promise<Exercise[]> {
+  const tx = (await db()).transaction('exercises', 'readwrite');
+  const written: Exercise[] = [];
+  for (const e of list) {
+    const cur = await tx.store.get(e.id);
+    if (cur && cur.load == null && e.load) {
+      // Only a reps-only or weight-and-reps type is converted; anything else (changed elsewhere) stays.
+      const next = { ...cur, load: e.load, type: cur.type === 'reps' || cur.type === 'weight,reps' ? e.type : cur.type };
+      await tx.store.put(next);
+      written.push(next);
+    }
+  }
+  await tx.done;
+  return written;
+}
 export async function putLibrary(categories: Category[], exercises: Exercise[]): Promise<void> {
   const d = await db();
   const tx = d.transaction(['categories', 'exercises'], 'readwrite');

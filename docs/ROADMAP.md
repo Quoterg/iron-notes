@@ -111,7 +111,7 @@ sync last (it has to carry every field the milestones before it add).
 - [x] **M22 Fast gym flow** — Done in PR #29: tap a "Last time" set to copy it into the form (effort shown;
   Lyle mode never prefills RIR; Undo), search by category and primary/secondary muscle in every loaded
   language, Calculators get the set's reps (1–15), Statistics "Most trained exercises" open the exercise.
-- [ ] **M25 Load types: dumbbells, body weight + load, assisted** — Per-exercise load type: total
+- [x] **M25 Load types: dumbbells, body weight + load, assisted** — Per-exercise load type: total
   (barbell/machine), per hand (dumbbells: volume × 2; 1RM and records per hand), body weight + added
   load (latest Body-screen weight on or before the day; without one, the added load only, with a hint),
   assisted (body weight − assistance). Volume, e1RM, records, graphs, Standard-mode RIR estimates and

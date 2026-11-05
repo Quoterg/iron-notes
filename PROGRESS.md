@@ -8,12 +8,35 @@
 - Android 1.0.0 signed by the owner and on GitHub Releases (v1.0.0); assetlinks.json with the upload-key
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
-- Next: **M21 Device sync** (QR + direct encrypted WebRTC like Iron Log, no server, no account).
+- Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
+- Next: **M24 Plate badges & loadable targets**; also asked: effective reps per muscle in Statistics.
 - Follow-ups: decimal comma in Swedish for displayed numbers (needs a display-only formatter: `num()` also
   writes CSV and input values); Swedish names for the starter library would need a stable key per
   exercise (programs match by name).
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M25 Load types
+
+- `lib/load.ts`: load type per exercise (total · per hand · body weight + added load · assisted), real
+  load (body weight ± from the latest Body weigh-in on or before the day; the first one for earlier days;
+  body weight + load without one = the added load, assisted = unknown), volume weight (both dumbbells; the
+  added load only; assisted 0), `withRealLoad` read-only copies (`weight` = real load, `vol`) for
+  calculations — the stored sets never change. `lib/load-defaults.ts` (lazy): starter defaults.
+- Owner's picks: dumbbell 1RM/records per hand, volume × 2; without a body weight the added load counts and
+  the logging screen says so; starter exercises switch only where no load type is stored (one-time flag
+  `loadsMapped`). Dips/Pull Up/Chin Up/Push Up become weight-and-reps (old sets read as + 0 kg).
+- Uses: records (state), day-log volume, Statistics volume and 1RM, graphs/records tabs, effective-reps
+  estimates (logging screen, day log, Muscles), feedback trend. History and set rows show what was typed:
+  "15 kg/hand × 10", "BW + 20 kg × 8", "BW × 12", "BW − 25 kg × 8". Targets step the entered number.
+- Editor: Load select (for weight types, and reps-only exercises → body weight/assisted adds the weight
+  field). Backups validate `load`. Body entries reset the body-weight cache. Body-weight routines keep
+  3 × 10 as their default plan.
+- Records of body-weight exercises are re-ranked after the migration and rebuilt after any weigh-in.
+- CSV (FitNotes format) has no load column: export writes the typed weight and import reads it as total,
+  so per-hand and body-weight work round-trips as typed but with a total load type (backups keep it).
+- Checks: 212 unit tests, 32 e2e (new load.spec), initial JS 21.4 KB (+0.8: load helpers the day log
+  needs, set text, migration hook, body-weight cache), Lighthouse passes.
 
 ## 2026-11-05 — Gym QoL (PR #27)
 

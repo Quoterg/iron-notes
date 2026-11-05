@@ -55,6 +55,8 @@ export interface Exercise {
   repBottom?: number;
   /** Joint pain flagged: no weight increases until cleared; swaps for the same muscle are offered. */
   joint?: boolean;
+  /** What the entered weight means (lib/load.ts). Unset = total (bar or machine). */
+  load?: LoadType;
   /** Rest timer length in seconds. Default: the setting. */
   rest?: number;
   /** Shown under Favourites at the top of the picker. */
@@ -146,6 +148,9 @@ export interface DayComment {
 
 export type WeightUnit = 'kg' | 'lb';
 export type DistUnit = 'km' | 'mi' | 'm';
+
+/** Total (bar/machine), per hand (one dumbbell), body weight + added load, or assisted (body weight − help). */
+export type LoadType = 'total' | 'perHand' | 'bodyweight' | 'assisted';
 
 /** Standard logging, Dorian Yates' HIT (to failure) or Lyle McDonald's effective reps (RIR). */
 export type TrainingMode = 'standard' | 'dorian' | 'lyle';

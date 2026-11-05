@@ -1,5 +1,6 @@
 // The training log of one day: its exercises with their sets, in the order they were logged. Reorder and
 // superset modes change the cards; the tools bar that switches them is DayTools (lazy).
+import { loadOf, volumeWeight } from '../lib/load';
 import { useMemo, useState } from 'preact/hooks';
 import { dayTotals } from '../lib/calc';
 import { t } from '../lib/i18n';
@@ -39,7 +40,8 @@ export function Log() {
     if (g) g.push(set);
     else groups.set(set.exerciseId, [set]);
   }
-  const totals = dayTotals([...groups.values()].flat()); // only sets of exercises that still exist
+  // Only sets of exercises that still exist; volume counts both dumbbells and no body weight.
+  const totals = dayTotals([...groups.values()].flat(), (x) => volumeWeight(x.weight, loadOf(exById.value.get(x.exerciseId))));
   const addExercise = () => open({ kind: 'pick', date: d });
   const copy = () => open({ kind: 'copy', date: d });
   const ids = [...groups.keys()];
@@ -127,7 +129,7 @@ export function Log() {
                 <ol class="setlist">
                   {groups.get(id)!.map((set) => (
                     <li key={set.id} class={set.planned || (s.markDone && !set.done) ? 'undone' : undefined}>
-                      <span>{setText(set, ex.type, s)}</span>
+                      <span>{setText(set, ex.type, s, loadOf(ex))}</span>
                       {rec?.has(set.id) && <Trophy />}
                       {set.comment && <span class="note-line">{set.comment}</span>}
                     </li>

@@ -40,6 +40,8 @@ const core = {
   ungroup: 'Ungroup',
   pickForSuperset: 'Pick the exercises to do in rotation.',
   selectExercise: 'Select',
+  bwShort: 'BW',
+  perHandShort: '/hand',
 } as const;
 
 type Later = typeof LaterTable;

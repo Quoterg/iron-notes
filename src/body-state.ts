@@ -5,6 +5,7 @@ import { signal } from '@preact/signals';
 import { uid } from './lib/calc';
 import * as db from './lib/db';
 import type { BodyEntry, BodyKind, BodyMetric } from './lib/model';
+import { bodyWeightsChanged } from './state';
 
 export const metrics = signal<BodyMetric[] | null>(null);
 /** Per measure: its latest entries (latest date last; up to two dates until its screen opens). */
@@ -56,6 +57,7 @@ const nextAt = () => (lastAt = Math.max(lastAt + 1, Date.now()));
 export async function addEntry(metricId: string, date: string, value: number): Promise<void> {
   const e: BodyEntry = { id: uid(), metricId, date, value, at: nextAt() };
   await db.putEntry(e);
+  await bodyWeightsChanged();
   await loadEntries(metricId);
   raw.set(metricId, [...raw.get(metricId)!.filter((x) => x.id !== e.id), e]);
   await publish(metricId);
@@ -63,11 +65,13 @@ export async function addEntry(metricId: string, date: string, value: number): P
 /** Deletes an entry (an earlier one of the same date shows again); returns an undo. */
 export async function removeEntry(e: BodyEntry): Promise<() => Promise<void>> {
   await db.deleteEntry(e.id);
+  await bodyWeightsChanged();
   await loadEntries(e.metricId);
   raw.set(e.metricId, raw.get(e.metricId)!.filter((x) => x.id !== e.id));
   await publish(e.metricId);
   return async () => {
     await db.putEntry(e);
+    await bodyWeightsChanged();
     raw.set(e.metricId, [...raw.get(e.metricId)!, e]);
     await publish(e.metricId);
   };
