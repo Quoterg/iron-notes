@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyLang, coreStrings, lang, t } from '../i18n';
+import { applyLang, byShownName, catName, coreStrings, exName, gymEnglish, lang, metricName, t } from '../i18n';
+import { defaultMetrics } from '../body';
+import { starterLibrary } from '../seed';
+import { dnum } from '../units';
 import { later } from '../strings-later';
 import sv from './sv';
 
@@ -31,3 +34,49 @@ describe('switching language', () => {
     expect(t('back')).toBe('Back');
   });
 });
+
+describe('starter names in Swedish', () => {
+  afterEach(() => {
+    lang.value = 'en';
+    gymEnglish.value = false;
+  });
+  it('every starter exercise, category and body measure has a Swedish name', () => {
+    const { categories, exercises } = starterLibrary();
+    for (const e of exercises) expect(sv.exercises[e.name.toLowerCase()], e.name).toBeTruthy();
+    for (const c of categories) expect(sv.categories[c.name.toLowerCase()], c.name).toBeTruthy();
+    for (const m of defaultMetrics()) expect(sv.metrics[m.name.toLowerCase()], m.name).toBeTruthy();
+  });
+  it('shown in Swedish; own names as stored; gym English by setting; decimal comma', async () => {
+    await applyLang('sv');
+    expect(exName({ name: 'Flat Barbell Bench Press' })).toBe('Bänkpress med skivstång');
+    expect(exName({ name: 'My Odd Lift' })).toBe('My Odd Lift');
+    expect(catName({ name: 'Legs' })).toBe('Ben');
+    expect(metricName({ name: 'Body weight' })).toBe('Kroppsvikt');
+    expect(dnum(82.5)).toBe('82,5');
+    gymEnglish.value = true;
+    expect(exName({ name: 'Flat Barbell Bench Press' })).toBe('Flat Barbell Bench Press');
+    expect(catName({ name: 'Legs' })).toBe('Ben'); // categories stay Swedish
+    await applyLang('en');
+    expect(exName({ name: 'Flat Barbell Bench Press' })).toBe('Flat Barbell Bench Press');
+    expect(dnum(82.5)).toBe('82.5');
+  });
+});
+
+describe('order by shown name', () => {
+  afterEach(() => {
+    lang.value = 'en';
+  });
+  it('Swedish order in Swedish (å ä ö last), English order in English', async () => {
+    const list = [
+      { id: '1', name: 'Deadlift' }, // Marklyft
+      { id: '2', name: 'Leg Press' }, // Benpress
+      { id: '3', name: 'Neck Thing' },
+      { id: '4', name: 'Öland Row' },
+      { id: '5', name: 'Arnold Press' }, // Arnoldpress
+    ];
+    expect(byShownName(list).map((e) => e.id)).toEqual(['5', '1', '2', '3', '4']);
+    await applyLang('sv');
+    expect(byShownName(list).map((e) => exName(e))).toEqual(['Arnoldpress', 'Benpress', 'Marklyft', 'Neck Thing', 'Öland Row']);
+  });
+});
+

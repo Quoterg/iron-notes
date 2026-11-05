@@ -122,10 +122,13 @@ export function searchIndex(
   list: readonly Exercise[],
   categoryName?: (categoryId: string) => string | undefined,
   muscleNames?: (m: MuscleId) => readonly string[],
+  displayName?: (e: Exercise) => string,
 ): SearchEntry[] {
   const labels = (ms: readonly MuscleId[]) => (muscleNames ? fold(ms.flatMap((m) => muscleNames(m)).join(' ')) : '');
   return list.map((e) => {
-    const name = fold(e.name);
+    // The stored name and, when different, the shown one (a Swedish starter name): either matches.
+    const shownName = displayName?.(e);
+    const name = fold(shownName && shownName !== e.name ? `${e.name} ${shownName}` : e.name);
     const cat = categoryName ? fold(categoryName(e.categoryId) ?? '') : '';
     return { e, name, tier1: `${name} ${cat} ${e.muscles ? labels(e.muscles.primary) : ''}`, sec: e.muscles ? labels(e.muscles.secondary) : '' };
   });

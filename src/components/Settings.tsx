@@ -3,7 +3,7 @@ import { exportAll, importAll, validateBackup } from '../lib/backup';
 import { isoDate, parseIso } from '../lib/calc';
 import { inLight, lightEnd } from '../lib/cycle';
 import { allSets, clearAll, importRows } from '../lib/db';
-import { detectLang, type Key, locale, setLang, t } from '../lib/i18n';
+import { detectLang, type Key, lang, locale, setLang, t } from '../lib/i18n';
 import { CYCLE_WEEKS, cycleWeek, DEFAULT_CYCLE, RUN_UP } from '../lib/lyle';
 import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
@@ -136,6 +136,12 @@ export default function Settings() {
             void setLang(v === 'auto' ? detectLang() : v);
           }}
         />
+        {lang.value === 'sv' && (
+          <>
+            <Check label="gymEnglish" checked={!!s.gymEnglish} onChange={(gymEnglish) => void saveSettings({ gymEnglish })} />
+            <p class="muted small">{t('gymEnglishHint')}</p>
+          </>
+        )}
       </section>
 
       <section class="card">

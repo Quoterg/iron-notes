@@ -183,6 +183,8 @@ export interface Settings {
   diet?: 'build' | 'maintain' | 'cut';
   /** Round progression targets and warm-ups to the bar and plates (exercises that use them). */
   roundPlates?: boolean;
+  /** In Swedish: keep the starter library's gym-English exercise names. */
+  gymEnglish?: boolean;
   /** UI language; unset = the phone's (Auto). */
   lang?: 'en' | 'sv';
 }

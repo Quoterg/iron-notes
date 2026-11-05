@@ -4,7 +4,7 @@ import { isoDate, parseIso } from '../lib/calc';
 import { phaseOn } from '../lib/cycle';
 import { addMonths, monthBounds, monthGrid, monthOf } from '../lib/calendar';
 import { setsBetween } from '../lib/db';
-import { locale, t } from '../lib/i18n';
+import { catName, locale, t } from '../lib/i18n';
 import { open } from '../nav';
 import { catById, date, exById, loadDay, settings, setsVersion, view } from '../state';
 
@@ -101,7 +101,7 @@ export default function Calendar() {
                   .filter(Boolean)
                   .join(' ');
                 const label = parseIso(d).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
-                const names = dayCats.map((c) => cats.get(c)?.name).filter(Boolean).join(', ');
+                const names = dayCats.map((c) => cats.get(c)).filter(Boolean).map((c) => catName(c!)).join(', ');
                 return (
                   <button key={d} class={cls} aria-label={names ? `${label}: ${names}` : label} onClick={() => void pick(d)}>
                     <span class="num">{Number(d.slice(8))}</span>

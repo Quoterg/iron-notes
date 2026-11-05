@@ -5,7 +5,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { isoDate } from '../lib/calc';
 import { effectiveOf } from '../effort';
 import { setsBetween } from '../lib/db';
-import { type Key, t } from '../lib/i18n';
+import { exName, type Key, t } from '../lib/i18n';
 import { loadOf, usesBodyWeight, withRealLoad } from '../lib/load';
 import { cycleWeek } from '../lib/lyle';
 import type { Exercise, MuscleId, WorkoutSet } from '../lib/model';
@@ -64,7 +64,7 @@ export default function Review() {
   async function swap(from: Exercise, to: Exercise) {
     if (!program) return;
     await saveRoutine(swapInRoutine(program, from.id, to.id));
-    toast(t('swapped', { from: from.name, to: to.name }));
+    toast(t('swapped', { from: exName(from), to: exName(to) }));
   }
 
   const spans: Span[] = cycle ? ['cycle', 4, 6, 8] : [4, 6, 8];
@@ -98,7 +98,7 @@ export default function Review() {
                   if (!ex) return null;
                   return (
                     <li key={c.exerciseId} class="entry entry-static">
-                      <span class="entry-name">{ex.name}</span>
+                      <span class="entry-name">{exName(ex)}</span>
                       <span class="muted small num">
                         {changeText(c)}
                         {c.change != null &&
@@ -159,19 +159,19 @@ function SwapList(p: { changes: ExerciseChange[]; inProgram: ReadonlySet<string>
       <h2>{t('toSwap')}</h2>
       <p class="muted small">{t('toSwapHint')}</p>
       {rows.map(({ c, ex }) => {
-        const alts = alternatives(ex, exercises.value, p.inProgram);
+        const alts = alternatives(ex, exercises.value, p.inProgram, 3, exName);
         const why = ex.joint ? t('jointPain') : c.trend === 'weaker' ? t('trendWeaker') : t('trendStalled');
         const swapHere = p.program && p.inProgram.has(ex.id);
         return (
           <div key={ex.id} class="swap">
             <p>
-              <strong>{ex.name}</strong> <span class="muted small">· {why}</span>
+              <strong>{exName(ex)}</strong> <span class="muted small">· {why}</span>
             </p>
             <div class="chips">
               {alts.length ? (
                 alts.map((a) => (
                   <button key={a.id} class="chip" onClick={() => (swapHere ? p.onSwap(ex, a) : open({ kind: 'exercise', id: a.id, date: isoDate(new Date()) }))}>
-                    {swapHere ? t('swapInProgram', { name: a.name }) : a.name}
+                    {swapHere ? t('swapInProgram', { name: exName(a) }) : exName(a)}
                   </button>
                 ))
               ) : (

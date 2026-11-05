@@ -2,7 +2,7 @@
 // reorder/remove them, add exercises, rename or delete the day, log it into the shown date.
 import { useState } from 'preact/hooks';
 import { dayLabel } from '../app';
-import { t } from '../lib/i18n';
+import { exName, t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type PlannedSet, type Routine, type RoutineDay, type RoutineItem } from '../lib/model';
 import { planSummary } from '../lib/routines';
 import { dFromUser, dToUser, num, wFromUser, wToUser } from '../lib/units';
@@ -67,13 +67,13 @@ export default function RoutineDaySheet({ routineId, dayId }: { routineId: strin
               <div class="ex-row">
                 <button class="ex-head" aria-expanded={isOpen} onClick={() => setEditing(isOpen ? null : item.exerciseId)}>
                   <Dot color={catById.value.get(ex.categoryId)?.color} />
-                  <h2>{ex.name}</h2>
+                  <h2>{exName(ex)}</h2>
                 </button>
                 <span class="move">
-                  <button class="btn icon small" aria-label={`${t('moveUp')}: ${ex.name}`} disabled={i === 0} onClick={() => move(i, -1)}>
+                  <button class="btn icon small" aria-label={`${t('moveUp')}: ${exName(ex)}`} disabled={i === 0} onClick={() => move(i, -1)}>
                     ↑
                   </button>
-                  <button class="btn icon small" aria-label={`${t('moveDown')}: ${ex.name}`} disabled={i === day.items.length - 1} onClick={() => move(i, 1)}>
+                  <button class="btn icon small" aria-label={`${t('moveDown')}: ${exName(ex)}`} disabled={i === day.items.length - 1} onClick={() => move(i, 1)}>
                     ↓
                   </button>
                 </span>

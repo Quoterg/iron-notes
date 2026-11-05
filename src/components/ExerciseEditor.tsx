@@ -6,7 +6,7 @@ import { uid, isoDate } from '../lib/calc';
 import { countSetsOf } from '../lib/db';
 import { DORIAN_TOP } from '../lib/targets';
 import { cycleWeek, repRange } from '../lib/lyle';
-import { t, type Key } from '../lib/i18n';
+import { catName, type Key, t } from '../lib/i18n';
 import { typeName } from '../lib/strings-later';
 import { TYPES, type Exercise, type ExerciseType, type LoadType, type Muscles } from '../lib/model';
 import { cycle, defaultMuscles, MUSCLES, stateOf } from '../lib/muscles';
@@ -102,7 +102,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
           <select id="ex-cat" value={cat} onChange={(e) => setCat(e.currentTarget.value)}>
             {categories.value.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {catName(c)}
               </option>
             ))}
           </select>

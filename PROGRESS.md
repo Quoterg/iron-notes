@@ -9,12 +9,22 @@
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
-- Next: **M29 Swedish starter library & decimal comma**.
-- Follow-ups: decimal comma in Swedish for displayed numbers (needs a display-only formatter: `num()` also
-  writes CSV and input values); Swedish names for the starter library would need a stable key per
-  exercise (programs match by name).
+- Next: **M28 Rest timer in the background** (spike first) & category default rests.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M29 Swedish starter library & decimal comma
+
+- Display-only translation instead of stable keys: stored names stay gym English (programs, FitNotes
+  import/export, backups and duplicates checks all keep working, no migration); `exName`, `catName`,
+  `metricName` (i18n.ts) show a starter exercise / category / body measure in Swedish from the pack's
+  tables (lower-case English name → Swedish). A renamed or own exercise shows as stored. Setting (in
+  Swedish): "Gym-English names for the starter exercises" (`gymEnglish` signal + `settings.gymEnglish`).
+- Search matches the stored and the shown name ("flat barbell" and "bänkpress" both find it).
+- `dnum` (units.ts): displayed numbers with a decimal comma in Swedish — weights and distances everywhere
+  through `weight()` / `distance()`; inputs and CSV keep `num()` (dot).
+- Checks: 229 unit tests (every starter name has a Swedish one), 35 e2e (language.spec: Swedish exercise
+  name, "82,5 kg × 5"), initial JS 21.8 KB, Lighthouse passes.
 
 ## 2026-11-05 — M27 Cycle & block review
 
