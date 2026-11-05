@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, snapperFor, snapToPlates, usesPlatesByName, warmup, weightForReps } from './tools';
+import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, platesToStore, snapperFor, snapToPlates, usesPlatesByName, warmup, weightForReps } from './tools';
 import { validateBackup } from './backup';
 
 describe('1RM', () => {
@@ -111,6 +111,21 @@ describe('rounding targets per exercise', () => {
     const lb = { unit: 'lb' as const, roundPlates: true, plates: { unit: 'lb' as const, bar: 45, sizes: [45, 25, 10, 5] } };
     const kg = snapperFor(bench, lb)(100); // 220.5 lb → 225 lb
     expect(Math.round(kg / 0.45359237)).toBe(225);
+  });
+});
+
+describe('bar and plates: what the editor stores', () => {
+  it('nothing while untouched or equal to the name default; an explicit different choice', () => {
+    expect(platesToStore(undefined, 'Back Squat')).toBeUndefined(); // new, untouched: follows its name
+    expect(platesToStore(true, 'Back Squat')).toBeUndefined();
+    expect(platesToStore(false, 'Back Squat')).toBe(false);
+    expect(platesToStore(true, 'Cable Row')).toBe(true);
+  });
+  it('targets at or below the bar are left as they are', () => {
+    const snap = snapperFor({ name: 'Barbell Curl', type: 'weight,reps' }, { unit: 'kg', roundPlates: true });
+    expect(snap(15)).toBe(15);
+    expect(snap(20)).toBe(20);
+    expect(snap(31)).toBe(30);
   });
 });
 

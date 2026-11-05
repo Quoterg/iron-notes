@@ -120,6 +120,16 @@ export const roundsToPlates = (ex: Pick<Exercise, 'name' | 'load' | 'plates' | '
 export function snapperFor(ex: Pick<Exercise, 'name' | 'load' | 'plates' | 'type'> | undefined, st: Pick<Settings, 'unit' | 'plates' | 'roundPlates'>): (kg: number, up?: boolean) => number {
   if (!roundsToPlates(ex, st)) return (kg) => kg;
   const cfg = plateConfig(st);
-  return (kg, up = false) => (kg > 0 ? round(wFromUser(snapToPlates(wToUser(kg, st.unit), cfg.bar, cfg.sizes, up), st.unit), 3) : kg);
+  // Only above the bar: a lighter target (an empty-bar or fixed-bar lift) is left as it is.
+  return (kg, up = false) => {
+    const u = wToUser(kg, st.unit);
+    return u > cfg.bar ? round(wFromUser(snapToPlates(u, cfg.bar, cfg.sizes, up), st.unit), 3) : kg;
+  };
 }
 
+/**
+ * The "bar and plates" value to store: only an explicit choice (`undefined` = untouched) that differs
+ * from the default for the name, so an untouched new or renamed exercise follows its name.
+ */
+export const platesToStore = (choice: boolean | undefined, name: string): boolean | undefined =>
+  choice === undefined || choice === usesPlatesByName(name) ? undefined : choice;
