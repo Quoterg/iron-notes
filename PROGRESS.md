@@ -9,9 +9,22 @@
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
-- Next: **M28 Rest timer in the background** (spike first) & category default rests.
+- **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes) — decides the
+  native fallback.
+- Next: **M30 Iron Log bridge (backup import)**.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M28 Rest timer in the background & category defaults
+
+- Spike (docs/REST-TIMER.md): no server-free way to schedule an alert ahead (Notification Triggers gone,
+  service-worker timers stopped, silent audio steals music); shipped the page-side notification, native
+  fallback (TWA intent → AlarmManager) written up for if the owner's phone test shows misses.
+- Settings: "Notify when rest is over (also with the screen off)" asks for permission on the tap that
+  turns it on. `timer.ts`: when rest ends and the page is hidden → `showNotification` via the service
+  worker (tag `rest`, vibrate); `sw.js` focuses or opens the app on tap.
+- Category editor: default rest; `restFor` = exercise's own → category's → setting. Validated in backups.
+- Checks: 233 unit tests, 36 e2e (new rest.spec), initial JS 21.9 KB, Lighthouse passes.
 
 ## 2026-11-05 — M29 Swedish starter library & decimal comma
 

@@ -12,7 +12,7 @@ import { TYPES, type Exercise, type ExerciseType, type LoadType, type Muscles } 
 import { cycle, defaultMuscles, MUSCLES, stateOf } from '../lib/muscles';
 import { defaultIncrement, num } from '../lib/units';
 import { replaceTop, replaceTopTwo, stack } from '../nav';
-import { categories, exById, exercises, removeExercise, saveExercise, settings } from '../state';
+import { catById, categories, exById, exercises, removeExercise, saveExercise, settings } from '../state';
 import { Sheet } from './Sheet';
 
 export default function ExerciseEditor({ id, categoryId, date }: { id?: string; categoryId?: string; date?: string }) {
@@ -163,7 +163,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
         )}
         <label>
           {t('restTime')}
-          <input type="text" inputMode="numeric" placeholder={String(st.rest)} value={rest} onInput={(e) => setRest(e.currentTarget.value)} />
+          <input type="text" inputMode="numeric" placeholder={String(catById.value.get(cat)?.rest ?? st.rest)} value={rest} onInput={(e) => setRest(e.currentTarget.value)} />
         </label>
         <fieldset class="muscle-pick">
           <legend>{t('muscles')}</legend>

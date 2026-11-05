@@ -122,6 +122,17 @@ export default function Settings() {
         </label>
         <Check label="autoTimer" checked={s.autoTimer} onChange={(autoTimer) => void saveSettings({ autoTimer })} />
         <Check label="timerSound" checked={s.timerSound} onChange={(timerSound) => void saveSettings({ timerSound })} />
+        {typeof Notification !== 'undefined' && (
+          <Check
+            label="restNotify"
+            checked={!!s.restNotify}
+            onChange={async (on) => {
+              // Asked only when turned on, from the tap; refused → stays off and says so.
+              if (on && Notification.permission !== 'granted' && (await Notification.requestPermission()) !== 'granted') return toast(t('notifyDenied'));
+              void saveSettings({ restNotify: on });
+            }}
+          />
+        )}
       </section>
 
       <section class="card">

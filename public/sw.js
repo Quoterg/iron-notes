@@ -54,6 +54,14 @@ self.addEventListener('message', (event) => {
   );
 });
 
+// The rest-timer notification: back to the app (an open window, else a new one).
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => (list[0] ? list[0].focus() : self.clients.openWindow('./'))),
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
