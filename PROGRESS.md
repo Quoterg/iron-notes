@@ -11,9 +11,19 @@
 - Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes) — decides the
   native fallback.
-- Next: **M23 Muscle body map & drill-down**.
+- Next: **M26 Session duration & workout summary**, then M21 device sync.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M23 Muscle body map & drill-down
+
+- `BodyMap.tsx`: hand-drawn SVG, front and back (ellipses/rects, theme colours, no images); each muscle a
+  focusable button "Chest: 24", coloured by `weekStatus` — the week's total against the session goal ×
+  the mode's sessions a week (Dorian 1, Lyle 2): under / in / over; "trained" without a goal.
+- Muscles screen: the map above the bars (also shown with nothing trained yet), a legend; tapping a muscle
+  on the map or its bar opens a drill-down: `contributions` (per exercise, direct or half as secondary)
+  and "Train it today" — exercises with it as the main muscle, favourites first, opening for today.
+- Checks: 241 unit tests, 38 e2e (new bodymap.spec), initial JS 22.0 KB, CSS 4.8 KB, Lighthouse passes.
 
 ## 2026-11-05 — M30 Iron Log bridge (backup import)
 

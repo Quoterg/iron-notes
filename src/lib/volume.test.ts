@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Muscles, WorkoutSet } from './model';
-import { dayMuscles, GOALS, lastWeeks, periodMuscles, statusOf, weekOf, weeks } from './volume';
+import { contributions, dayMuscles, GOALS, lastWeeks, periodMuscles, statusOf, weekOf, weekStatus, weeks } from './volume';
 
 const M: Record<string, Muscles> = {
   bench: { primary: ['chest'], secondary: ['triceps', 'frontDelts'] },
@@ -79,6 +79,26 @@ describe('a period (Statistics)', () => {
   });
   it('"All": the period starts with the first workout', () => {
     expect(periodMuscles([set('bench', '2026-10-12', 8)], of, eff, null, '', '2026-10-18').weeks).toBe(1);
+  });
+});
+
+describe('the body map', () => {
+  it('a week against the session goal × sessions a week (Lyle twice, Dorian once)', () => {
+    const w = (total: number) => ({ total, sessions: [] });
+    expect(weekStatus(undefined, GOALS.lyle, 'lyle')).toBe('none');
+    expect(weekStatus(w(30), GOALS.lyle, 'lyle')).toBe('under'); // one Lyle session
+    expect(weekStatus(w(60), GOALS.lyle, 'lyle')).toBe('in');
+    expect(weekStatus(w(25), GOALS.dorian, 'dorian')).toBe('in');
+    expect(weekStatus(w(45), GOALS.dorian, 'dorian')).toBe('over');
+    expect(weekStatus(w(10), null, 'standard')).toBe('trained');
+  });
+  it('what each exercise gave a muscle: direct in full, secondary at half', () => {
+    const sets = [set('bench', '2026-10-26', 8), set('bench', '2026-10-26', 8), set('dips', '2026-10-27', 8), set('row', '2026-10-27', 8)];
+    expect(contributions(sets, of, eff, 'chest')).toEqual([
+      { exerciseId: 'bench', n: 16, direct: true },
+      { exerciseId: 'dips', n: 4, direct: false },
+    ]);
+    expect(contributions(sets, of, eff, 'quads')).toEqual([]);
   });
 });
 

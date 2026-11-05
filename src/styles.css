@@ -268,6 +268,22 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .mu-sessions { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); }
 .mu-sessions .in { color: var(--accent); }
 .mu-hist li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.body-map { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
+.mm-base { fill: var(--muted); opacity: 0.14; }
+.mm { fill: var(--muted); fill-opacity: 0.3; cursor: pointer; }
+.mm.under, .mm.in, .mm.trained, .mm.over { fill-opacity: 1; }
+.mm.under, .mm-key.under { fill: var(--muted); background: var(--muted); opacity: 0.75; }
+.mm.in, .mm.trained, .mm-key.in, .mm-key.trained { fill: var(--accent); background: var(--accent); }
+.mm.over, .mm-key.over { fill: var(--over); background: var(--over); }
+.mm.sel { stroke: var(--text); stroke-width: 1.5; }
+.mm:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2; }
+.mm-cap { font-size: 7px; fill: var(--muted); text-anchor: middle; }
+.mm-legend { text-align: center; }
+.mm-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin: 0 4px 0 10px; vertical-align: middle; }
+.mu-bars li.sel .mu-name { color: var(--accent); font-weight: 600; }
+.mu-name.link { padding: 0; text-align: left; font: inherit; color: inherit; }
+.drill { margin: 8px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--inner); }
+.drill h3 { margin: 0 0 6px; font-size: 1rem; }
 .mu-hist .mu-name { width: 7.5em; flex: none; }
 .mu-spark { flex: 1; display: flex; align-items: flex-end; gap: 3px; height: 24px; }
 .mu-spark span { flex: 1; background: var(--accent); border-radius: 2px; opacity: 0.8; }
