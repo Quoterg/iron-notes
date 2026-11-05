@@ -59,6 +59,8 @@ async function mapLoadsOnce() {
   if (mapped.length) {
     const byId = new Map(mapped.map((e) => [e.id, e]));
     exercises.value = exercises.value.map((e) => byId.get(e.id) ?? e);
+    // Their records were ranked by reps (or the entered weight): rank them by the real load now.
+    await Promise.all(mapped.filter((e) => e.load === 'bodyweight' || e.load === 'assisted').map((e) => refreshRecords(e.id)));
   }
   await db.setFlag('loadsMapped');
 }
@@ -72,9 +74,18 @@ export function bodyWeights(): Promise<(date: string) => number | undefined> {
     return bodyWeightAt(m ? await db.entriesOf(m.id) : []);
   })());
 }
-/** After a body entry is added or removed. */
-export function bodyWeightsChanged(): void {
+/**
+ * After a body entry is added or removed: body-weight exercises' real loads change, so their stored
+ * records are dropped and rebuilt from the sets on next use.
+ */
+export async function bodyWeightsChanged(): Promise<void> {
   bw = null;
+  const ids = exercises.value.filter((e) => e.load === 'bodyweight' || e.load === 'assisted').map((e) => e.id);
+  if (!ids.length) return;
+  await Promise.all(ids.map((id) => db.deleteRecords(id)));
+  const m = new Map(records.value);
+  for (const id of ids) m.delete(id);
+  records.value = m;
 }
 
 /** An exercise's sets as calculations see them: real load (body weight ±) and volume weight. */
