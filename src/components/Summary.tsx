@@ -1,8 +1,8 @@
 // A workout's summary (M26): duration, sets, volume, effective reps, records and the muscles that met the
 // goal — shared as text, or as an image drawn on a canvas (no image files, nothing outside the app: the
 // strict CSP stays as it is).
-import { useEffect, useState } from 'preact/hooks';
-import { dayTotals, parseIso } from '../lib/calc';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import { byOrder, dayTotals, parseIso } from '../lib/calc';
 import { effectiveOf } from '../effort';
 import { setsOn } from '../lib/db';
 import { catName, exName, type Key, locale, t } from '../lib/i18n';
@@ -12,7 +12,6 @@ import { workoutText } from '../lib/share';
 import { fmtDuration, summaryOf, type Summary as Data } from '../lib/summary';
 import { weight } from '../lib/units';
 import { dayMuscles, GOALS, statusOf } from '../lib/volume';
-import { byOrder } from '../lib/calc';
 import { catById, date as shownDate, dayComment, daySets, exById, loadRecords, records, settings, toast } from '../state';
 import { Sheet } from './Sheet';
 
@@ -41,6 +40,7 @@ export default function Summary({ date }: { date: string }) {
     return () => {
       live = false;
     };
+    // Read once when the sheet opens (it's on top of the log: no edits while it's open).
   }, [date, st.mode]);
 
   const title = parseIso(date).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -54,14 +54,19 @@ export default function Summary({ date }: { date: string }) {
     ].filter((x): x is [string, string] => !!x);
   const goalsText = (d: Data) => d.goalsMet.map((g) => `${t(`mu_${g.muscle}` as Key)} ${g.n}`).join(', ');
 
-  function text(d: Data, list: WorkoutSet[]) {
-    const groups = [...new Set(list.map((s) => s.exerciseId))].map((id) => ({ ex: exById.value.get(id)!, sets: list.filter((s) => s.exerciseId === id) }));
-    const head = [stats(d).map(([k, v]) => `${k}: ${v}`).join(' · '), d.goalsMet.length ? `${t('goalsMet')}: ${goalsText(d)}` : ''].filter(Boolean).join('\n');
-    return `${workoutText(title, groups, st, date === shownDate.value ? dayComment.value : '').replace(title, `${title}\n${head}`)}\n\n— Iron Notes`;
+  // The day's sets per exercise, grouped once.
+  const groups = useMemo(
+    () => (sets ? [...new Set(sets.map((s) => s.exerciseId))].map((id) => ({ ex: exById.value.get(id)!, sets: sets.filter((s) => s.exerciseId === id) })) : []),
+    [sets],
+  );
+
+  function text(d: Data) {
+    const head = [stats(d).map(([k, v]) => `${k}: ${v}`).join(' · '), d.goalsMet.length ? `${t('goalsMet')}: ${goalsText(d)}` : ''].filter(Boolean);
+    return `${workoutText(title, groups, st, date === shownDate.value ? dayComment.value : '', head)}\n\n— Iron Notes`;
   }
 
-  async function shareText(d: Data, list: WorkoutSet[]) {
-    const body = text(d, list);
+  async function shareText(d: Data) {
+    const body = text(d);
     try {
       if (navigator.share) return void (await navigator.share({ text: body }));
     } catch {
@@ -75,14 +80,15 @@ export default function Summary({ date }: { date: string }) {
     }
   }
 
-  async function shareImage(d: Data, list: WorkoutSet[]) {
-    const blob = await drawCard(title, stats(d), d.goalsMet.length ? `${t('goalsMet')}: ${goalsText(d)}` : '', exerciseLines(list));
+  async function shareImage(d: Data) {
+    const blob = await drawCard(title, stats(d), d.goalsMet.length ? `${t('goalsMet')}: ${goalsText(d)}` : '', lines);
     if (!blob) return toast(t('shareFailed'));
     const file = new File([blob], `iron-notes-${date}.png`, { type: 'image/png' });
     try {
       if (navigator.canShare?.({ files: [file] })) return void (await navigator.share({ files: [file] }));
-    } catch {
-      return; // cancelled
+    } catch (e) {
+      // Cancelled: nothing. Anything else (e.g. Safari: the tap's permission ran out while drawing): save it.
+      if ((e as Error)?.name === 'AbortError') return;
     }
     // No share sheet for files: save it.
     const a = document.createElement('a');
@@ -93,14 +99,14 @@ export default function Summary({ date }: { date: string }) {
   }
 
   /** "Bench press — 3 sets · best 100 kg × 8" per exercise. */
-  function exerciseLines(list: WorkoutSet[]): string[] {
-    return [...new Set(list.map((s) => s.exerciseId))].map((id) => {
-      const ex = exById.value.get(id)!;
-      const ss = list.filter((s) => s.exerciseId === id);
+  const lines = useMemo(
+    () =>
+      groups.map(({ ex, sets: ss }) => {
       const best = ss.filter((s) => s.weight != null).sort((a, b) => b.weight! - a.weight! || (b.reps ?? 0) - (a.reps ?? 0))[0];
       return `${exName(ex)} — ${ss.length} ${t('sets')}${best && best.weight! > 0 ? ` · ${weight(best.weight!, st)} × ${best.reps ?? '–'}` : ''}`;
-    });
-  }
+      }),
+    [groups, st.unit],
+  );
 
   return (
     <Sheet title={t('summary')}>
@@ -135,7 +141,7 @@ export default function Summary({ date }: { date: string }) {
             <section class="card">
               <h2>{t('exercises')}</h2>
               <ul class="entries">
-                {exerciseLines(sets).map((l) => (
+                {lines.map((l) => (
                   <li key={l} class="entry entry-static">
                     <span class="entry-name">{l}</span>
                   </li>
@@ -144,10 +150,10 @@ export default function Summary({ date }: { date: string }) {
               <p class="muted small">{[...new Set(sets.map((s) => exById.value.get(s.exerciseId)?.categoryId))].map((c) => (c && catById.value.get(c) ? catName(catById.value.get(c)!) : '')).filter(Boolean).join(' · ')}</p>
             </section>
             <div class="actions">
-              <button class="btn" onClick={() => void shareText(data, sets)}>
+              <button class="btn" onClick={() => void shareText(data)}>
                 {t('shareText')}
               </button>
-              <button class="btn primary" onClick={() => void shareImage(data, sets)}>
+              <button class="btn primary" onClick={() => void shareImage(data)}>
                 {t('shareImage')}
               </button>
             </div>
@@ -198,7 +204,13 @@ function drawCard(title: string, stats: [string, string][], goals: string, lines
     g.font = font(px, bold);
     g.fillStyle = color;
     let line = '';
-    for (const word of s.split(' ')) {
+    const fit = (w: string) => {
+      if (g.measureText(w).width <= W - 144) return w;
+      let cut = w;
+      while (cut.length > 1 && g.measureText(cut + '…').width > W - 144) cut = cut.slice(0, -1);
+      return cut + '…';
+    };
+    for (const word of s.split(' ').map(fit)) {
       const next = line ? `${line} ${word}` : word;
       if (g.measureText(next).width > W - 144 && line) {
         g.fillText(line, 72, y);

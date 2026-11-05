@@ -9,6 +9,7 @@ import { DORIAN_TOP, dorianTargets, tooSoon, warmups, type Target } from '../lib
 import { inLight, lightTargets, nextProgramDay, progressing } from '../lib/cycle';
 import { daysBetween, GAP_DAYS } from '../lib/feedback';
 import { Feedback } from './Feedback';
+import { stampAt } from '../lib/summary';
 import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } from '../lib/lyle';
 import { setsBetween } from '../lib/db';
 import { catName, exName, type Key, locale, t } from '../lib/i18n';
@@ -605,7 +606,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                           checked={!!s.done}
                           onChange={(e) => {
                             // Ticked off: logged now (a workout's duration runs from its first to its last set).
-                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned, at: e.currentTarget.checked ? s.at ?? Date.now() : s.at };
+                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned, at: stampAt(s.at, !!s.done, e.currentTarget.checked) };
                             // Shown at once: the box mustn't snap back while the write is in flight (slow phones).
                             setAll((a) => a && a.map((x) => (x.id === s.id ? next : x)));
                             void saveSet(next);

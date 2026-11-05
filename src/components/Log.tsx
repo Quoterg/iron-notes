@@ -42,7 +42,7 @@ export function Log() {
     else groups.set(set.exerciseId, [set]);
   }
   // Only sets of exercises that still exist; volume counts both dumbbells and no body weight.
-  const duration = durationOf(daySets.value);
+  const duration = useMemo(() => durationOf(daySets.value), [daySets.value]);
   const totals = dayTotals([...groups.values()].flat(), (x) => volumeWeight(x.weight, loadOf(exById.value.get(x.exerciseId))));
   const addExercise = () => open({ kind: 'pick', date: d });
   const copy = () => open({ kind: 'copy', date: d });
