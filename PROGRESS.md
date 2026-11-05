@@ -23,7 +23,7 @@
 - Search matches the stored and the shown name ("flat barbell" and "bänkpress" both find it).
 - `dnum` (units.ts): displayed numbers with a decimal comma in Swedish — weights and distances everywhere
   through `weight()` / `distance()`; inputs and CSV keep `num()` (dot).
-- Checks: 233 unit tests (every starter name has a Swedish one), 35 e2e (language.spec: Swedish exercise
+- Checks: 229 unit tests (every starter name has a Swedish one), 35 e2e (language.spec: Swedish exercise
   name, "82,5 kg × 5"), initial JS 21.8 KB, Lighthouse passes.
 
 ## 2026-11-05 — M27 Cycle & block review
