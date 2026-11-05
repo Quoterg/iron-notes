@@ -97,8 +97,11 @@ calculation is local, incremental and lazy (no screen waits on history).
   Missed sessions or long gaps lower the next targets; fast recovery allows more.
 - [x] **M20 Programs** — Dorian 4-day split and Lyle upper/lower (GBR-style) ready to start; a builder that
   makes a program from saved workouts and a weekly schedule.
-- [ ] **M21 Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
-  no account).
+- [x] **M21a Sync engine** — Change log (DB v5: every write stamps `store:key` → last change, deletions as
+  tombstones kept 90 days), `lib/sync.ts` as in Iron Log: summary → what the other lacks → newest wins,
+  every record validated by the backup rules, device-local settings kept.
+- [ ] **M21b Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
+  no account) on top of M21a.
 
 ## Phase 3 — Gym-floor flow, deeper coaching & ecosystem polish
 

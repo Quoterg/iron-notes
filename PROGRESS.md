@@ -15,6 +15,23 @@
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## 2026-11-05 — M21a Sync engine
+
+- DB v5: `meta` store (`store:key` → `{ mt, del? }`); the upgrade gives every existing record (and the
+  settings row) change time 1, so any real edit wins and records one device lacks still travel. Every
+  write path in `db.ts` stamps its change in the same transaction (`stamp`, strictly increasing times);
+  deletions leave tombstones; backup restore and CSV import stamp what they write; "Delete all" clears the
+  log too (another device brings its data back at the next sync).
+- `lib/sync.ts` (Iron Log's protocol): `summarize` (prunes tombstones older than 90 days), `changesFor`,
+  `applyChanges` — newest wins, ties keep the local copy, incoming times capped 5 min ahead, every record
+  through `SYNC_VALIDATORS` (the backup rules; `cleanSettings` factored out of `validateBackup`) and keyed
+  correctly, else the whole batch is refused; unknown stores from a newer version skipped. Settings sync
+  except device-local `lang`, `gymEnglish`, `keepScreenOn`, `restNotify`. Records cache cleared when sets
+  or exercises change.
+- Tests: two simulated devices (fresh modules + own IndexedDB): union, newer edit wins, deletions, settings,
+  invalid/mis-keyed refused, clock cap, a real v4 database upgraded and synced.
+- Checks: 245 unit tests, 37 e2e, initial JS 22.4 KB (+0.3: stamping in db.ts). Next: M21b pairing + UI.
+
 ## 2026-11-05 — M30 Iron Log bridge (backup import)
 
 - `lib/ironlog.ts`: reads an Iron Log backup (`format: 'iron-log-backup'`): body rows (weight 20–400 kg,
