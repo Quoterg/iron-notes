@@ -73,12 +73,12 @@ export const toSwap = (c: ExerciseChange, ex: Exercise | undefined): boolean =>
   !!ex?.joint || c.trend === 'weaker' || c.trend === 'stalled' || (c.change != null && c.change <= 0 && c.sessions >= 3);
 
 /** Alternatives for the same main muscle (the first primary), not already in use, favourites first. */
-export function alternatives(ex: Exercise, library: readonly Exercise[], exclude: ReadonlySet<string>, n = 3): Exercise[] {
+export function alternatives(ex: Exercise, library: readonly Exercise[], exclude: ReadonlySet<string>, n = 3, nameOf: (e: Exercise) => string = (e) => e.name): Exercise[] {
   const m = ex.muscles?.primary[0];
   if (!m) return [];
   return library
     .filter((x) => x.id !== ex.id && !exclude.has(x.id) && x.muscles?.primary[0] === m && x.type === ex.type)
-    .sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite) || a.name.localeCompare(b.name))
+    .sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite) || nameOf(a).localeCompare(nameOf(b)))
     .slice(0, n);
 }
 

@@ -375,6 +375,7 @@ export const later = {
   language: 'Language',
   langAuto: 'Auto',
   gymEnglish: 'Gym-English names for the starter exercises',
+  gymEnglishHint: 'Only used while the app is in Swedish; names you gave your own exercises never change.',
   new_15a: 'In Swedish: the starter exercises, categories and body measures have Swedish names (gym English with a setting), and numbers use a decimal comma.',
   review: 'Review',
   reviewCycle: 'Review the cycle',

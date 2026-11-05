@@ -40,7 +40,10 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
 
   // Built once per library / language change; a keystroke only matches (old phones, big libraries).
   const index = useMemo(
-    () => searchIndex(exercises.value, (cid) => { const c = catById.value.get(cid); return c && `${c.name} ${catName(c)}`; }, (m) => allLabels(`mu_${m}` as Key), (e) => exName(e)),
+    () => searchIndex(exercises.value, (cid) => {
+        const c = catById.value.get(cid);
+        return c && (catName(c) === c.name ? c.name : `${c.name} ${catName(c)}`);
+      }, (m) => allLabels(`mu_${m}` as Key), (e) => exName(e)),
     [exercises.value, catById.value, lang.value, gymEnglish.value],
   );
 

@@ -159,7 +159,7 @@ function SwapList(p: { changes: ExerciseChange[]; inProgram: ReadonlySet<string>
       <h2>{t('toSwap')}</h2>
       <p class="muted small">{t('toSwapHint')}</p>
       {rows.map(({ c, ex }) => {
-        const alts = alternatives(ex, exercises.value, p.inProgram);
+        const alts = alternatives(ex, exercises.value, p.inProgram, 3, exName);
         const why = ex.joint ? t('jointPain') : c.trend === 'weaker' ? t('trendWeaker') : t('trendStalled');
         const swapHere = p.program && p.inProgram.has(ex.id);
         return (

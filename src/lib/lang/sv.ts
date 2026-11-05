@@ -416,6 +416,7 @@ const strings: Record<Key, string> = {
   trainingDays: 'Träningsdagar',
   restDay: 'Vilodag i ditt program.',
   gymEnglish: 'Gym-engelska namn på startövningarna',
+  gymEnglishHint: 'Används bara när appen är på svenska; namn du gett egna övningar ändras aldrig.',
   new_15a: 'På svenska: startövningar, kategorier och kroppsmått har svenska namn (gym-engelska med en inställning), och tal visas med decimalkomma.',
   review: 'Utvärdering',
   reviewCycle: 'Utvärdera cykeln',
