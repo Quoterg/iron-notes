@@ -95,6 +95,7 @@ collection). Data is deleted by "Delete all data" in Settings or by uninstalling
 - [x] `pnpm assetlinks` and this guide
 - [x] Owner: upload key, fingerprint in the manifest, `bubblewrap build` (2026-11-05)
 - [x] APK 1.0.0 on GitHub Releases: https://github.com/Quoterg/iron-notes/releases/tag/v1.0.0
-- [ ] Check the app opens without a browser bar once `assetlinks.json` is deployed
+- [x] `assetlinks.json` deployed and verified by Google's Digital Asset Links API (2026-11-05)
+- [x] APK 1.0.1 (code 2) on GitHub Releases: https://github.com/Quoterg/iron-notes/releases/tag/v1.0.1
 - [ ] Owner (optional): Google Play listing with Play App Signing (one-time developer fee), then add
       Play's fingerprint
