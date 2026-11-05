@@ -161,7 +161,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const dorian = st.mode === 'dorian' && !!ex && fieldsOf(ex.type).includes('reps');
   const stepKg = ex ? wFromUser(ex.increment ?? defaultIncrement(st.unit), st.unit) : 0;
   // Targets and warm-ups rounded to the bar and plates (setting; barbell lifts), with the plates shown.
-  const snap = snapperFor(ex, st);
+  const snap = useMemo(() => snapperFor(ex, st), [ex, st.unit, st.plates, st.roundPlates]);
   const showPlates = roundsToPlates(ex, st);
   const top = ex?.repTop ?? DORIAN_TOP;
   // `prev` is a new array each render: keyed on the history instead (targets change only with it).
@@ -205,7 +205,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(counted, range.bottom, cycle!.start) : 0, first, stepKg, range);
     if (tg && ex.joint && tg.why === 'up') return { ...tg, weight: tg.prev!.weight!, reps: range.top, why: 'joint' as const };
     return tg && { ...tg, weight: snap(tg.weight, tg.why === 'up') };
-  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start, longGap, ex?.joint, st.roundPlates, st.plates, ex?.plates]);
+  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start, longGap, ex?.joint, snap]);
 
   // Readiness, asked before a muscle's first set of the day (Dorian HIT / Lyle): saved with that set.
   const [sore, setSore] = useState<number | null>(null);
@@ -496,7 +496,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
             {dorian && !selected && workingDone === 0 && (target?.weight ?? 0) > 0 && (
               <div class="chips" aria-label={t('warmupsHint')}>
                 <span class="muted small">{t('warmupsHint')}:</span>
-                {warmups(target!.weight, stepKg).map((w) => ({ ...w, weight: snap(w.weight) })).map((w) => (
+                {warmups(target!.weight, stepKg)
+                  .map((w) => ({ ...w, weight: snap(w.weight) }))
+                  // Rounded warm-ups can coincide (a light lift): each weight once.
+                  .filter((w, i, a) => a.findIndex((x) => x.weight === w.weight) === i)
+                  .map((w) => (
                   <button
                     key={w.reps}
                     type="button"

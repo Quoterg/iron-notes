@@ -1,6 +1,7 @@
 // Workout operations that run after a tap or on later screens (copy, reorder, supersets, delete, routines):
 // a lazy chunk, not part of the first paint. Builds on state.ts (cache, records, day reload).
 import { byOrder, previousWorkout, uid } from './lib/calc';
+import { snapperFor } from './lib/tools';
 import * as db from './lib/db';
 import type { RoutineDay, Routine, WorkoutSet } from './lib/model';
 import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById, loadDay, nextOrder, routines, saveSettings, settings, setsVersion } from './state';
@@ -102,7 +103,6 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   const last = new Map<string, WorkoutSet[]>();
   await Promise.all(items.map(async (i) => last.set(i.exerciseId, await db.lastWorkoutSets(i.exerciseId))));
   // Rounded to the bar and plates as on the logging screen (setting; barbell lifts): an increase rounds up.
-  const { snapperFor } = await import('./lib/tools');
   const snapFor = (id: string) => snapperFor(exById.value.get(id), settings.value);
   if (settings.value.mode === 'dorian') {
     // Dorian HIT: from the last normal session (never a lighter week's): sets that reached the top of the

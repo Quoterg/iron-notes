@@ -1,5 +1,5 @@
 // Create or edit an exercise: name, category, type, weight step, rest time and notes.
-import { usesPlatesByName } from '../lib/tools';
+import { platesToStore, usesPlatesByName } from '../lib/tools';
 import { LOAD_TYPES, usesBodyWeight } from '../lib/load';
 import { useEffect, useState } from 'preact/hooks';
 import { uid, isoDate } from '../lib/calc';
@@ -23,7 +23,8 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [type, setType] = useState<ExerciseType>(old?.type ?? 'weight,reps');
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
   const [load, setLoad] = useState<LoadType>(old?.load ?? 'total');
-  const [plates, setPlates] = useState<boolean>(old?.plates ?? usesPlatesByName(old?.name ?? ''));
+  // `undefined` until the box is touched: the default then follows the (possibly new) name.
+  const [plates, setPlates] = useState<boolean | undefined>(old?.plates);
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [repTop, setRepTop] = useState(old?.repTop != null ? String(old.repTop) : '');
   const [repBottom, setRepBottom] = useState(old?.repBottom != null ? String(old.repBottom) : '');
@@ -62,7 +63,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       increment: inc > 0 ? inc : undefined,
       load: loadedType.includes('weight') && load !== 'total' ? load : undefined,
       // Stored only when it differs from the default for the name.
-      plates: loadedType.includes('weight') && load === 'total' && plates !== usesPlatesByName(n) ? plates : undefined,
+      plates: loadedType.includes('weight') && load === 'total' ? platesToStore(plates, n) : undefined,
       rest: r > 0 ? r : undefined,
       repTop: top > 0 ? Math.min(top, 100) : undefined,
       repBottom: bottom > 0 ? Math.min(bottom, 100) : undefined,
@@ -156,7 +157,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
         )}
         {(used ? old!.type : type).includes('weight') && load === 'total' && (
           <label class="check">
-            <input type="checkbox" checked={plates} onChange={(e) => setPlates(e.currentTarget.checked)} />
+            <input type="checkbox" checked={plates ?? usesPlatesByName(name)} onChange={(e) => setPlates(e.currentTarget.checked)} />
             {t('usesPlates')}
           </label>
         )}
