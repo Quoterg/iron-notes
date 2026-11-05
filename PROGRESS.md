@@ -15,6 +15,22 @@
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## 2026-11-05 — M21b Device sync
+
+- `lib/pair.ts` ported from Iron Log (codes `IN1.`: compressed session descriptions; framing into ≤ 16 KB
+  parts; `runSync` in 500-change batches; WebRTC data channel `iron-notes-sync`, no STUN/TURN, no server;
+  `allowLocalAddresses`). Tests ported (pair.test.ts: codes, framing limits, batches, version, protocol abuse).
+- Sync sheet (Settings → Sync): show a code / scan a code, answer, progress, result, errors; QR drawn with
+  `uqr` 0.1.2 (lazy chunk); scanning with the browser's `BarcodeDetector` (Chrome on Android) — no
+  zxing/WASM (the CSP stays strict) — else paste the code as text. "OK" reloads to show the merged data.
+- Each device seeded its own starter library: incoming categories / exercises / measures with another id
+  but the same name (and type) become per-device aliases (kv `syncAliases`, never synced) instead of
+  duplicates; sets, routine items, body entries and exercises' categories are mapped to local ids; library
+  stores are sent first. Deleting an aliased record elsewhere never deletes the local one.
+- Sync-only database code in a lazy `lib/db-sync.ts` (initial JS 22.5 KB; db.ts keeps only the stamping).
+- Checks: 255 unit tests, 39 e2e (new sync.spec: two contexts over real WebRTC, 1 500-set history,
+  one bench press after sync; garbled/wrong-step codes refused), Lighthouse passes.
+
 ## 2026-11-05 — M21a Sync engine
 
 - DB v5: `meta` store (`store:key` → `{ mt, del? }`); the upgrade gives every existing record (and the

@@ -136,6 +136,33 @@ describe('device-to-device sync', () => {
     expect(await ids(fresh)).toEqual(['old']);
   });
 
+  it('each device’s own starter library: matched by name, not added twice; references mapped', async () => {
+    const a = await device();
+    const b = await device();
+    // Both seeded the starter library, each with its own ids.
+    await a.db.putLibrary([{ id: 'ca', name: 'Chest', color: '#f0566a', order: 0 }], [{ id: 'xa', name: 'Bench', categoryId: 'ca', type: 'weight,reps' }]);
+    await b.db.putLibrary([{ id: 'cb', name: 'Chest', color: '#f0566a', order: 0 }], [{ id: 'xb', name: 'Bench', categoryId: 'cb', type: 'weight,reps' }]);
+    await a.db.putSet({ ...set('sa'), exerciseId: 'xa' });
+    await b.db.putSet({ ...set('sb'), exerciseId: 'xb' });
+    await b.db.putRoutine({ id: 'r', name: 'Push', order: 0, days: [{ id: 'd', name: 'A', items: [{ exerciseId: 'xb', sets: [{}] }] }] });
+    // B's own exercise that A doesn't have travels, with its category mapped.
+    await b.db.putExercise({ id: 'own', name: 'Cable Fly', categoryId: 'cb', type: 'weight,reps' });
+    await syncPair(a, b);
+    const libA = await a.db.getLibrary();
+    expect(libA.categories.map((c) => c.id)).toEqual(['ca']);
+    expect(libA.exercises.map((e) => [e.id, e.categoryId]).sort()).toEqual([['own', 'ca'], ['xa', 'ca']]);
+    expect((await a.db.setsOn('2026-11-01')).map((s) => [s.id, s.exerciseId]).sort()).toEqual([['sa', 'xa'], ['sb', 'xa']]);
+    expect((await a.db.getRoutines())[0].days[0].items[0].exerciseId).toBe('xa');
+    const libB = await b.db.getLibrary();
+    expect(libB.exercises.map((e) => e.id).sort()).toEqual(['own', 'xb']);
+    expect((await b.db.setsOn('2026-11-01')).map((s) => [s.id, s.exerciseId]).sort()).toEqual([['sa', 'xb'], ['sb', 'xb']]);
+    // Later edits keep mapping; a second round changes nothing new.
+    await b.db.putSet({ ...set('sb2'), exerciseId: 'xb' });
+    await syncPair(a, b);
+    expect((await a.db.setsOn('2026-11-01')).find((s) => s.id === 'sb2')?.exerciseId).toBe('xa');
+    expect(await syncPair(a, b)).toEqual([0, 0]);
+  });
+
   it('a local edit after a change from a clock ahead still wins (skew within the 5-minute cap)', async () => {
     const a = await device();
     const b = await device();
@@ -163,7 +190,7 @@ describe('device-to-device sync', () => {
     await a.db.deleteMetric('m');
     const meta = await a.sync.summarize();
     const del = async () => {
-      const { readForSync } = await import('./db');
+      const { readForSync } = await import('./db-sync');
       return (await readForSync([])).meta;
     };
     const m = await del();
