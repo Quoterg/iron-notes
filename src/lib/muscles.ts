@@ -105,32 +105,51 @@ export const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g
  * Exercises matching all words of `query` across their name, category and muscles (name matches first,
  * then primary muscles / category, then secondary muscles).
  */
+export interface SearchEntry {
+  e: Exercise;
+  name: string;
+  /** Name, category and primary muscles, folded. */
+  tier1: string;
+  /** Secondary muscles, folded. */
+  sec: string;
+}
+
+/**
+ * The folded search text of every exercise, built once per library/language change (not per keystroke).
+ * `muscleNames` may give several labels per muscle (every loaded language).
+ */
+export function searchIndex(
+  list: readonly Exercise[],
+  categoryName?: (categoryId: string) => string | undefined,
+  muscleNames?: (m: MuscleId) => readonly string[],
+): SearchEntry[] {
+  const labels = (ms: readonly MuscleId[]) => (muscleNames ? fold(ms.flatMap((m) => muscleNames(m)).join(' ')) : '');
+  return list.map((e) => {
+    const name = fold(e.name);
+    const cat = categoryName ? fold(categoryName(e.categoryId) ?? '') : '';
+    return { e, name, tier1: `${name} ${cat} ${e.muscles ? labels(e.muscles.primary) : ''}`, sec: e.muscles ? labels(e.muscles.secondary) : '' };
+  });
+}
+
+/** Matches of `query` in the index, ranked: name, then category / primary muscle, then secondary muscle. */
+export function searchIndexed(index: readonly SearchEntry[], query: string): Exercise[] {
+  const words = fold(query.trim()).split(/\s+/).filter(Boolean);
+  if (!words.length) return index.map((x) => x.e);
+  const scored: { e: Exercise; tier: number }[] = [];
+  for (const x of index) {
+    if (words.every((w) => x.name.includes(w))) scored.push({ e: x.e, tier: 0 });
+    else if (words.every((w) => x.tier1.includes(w))) scored.push({ e: x.e, tier: 1 });
+    else if (x.sec && words.every((w) => `${x.tier1} ${x.sec}`.includes(w))) scored.push({ e: x.e, tier: 2 });
+  }
+  return scored.sort((p, q) => p.tier - q.tier).map((x) => x.e);
+}
+
+/** One-off search (index and match). */
 export function searchExercises(
   list: readonly Exercise[],
   query: string,
   categoryName?: (categoryId: string) => string | undefined,
-  muscleName?: (m: MuscleId) => string,
+  muscleNames?: (m: MuscleId) => readonly string[],
 ): Exercise[] {
-  const words = fold(query.trim()).split(/\s+/).filter(Boolean);
-  if (!words.length) return [...list];
-  const scored: { e: Exercise; tier: number }[] = [];
-  for (const e of list) {
-    const name = fold(e.name);
-    if (words.every((w) => name.includes(w))) {
-      scored.push({ e, tier: 0 });
-      continue;
-    }
-    const cat = categoryName ? fold(categoryName(e.categoryId) ?? '') : '';
-    const prim = muscleName && e.muscles ? fold(e.muscles.primary.map(muscleName).join(' ')) : '';
-    const tier1 = `${name} ${cat} ${prim}`;
-    if (words.every((w) => tier1.includes(w))) {
-      scored.push({ e, tier: 1 });
-      continue;
-    }
-    const sec = muscleName && e.muscles ? fold(e.muscles.secondary.map(muscleName).join(' ')) : '';
-    if (sec && words.every((w) => `${tier1} ${sec}`.includes(w))) {
-      scored.push({ e, tier: 2 });
-    }
-  }
-  return scored.sort((a, b) => a.tier - b.tier).map((x) => x.e);
+  return searchIndexed(searchIndex(list, categoryName, muscleNames), query);
 }

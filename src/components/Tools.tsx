@@ -15,7 +15,8 @@ export default function Tools({ weight, reps: initReps }: { weight?: number; rep
   const st = settings.value;
   const [tab, setTab] = useState<Tab>(weight ? 'plates' : 'orm');
   const [w, setW] = useState(weight ? num(wToUser(weight, st.unit), 2) : '');
-  const [reps, setReps] = useState(initReps && initReps > 0 ? String(initReps) : '5');
+  // 1RM estimates are meaningful up to ~15 reps (the rep-max table's range): a longer set isn't prefilled.
+  const [reps, setReps] = useState(initReps && initReps >= 1 && initReps <= 15 ? String(Math.round(initReps)) : '5');
   const cfg = st.plates?.unit === st.unit ? st.plates : { unit: st.unit, ...DEFAULT_PLATES[st.unit], sizes: [...DEFAULT_PLATES[st.unit].sizes] };
   const target = parse(w);
   const tooHeavy = target > MAX_TARGET;

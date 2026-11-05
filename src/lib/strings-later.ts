@@ -374,6 +374,7 @@ export const later = {
   restDay: 'Rest day in your program.',
   language: 'Language',
   langAuto: 'Auto',
+  setCopied: 'Set copied into the form.',
   new_11a: 'Svenska: choose the language in Settings (Auto follows the phone).',
 } as const;
 

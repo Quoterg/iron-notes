@@ -1,3 +1,5 @@
+import type { Key } from './i18n';
+import type { MuscleId } from './model';
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import * as backup from './backup';
@@ -56,7 +58,7 @@ describe('muscle map', () => {
   it('searches by exercise name first, then primary muscles/category, then secondary muscles', () => {
     const { categories, exercises } = starterLibrary();
     const catName = (id: string) => categories.find((c) => c.id === id)?.name;
-    const muLabel = (m: string) => (m === 'rearDelts' ? 'Rear delts' : m === 'hamstrings' ? 'Hamstrings' : m);
+    const muLabel = (m: string) => [m === 'rearDelts' ? 'Rear delts' : m === 'hamstrings' ? 'Hamstrings' : m];
 
     // Name match vs primary vs secondary for "triceps":
     // Overhead Triceps Extension has "triceps" in its name (tier 0);
@@ -71,5 +73,19 @@ describe('muscle map', () => {
     const rear = searchExercises(exercises, 'rear delts', catName, muLabel).map((e) => e.name);
     expect(rear).toContain('Face Pull');
     expect(rear.indexOf('Face Pull')).toBeLessThan(rear.indexOf('Barbell Row'));
+  });
+
+  it('matches muscles in every loaded language (Swedish UI, English gym terms)', async () => {
+    const { applyLang, allLabels } = await import('./i18n');
+    await import('./strings-later');
+    const { categories, exercises } = starterLibrary();
+    const catName = (id: string) => categories.find((c) => c.id === id)?.name;
+    await applyLang('sv');
+    try {
+      const labels = (m: MuscleId) => allLabels(`mu_${m}` as Key);
+      for (const q of ['rear delts', 'bakre axlar']) expect(searchExercises(exercises, q, catName, labels).map((e) => e.name), q).toContain('Face Pull');
+    } finally {
+      await applyLang('en');
+    }
   });
 });

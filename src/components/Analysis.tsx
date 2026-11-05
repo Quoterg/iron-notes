@@ -105,6 +105,7 @@ export default function Analysis() {
                   const change = e.firstOrm && e.lastOrm && e.lastOrm !== e.firstOrm ? (e.lastOrm / e.firstOrm - 1) * 100 : null;
                   return (
                     <li key={e.exerciseId}>
+                      {/* Opens the exercise for today (history/graph/records cover any period); logging there writes to today. */}
                       <button class="entry" onClick={() => open({ kind: 'exercise', id: e.exerciseId, date: today })}>
                         <Dot color={catById.value.get(ex.categoryId)?.color} />
                         <span class="entry-name">{ex.name}</span>

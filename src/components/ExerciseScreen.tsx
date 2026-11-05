@@ -593,11 +593,15 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                       <button
                         type="button"
                         class="prev-set"
-                        aria-label={`${t('lastTime')}: ${setText(s, ex.type, st)}`}
                         onClick={() => {
+                          // Copies the set into the form to log it again; what was typed comes back with Undo.
+                          // As a seed (`own` false): a warm-up copies as a working set, and Lyle mode never
+                          // prefills RIR.
+                          const before = form;
                           setSel(null);
                           const seeded = toForm(s, st);
                           setForm((f) => ({ ...seeded, rir: lyle ? '' : seeded.rir, comment: f.comment }));
+                          toast(t('setCopied'), { label: t('undo'), run: () => setForm(before) });
                         }}
                       >
                         <span>
