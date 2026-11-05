@@ -122,7 +122,7 @@ sync last (it has to carry every field the milestones before it add).
   progression targets (Dorian, Lyle run-up/push, lighter week, gaps) and warm-up chips snap to the
   closest weight loadable with the configured bar and plates (`settings.plates`), with the per-side
   plates under the target.
-- [ ] **M27 Cycle & block review** — When a Lyle cycle (or a 4–8 week block) ends: start vs end e1RM per
+- [x] **M27 Cycle & block review** — When a Lyle cycle (or a 4–8 week block) ends: start vs end e1RM per
   exercise, average weekly effective reps per muscle, readiness/soreness history, and one-tap swap
   suggestions for stalled or joint-pain-flagged exercises before the next cycle.
 - [ ] **M29 Swedish starter library & decimal comma** — Stable keys for starter exercises and categories

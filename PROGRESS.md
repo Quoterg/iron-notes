@@ -9,12 +9,24 @@
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
-- Next: **M27 Cycle & block review**.
+- Next: **M29 Swedish starter library & decimal comma**.
 - Follow-ups: decimal comma in Swedish for displayed numbers (needs a display-only formatter: `num()` also
   writes CSV and input values); Swedish names for the starter library would need a stable key per
   exercise (programs match by name).
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M27 Cycle & block review
+
+- `lib/review.ts`: per exercise first vs last session's best e1RM in the period (real load) with the trend
+  over its sessions; readiness answers per muscle; `toSwap` (stalled, weaker, no progress over ≥ 3
+  sessions, joint pain); `alternatives` (same main muscle and type, not in use, favourites first);
+  `swapInRoutine`.
+- Review sheet (`kind: 'review'`; Settings → "Review the cycle" / "Review the last weeks", and the "cycle
+  finished" hint): This cycle (Lyle) or 4/6/8 weeks; Strength (first → last, ±%, sessions), effective
+  reps per muscle per week with main sessions and "still sore n of m", and "Swap before the next cycle" —
+  in the program's routine with one tap (every day), else the alternative opens.
+- Checks: 225 unit tests, 35 e2e (new review.spec), initial JS 21.6 KB, Lighthouse passes.
 
 ## 2026-11-05 — M24 Plate badges & loadable targets
 
