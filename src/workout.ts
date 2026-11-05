@@ -10,7 +10,7 @@ import { afterWrite, allSetsOf, applyToCache, date, dayComment, daySets, exById,
 export async function copySets(sets: readonly WorkoutSet[], to: string): Promise<void> {
   const { redated } = await import('./lib/cycle');
   const copies = [...sets].sort(byOrder).map(
-    (s): WorkoutSet => ({ ...redated(s, to, settings.value.light), id: uid(), order: nextOrder(), comment: undefined, done: settings.value.markDone ? false : undefined }),
+    (s): WorkoutSet => ({ ...redated(s, to, settings.value.light), id: uid(), order: nextOrder(), comment: undefined, done: settings.value.markDone ? false : undefined, at: undefined }),
   );
   await db.putSets(copies);
   await afterWrite(copies);

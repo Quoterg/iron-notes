@@ -51,7 +51,7 @@ const validSet = (s: WorkoutSet) =>
   isStr(s?.id) && typeof s.date === 'string' && DATE.test(s.date) && isStr(s.exerciseId) && isNum(s.order) &&
   optNum(s.weight) && optNum(s.reps) && optNum(s.distance) && optNum(s.time) && optStr(s.comment) && optStr(s.group) &&
   (s.done === undefined || typeof s.done === 'boolean') && (s.planned === undefined || s.planned === true) &&
-  optNum(s.rir) && optNum(s.after) && (s.warmup === undefined || s.warmup === true) && (s.deload === undefined || s.deload === true) &&
+  optNum(s.rir) && optNum(s.after) && optNum(s.at) && (s.warmup === undefined || s.warmup === true) && (s.deload === undefined || s.deload === true) &&
   (s.sore === undefined || s.sore === 0 || s.sore === 1 || s.sore === 2);
 const validPlanned = (p: Routine['days'][number]['items'][number]['sets'][number]) =>
   !!p && typeof p === 'object' && optNum(p.weight) && optNum(p.reps) && optNum(p.distance) && optNum(p.time);

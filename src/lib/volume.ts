@@ -1,6 +1,6 @@
 // Effective reps per muscle group per session and per week, against the training mode's goal
 // (docs/TRAINING-MODES.md, "Per muscle group"). Pure: callers pass each set's effective reps.
-import { isMainSession, muscleTotals, type MuscleTotal } from './effective';
+import { isMainSession, muscleTotals, SECONDARY, type MuscleTotal } from './effective';
 import { MUSCLES } from './muscles';
 import type { MuscleId, Muscles, TrainingMode, WorkoutSet } from './model';
 
@@ -127,6 +127,38 @@ export function periodMuscles(
   const first = from || [...byDate.keys()].sort()[0] || to;
   const days = Math.round((Date.parse(to + 'T00:00Z') - Date.parse(first + 'T00:00Z')) / 86_400_000) + 1;
   return { list: [...out.values()].sort((a, b) => b.total - a.total), total, weeks: Math.max(1, days / 7) };
+}
+
+/** Main sessions per muscle per week the mode aims for (Dorian about once, Lyle about twice). */
+export const SESSIONS_PER_WEEK: Record<TrainingMode, number> = { standard: 1, dorian: 1, lyle: 2 };
+
+/** A muscle's week against the mode's goal (session goal × sessions a week); 'trained' without a goal. */
+export function weekStatus(w: WeekMuscle | undefined, goal: Goal | null, mode: TrainingMode): Status | 'none' | 'trained' {
+  if (!w || w.total <= 0) return 'none';
+  if (!goal) return 'trained';
+  const k = SESSIONS_PER_WEEK[mode];
+  return w.total < goal.min * k ? 'under' : w.total > goal.max * k ? 'over' : 'in';
+}
+
+/** What each exercise gave a muscle (direct, or half as a secondary muscle), most first. */
+export function contributions(
+  sets: readonly WorkoutSet[],
+  musclesOf: (exerciseId: string) => Muscles | undefined,
+  effective: (s: WorkoutSet) => number,
+  muscle: MuscleId,
+): { exerciseId: string; n: number; direct: boolean }[] {
+  const out = new Map<string, { exerciseId: string; n: number; direct: boolean }>();
+  for (const s of sets) {
+    if (s.planned) continue;
+    const ms = musclesOf(s.exerciseId);
+    const direct = !!ms?.primary.includes(muscle);
+    const share = direct ? 1 : ms?.secondary.includes(muscle) ? SECONDARY : 0;
+    const n = share * effective(s);
+    if (!(n > 0)) continue;
+    const c = out.get(s.exerciseId) ?? out.set(s.exerciseId, { exerciseId: s.exerciseId, n: 0, direct }).get(s.exerciseId)!;
+    c.n += n;
+  }
+  return [...out.values()].sort((a, b) => b.n - a.n);
 }
 
 export type { MuscleTotal };

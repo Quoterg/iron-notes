@@ -35,6 +35,8 @@ export type Screen =
   | { kind: 'programs' }
   /** Review of a Lyle cycle or the last weeks: strength, muscles, readiness, swaps. */
   | { kind: 'review' }
+  /** A workout's summary: shared as text or an image. */
+  | { kind: 'summary'; date: string }
   /** A body measure: entries, graph. */
   | { kind: 'metric'; id: string }
   /** Copy (part of) a previous workout into `date`. */
