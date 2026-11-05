@@ -128,10 +128,12 @@ sync last (it has to carry every field the milestones before it add).
 - [x] **M29 Swedish starter library & decimal comma** — Stable keys for starter exercises and categories
   so they can show Swedish names without breaking program templates or FitNotes imports; display-only
   decimal comma (`82,5 kg`) in Swedish, `.` kept in CSV exports and inputs.
-- [ ] **M28 Rest timer in the background & category defaults** — A web page can't reliably schedule an
+- [x] **M28 Rest timer in the background & category defaults** — A web page can't reliably schedule an
   alert while the phone sleeps (timers are stopped; Notification Triggers was abandoned), so: first a
   spike of the options (a notification shown as the timer starts, TWA notification delegation, a small
   native Android part), then the one that works without a server; plus per-category default rest times.
+  Done: opt-in notification from the page when rest ends while hidden; spike and native fallback in
+  [REST-TIMER.md](REST-TIMER.md) (owner's phone test decides whether the native part is needed).
 - [ ] **M30 Iron Log bridge (backup import)** — Import body weight (and energy trend, if present) from an
   Iron Log backup file to drive the diet phase and recovery feedback. The two apps live on different
   origins and can't read each other's storage; live sync waits for M21 on both sides.

@@ -13,7 +13,7 @@ import { bestForRange, cycleWeek, lastFirstSet, lyleTarget, repRange, RUN_UP } f
 import { setsBetween } from '../lib/db';
 import { catName, exName, type Key, locale, t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type RoutineDay, type Settings, type WorkoutSet } from '../lib/model';
-import { startTimer } from '../lib/timer';
+import { restFor, startTimer } from '../lib/timer';
 import { dFromUser, defaultIncrement, dToUser, num, setText, weight as fmtWeight, wFromUser, wToUser } from '../lib/units';
 import { groupColors, groupMembers, groupOf, nextInGroup } from '../lib/groups';
 import { open, replaceTop } from '../nav';
@@ -311,7 +311,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       else setForm((f) => ({ ...f, after: '', rir: lyle ? '' : f.rir }));
       // In a superset: on to the next exercise; rest only after the round's last one.
       const step = nextInGroup(members, id);
-      if (st.autoTimer && (!step || step.endOfRound)) startTimer(ex.rest ?? st.rest, st.timerSound);
+      if (st.autoTimer && (!step || step.endOfRound)) startTimer(restFor(ex, catById.value.get(ex.categoryId), st.rest), st.timerSound, !!st.restNotify);
       if (step) {
         replaceTop({ kind: 'exercise', id: step.next, date });
         return;
@@ -348,7 +348,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       title={exName(ex)}
       actions={
         <>
-          <button class="btn small" aria-label={t('startTimer')} onClick={() => startTimer(ex.rest ?? st.rest, st.timerSound)}>
+          <button class="btn small" aria-label={t('startTimer')} onClick={() => startTimer(restFor(ex, catById.value.get(ex.categoryId), st.rest), st.timerSound, !!st.restNotify)}>
             ⏱
           </button>
           <button class="btn small" onClick={() => open({ kind: 'editExercise', id })}>

@@ -29,6 +29,8 @@ export interface Category {
   /** #rrggbb */
   color: string;
   order: number;
+  /** Default rest for its exercises, seconds (an exercise's own rest wins). Unset = the setting. */
+  rest?: number;
 }
 
 /** Muscle groups (for effective reps per muscle group). */
@@ -181,6 +183,8 @@ export interface Settings {
   program?: { routineId: string; lastDayId?: string; weekdays?: number[] };
   /** Diet phase: a cut makes holding the weight a success (feedback). Unset = maintaining. */
   diet?: 'build' | 'maintain' | 'cut';
+  /** A notification when rest is over while the app is hidden or the screen is off (needs permission). */
+  restNotify?: boolean;
   /** Round progression targets and warm-ups to the bar and plates (exercises that use them). */
   roundPlates?: boolean;
   /** In Swedish: keep the starter library's gym-English exercise names. */

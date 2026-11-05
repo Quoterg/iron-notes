@@ -1,15 +1,16 @@
-// Create or edit a category: name and colour. Only empty categories can be deleted.
+// Create or edit a category: name, colour and default rest. Only empty categories can be deleted.
 import { useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
 import { t } from '../lib/i18n';
 import { COLORS } from '../lib/seed';
-import { catById, categories, exercises, removeCategory, saveCategory } from '../state';
+import { catById, categories, exercises, removeCategory, saveCategory, settings } from '../state';
 import { Sheet } from './Sheet';
 
 export default function CategoryEditor({ id }: { id?: string }) {
   const old = id ? catById.value.get(id) : undefined;
   const [name, setName] = useState(old?.name ?? '');
   const [color, setColor] = useState(old?.color ?? COLORS[categories.value.length % COLORS.length]);
+  const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [error, setError] = useState('');
   const inUse = !!id && exercises.value.some((e) => e.categoryId === id);
 
@@ -18,7 +19,8 @@ export default function CategoryEditor({ id }: { id?: string }) {
     const n = name.trim();
     if (!n) return setError(t('nameRequired'));
     const order = old?.order ?? Math.max(-1, ...categories.value.map((c) => c.order)) + 1;
-    await saveCategory({ id: id ?? uid(), name: n, color, order });
+    const r = parseInt(rest, 10);
+    await saveCategory({ id: id ?? uid(), name: n, color, order, rest: r > 0 ? r : undefined });
     history.back();
   }
 
@@ -36,6 +38,10 @@ export default function CategoryEditor({ id }: { id?: string }) {
           <input type="text" value={name} required onInput={(e) => (setName(e.currentTarget.value), setError(''))} />
         </label>
         {error && <p class="error-text" role="alert">{error}</p>}
+        <label>
+          {t('categoryRest')}
+          <input type="text" inputMode="numeric" placeholder={String(settings.value.rest)} value={rest} onInput={(e) => setRest(e.currentTarget.value)} />
+        </label>
         <span class="muted">{t('colour')}</span>
         <div class="swatches" role="radiogroup" aria-label={t('colour')}>
           {COLORS.map((c) => (
