@@ -91,6 +91,10 @@ describe('the body map', () => {
     expect(weekStatus(w(25), GOALS.dorian, 'dorian')).toBe('in');
     expect(weekStatus(w(45), GOALS.dorian, 'dorian')).toBe('over');
     expect(weekStatus(w(10), null, 'standard')).toBe('trained');
+    expect(weekStatus(w(40), GOALS.lyle, 'lyle')).toBe('in'); // exactly 20 × 2
+    expect(weekStatus(w(39.5), GOALS.lyle, 'lyle')).toBe('under');
+    expect(weekStatus(w(80), GOALS.lyle, 'lyle')).toBe('in'); // exactly 40 × 2
+    expect(weekStatus(w(81), GOALS.lyle, 'lyle')).toBe('over');
   });
   it('what each exercise gave a muscle: direct in full, secondary at half', () => {
     const sets = [set('bench', '2026-10-26', 8), set('bench', '2026-10-26', 8), set('dips', '2026-10-27', 8), set('row', '2026-10-27', 8)];

@@ -270,12 +270,15 @@ table.data th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
 .mu-hist li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .body-map { display: block; width: 100%; max-width: 360px; margin: 0 auto; }
 .mm-base { fill: var(--muted); opacity: 0.14; }
-.mm { fill: var(--muted); fill-opacity: 0.3; cursor: pointer; }
+/* An invisible 7-unit stroke that counts for taps: small muscles (side delts, forearms) and the gap
+   between a muscle's two shapes are easy to hit on a small phone. */
+.mm { fill: var(--muted); fill-opacity: 0.3; cursor: pointer; stroke: transparent; stroke-width: 7px; pointer-events: all; }
 .mm.under, .mm.in, .mm.trained, .mm.over { fill-opacity: 1; }
 .mm.under, .mm-key.under { fill: var(--muted); background: var(--muted); opacity: 0.75; }
 .mm.in, .mm.trained, .mm-key.in, .mm-key.trained { fill: var(--accent); background: var(--accent); }
 .mm.over, .mm-key.over { fill: var(--over); background: var(--over); }
-.mm.sel { stroke: var(--text); stroke-width: 1.5; }
+.mm.sel > * { stroke: var(--text); stroke-width: 1.5px; }
+.mm.sel { stroke: transparent; }
 .mm:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2; }
 .mm-cap { font-size: 7px; fill: var(--muted); text-anchor: middle; }
 .mm-legend { text-align: center; }

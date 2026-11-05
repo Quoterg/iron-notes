@@ -129,7 +129,6 @@ export function periodMuscles(
   return { list: [...out.values()].sort((a, b) => b.total - a.total), total, weeks: Math.max(1, days / 7) };
 }
 
-
 /** Main sessions per muscle per week the mode aims for (Dorian about once, Lyle about twice). */
 export const SESSIONS_PER_WEEK: Record<TrainingMode, number> = { standard: 1, dorian: 1, lyle: 2 };
 

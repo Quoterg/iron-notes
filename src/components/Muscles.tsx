@@ -1,10 +1,10 @@
 // Muscles: effective reps per muscle group this week (a body map and bars, with each main session against
 // the mode's goal) and the last 8 weeks; tap a muscle for what trained it and what could train it today.
 // One date-range read of the sets; estimates as on the logging screen.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { isoDate } from '../lib/calc';
 import { effectiveOf } from '../effort';
-import { byShownName, exName, type Key, locale, t } from '../lib/i18n';
+import { byShownName, exName, locale, t } from '../lib/i18n';
 import { MUSCLES } from '../lib/muscles';
 import type { MuscleId, WorkoutSet } from '../lib/model';
 import { contributions, GOALS, lastWeeks, statusOf, weekStatus, weeks, type WeekMuscle } from '../lib/volume';
@@ -21,9 +21,10 @@ export default function Muscles() {
   const goal = GOALS[st.mode];
   const today = isoDate(new Date());
   const starts = lastWeeks(today, WEEKS, st.weekStart);
-  const [data, setData] = useState<Map<string, Map<MuscleId, WeekMuscle>> | null>(null);
-  // This week's sets and their effective reps, for the drill-down.
-  const [week, setWeek] = useState<{ sets: WorkoutSet[]; eff: (s: WorkoutSet) => number } | null>(null);
+  // The weeks per muscle, and this week's sets with their effective reps (the drill-down): one update.
+  const [state, setState] = useState<{ data: Map<string, Map<MuscleId, WeekMuscle>>; week: { sets: WorkoutSet[]; eff: (s: WorkoutSet) => number } } | null>(null);
+  const data = state?.data ?? null;
+  const week = state?.week ?? null;
   const [sel, setSel] = useState<MuscleId | null>(null);
   const ver = setsVersion.value;
   useEffect(() => {
@@ -31,8 +32,10 @@ export default function Muscles() {
     void setsBetween(starts[0], today).then(async (sets) => {
       const eff = await effectiveOf(sets);
       if (!live) return;
-      setData(weeks(sets, (id) => exById.value.get(id)?.muscles, (s) => eff(s).n, goal, st.weekStart));
-      setWeek({ sets: sets.filter((s) => s.date >= starts[WEEKS - 1]), eff: (s) => eff(s).n });
+      setState({
+        data: weeks(sets, (id) => exById.value.get(id)?.muscles, (s) => eff(s).n, goal, st.weekStart),
+        week: { sets: sets.filter((s) => s.date >= starts[WEEKS - 1]), eff: (s) => eff(s).n },
+      });
     });
     return () => {
       live = false;
@@ -59,7 +62,11 @@ export default function Muscles() {
               <h2>{t('thisWeek')}</h2>
               <BodyMap
                 status={(m) => weekStatus(thisWeek?.get(m), goal, st.mode)}
-                label={(m) => `${t(muscleKey(m))}: ${Math.round(thisWeek?.get(m)?.total ?? 0)}`}
+                label={(m) => {
+                  const k = weekStatus(thisWeek?.get(m), goal, st.mode);
+                  const word = k === 'under' ? t('mmUnder') : k === 'in' ? t('mmIn') : k === 'over' ? t('mmOver') : '';
+                  return `${t(muscleKey(m))}: ${Math.round(thisWeek?.get(m)?.total ?? 0)}${word ? `, ${word}` : ''}`;
+                }}
                 selected={sel}
                 onSelect={(m) => setSel(sel === m ? null : m)}
               />
@@ -83,7 +90,7 @@ export default function Muscles() {
                   return (
                     <li key={m} class={sel === m ? 'sel' : undefined}>
                       <button class="mu-name link" aria-pressed={sel === m} onClick={() => setSel(sel === m ? null : m)}>
-                        {t(`mu_${m}` as Key)}
+                        {t(muscleKey(m))}
                       </button>
                       <span class="mu-track">
                         <span class="mu-fill" style={{ width: `${Math.min(100, (total / scale) * 100)}%` }} />
@@ -103,15 +110,16 @@ export default function Muscles() {
                 })}
               </ul>
             </section>
-            {trained.length > 0 && <section class="card">
+            {trained.length > 0 && (
+              <section class="card">
               <h2>{t('lastWeeks', { n: WEEKS })}</h2>
               <ul class="mu-hist">
                 {trained.map((m) => {
                   const vals = starts.map((w) => data.get(w)?.get(m)?.total ?? 0);
                   const max = Math.max(1, ...vals);
                   return (
-                    <li key={m} aria-label={`${t(`mu_${m}` as Key)}: ${vals.map(Math.round).join(', ')}`}>
-                      <span class="mu-name">{t(`mu_${m}` as Key)}</span>
+                    <li key={m} aria-label={`${t(muscleKey(m))}: ${vals.map(Math.round).join(', ')}`}>
+                      <span class="mu-name">{t(muscleKey(m))}</span>
                       <span class="mu-spark">
                         {vals.map((v, i) => (
                           <span key={starts[i]} style={{ height: `${Math.max(4, (v / max) * 100)}%` }} class={v ? undefined : 'zero'} />
@@ -121,7 +129,8 @@ export default function Muscles() {
                   );
                 })}
               </ul>
-            </section>}
+              </section>
+            )}
           </>
         )}
       </div>
@@ -131,11 +140,17 @@ export default function Muscles() {
 
 /** A muscle's week: the exercises that trained it, and exercises to train it today (favourites first). */
 function Drill({ muscle, sets, eff, total }: { muscle: MuscleId; sets: WorkoutSet[]; eff: (s: WorkoutSet) => number; total: number }) {
-  const list = contributions(sets, (id) => exById.value.get(id)?.muscles, eff, muscle);
-  const used = new Set(list.map((c) => c.exerciseId));
-  const train = byShownName(exercises.value.filter((e) => e.muscles?.primary.includes(muscle) && !used.has(e.id)))
-    .sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite))
-    .slice(0, 4);
+  const lib = exercises.value;
+  const { list, train } = useMemo(() => {
+    const list = contributions(sets, (id) => exById.value.get(id)?.muscles, eff, muscle);
+    // Exercises already done this week are left out, even if they only helped as a secondary muscle:
+    // the suggestions are for something new for this muscle.
+    const used = new Set(list.map((c) => c.exerciseId));
+    const train = byShownName(lib.filter((e) => e.muscles?.primary.includes(muscle) && !used.has(e.id)))
+      .sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite))
+      .slice(0, 4);
+    return { list, train };
+  }, [muscle, sets, eff, lib]);
   return (
     <div class="drill">
       <h3>
@@ -173,4 +188,3 @@ function Drill({ muscle, sets, eff, total }: { muscle: MuscleId; sets: WorkoutSe
     </div>
   );
 }
-

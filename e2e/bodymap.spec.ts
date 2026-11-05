@@ -24,7 +24,7 @@ test('body map: muscles coloured by the week, tap for what trained it and what c
   await page.getByRole('button', { name: /Back/ }).click();
 
   await page.getByRole('button', { name: 'Muscles' }).click();
-  const chest = sheet.locator('.body-map').getByRole('button', { name: 'Chest: 24' });
+  const chest = sheet.locator('.body-map').getByRole('button', { name: 'Chest: 24, in range' });
   await expect(chest).toHaveClass(/\bin\b/); // 24 within Dorian's 20–30 for the week
   await expect(sheet.locator('.body-map').getByRole('button', { name: 'Quads: 0' })).toHaveClass(/\bnone\b/);
   await sheet.locator('.body-map').screenshot({ path: 'test-results/body-map.png' });
@@ -33,9 +33,9 @@ test('body map: muscles coloured by the week, tap for what trained it and what c
   const drill = sheet.locator('.drill');
   await expect(drill).toContainText('Chest · 24 effective reps');
   await expect(drill.locator('.entries li')).toHaveText([/Flat Barbell Bench Press\s*24/]);
-  // An untrained muscle: nothing yet, exercises to train it today.
-  // (a tap on one of the two thighs: the region's centre falls between them)
-  await sheet.locator('.body-map').getByRole('button', { name: 'Quads: 0' }).locator('ellipse').first().click();
+  // An untrained muscle: nothing yet, exercises to train it today. A tap on the region's centre — between
+  // the two thighs — still hits it (the shapes' tap area reaches past their edges).
+  await sheet.locator('.body-map').getByRole('button', { name: 'Quads: 0' }).click();
   await expect(drill).toContainText('Not trained this week.');
   await drill.getByRole('button', { name: 'Barbell Squat' }).click();
   await expect(page.getByRole('dialog', { name: 'Barbell Squat' })).toBeVisible();
