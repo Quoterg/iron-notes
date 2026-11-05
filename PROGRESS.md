@@ -11,9 +11,23 @@
 - Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes) — decides the
   native fallback.
-- Next: **M30 Iron Log bridge (backup import)**.
+- Next: **M23 Muscle body map & drill-down**.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-05 — M30 Iron Log bridge (backup import)
+
+- `lib/ironlog.ts`: reads an Iron Log backup (`format: 'iron-log-backup'`): body rows (weight 20–400 kg,
+  body fat 2–75 %, waist 30–250 cm; others dropped), the profile's energy target and a maintenance
+  estimate (Mifflin–St Jeor × activity, as Iron Log offers); `phaseOf` (< 90 % cut, > 105 % build);
+  `planBodyImport` into Body weight / Body fat / Waist (by starter name, else the first of the kind),
+  skipping dates already there; a missing measure is reported, not created.
+- Settings → Your data → "Import from Iron Log (backup)": confirm with days, dates and the suggested
+  diet phase; body entries written (`body-state.importIronLog`), body-weight cache and records refreshed,
+  diet phase set. Energy intake itself isn't imported (it would need Iron Log's food data); live sync
+  waits for M21 on both sides.
+- Checks: 239 unit tests, 37 e2e (new ironlog.spec: import, phase → Cutting, re-import adds nothing),
+  initial JS 22.0 KB, Lighthouse passes.
 
 ## 2026-11-05 — M28 Rest timer in the background & category defaults
 

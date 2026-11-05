@@ -236,6 +236,13 @@ export default function Settings() {
           </label>
         </div>
         <p class="muted small">{t('fitNotesHint')}</p>
+        <div class="actions">
+          <label class="btn file">
+            {t('importIronLog')}
+            <input type="file" accept="application/json,.json" onChange={(e) => void importIronLogFile(e.currentTarget)} />
+          </label>
+        </div>
+        <p class="muted small">{t('ironLogHint')}</p>
         <button class="btn danger wide" onClick={() => void deleteAll()}>
           {t('deleteAll')}
         </button>
@@ -288,6 +295,29 @@ async function exportCsv() {
   const [{ toCsv }, sets] = await Promise.all([import('../lib/csv'), allSets()]);
   const text = toCsv(sets, (id) => exById.value.get(id), (id) => catById.value.get(id), settings.value);
   download(`iron-notes-${isoDate(new Date())}.csv`, text, 'text/csv');
+}
+
+/** Iron Log backup → body measurements (and the diet phase its energy target suggests), after a confirm. */
+async function importIronLogFile(input: HTMLInputElement) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  const { parseIronLog, phaseOf } = await import('../lib/ironlog');
+  let data: ReturnType<typeof parseIronLog>;
+  try {
+    data = parseIronLog(JSON.parse(await file.text()));
+  } catch {
+    return toast(t('notIronLog'));
+  }
+  if (!data.body.length) return toast(t('ironLogEmpty'));
+  const dates = data.body.map((r) => r.date).sort();
+  const phase = phaseOf(data);
+  const phaseText = phase ? ' ' + t('ironLogPhase', { kcal: data.kcal!, tdee: data.maintenance!, phase: t(phase === 'cut' ? 'dietCut' : phase === 'build' ? 'dietBuild' : 'dietMaintain') }) : '';
+  if (!confirm(t('ironLogQ', { n: data.body.length, from: dates[0], to: dates[dates.length - 1] }) + phaseText)) return;
+  const { importIronLog } = await import('../body-state');
+  const res = await importIronLog(data);
+  if (phase) await saveSettings({ diet: phase });
+  toast(t('ironLogDone', { n: res.added, dup: res.skipped }) + (res.missing.length ? ' ' + t('ironLogMissing', { list: res.missing.join(', ') }) : ''));
 }
 
 async function importCsv(input: HTMLInputElement) {
