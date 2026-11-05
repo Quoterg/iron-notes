@@ -1,4 +1,5 @@
 // Create or edit an exercise: name, category, type, weight step, rest time and notes.
+import { usesPlatesByName } from '../lib/tools';
 import { LOAD_TYPES, usesBodyWeight } from '../lib/load';
 import { useEffect, useState } from 'preact/hooks';
 import { uid, isoDate } from '../lib/calc';
@@ -22,6 +23,7 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
   const [type, setType] = useState<ExerciseType>(old?.type ?? 'weight,reps');
   const [increment, setIncrement] = useState(old?.increment != null ? num(old.increment) : '');
   const [load, setLoad] = useState<LoadType>(old?.load ?? 'total');
+  const [plates, setPlates] = useState<boolean>(old?.plates ?? usesPlatesByName(old?.name ?? ''));
   const [rest, setRest] = useState(old?.rest != null ? String(old.rest) : '');
   const [repTop, setRepTop] = useState(old?.repTop != null ? String(old.repTop) : '');
   const [repBottom, setRepBottom] = useState(old?.repBottom != null ? String(old.repBottom) : '');
@@ -59,6 +61,8 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
       muscles: muscles ?? (old ? old.muscles : defaultMuscles(n)),
       increment: inc > 0 ? inc : undefined,
       load: loadedType.includes('weight') && load !== 'total' ? load : undefined,
+      // Stored only when it differs from the default for the name.
+      plates: loadedType.includes('weight') && load === 'total' && plates !== usesPlatesByName(n) ? plates : undefined,
       rest: r > 0 ? r : undefined,
       repTop: top > 0 ? Math.min(top, 100) : undefined,
       repBottom: bottom > 0 ? Math.min(bottom, 100) : undefined,
@@ -148,6 +152,12 @@ export default function ExerciseEditor({ id, categoryId, date }: { id?: string; 
               value={repBottom}
               onInput={(e) => setRepBottom(e.currentTarget.value)}
             />
+          </label>
+        )}
+        {(used ? old!.type : type).includes('weight') && load === 'total' && (
+          <label class="check">
+            <input type="checkbox" checked={plates} onChange={(e) => setPlates(e.currentTarget.checked)} />
+            {t('usesPlates')}
           </label>
         )}
         <label>

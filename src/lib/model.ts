@@ -57,6 +57,8 @@ export interface Exercise {
   joint?: boolean;
   /** What the entered weight means (lib/load.ts). Unset = total (bar or machine). */
   load?: LoadType;
+  /** Done with the bar and plates (targets can round to them). Unset = by name (barbell lifts). */
+  plates?: boolean;
   /** Rest timer length in seconds. Default: the setting. */
   rest?: number;
   /** Shown under Favourites at the top of the picker. */
@@ -179,6 +181,8 @@ export interface Settings {
   program?: { routineId: string; lastDayId?: string; weekdays?: number[] };
   /** Diet phase: a cut makes holding the weight a success (feedback). Unset = maintaining. */
   diet?: 'build' | 'maintain' | 'cut';
+  /** Round progression targets and warm-ups to the bar and plates (exercises that use them). */
+  roundPlates?: boolean;
   /** UI language; unset = the phone's (Auto). */
   lang?: 'en' | 'sv';
 }

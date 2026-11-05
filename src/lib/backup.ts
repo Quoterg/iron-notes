@@ -42,7 +42,7 @@ const validCategory = (c: Category) => isStr(c?.id) && isStr(c.name) && typeof c
 const optRep = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= 1);
 const validExercise = (e: Exercise) =>
   isStr(e?.id) && isStr(e.name) && isStr(e.categoryId) && TYPES.includes(e.type) && optStr(e.notes) && optNum(e.increment) && optNum(e.rest) && optRep(e.repTop) && optRep(e.repBottom) &&
-  (e.favorite === undefined || typeof e.favorite === 'boolean') && (e.joint === undefined || typeof e.joint === 'boolean') &&
+  (e.favorite === undefined || typeof e.favorite === 'boolean') && (e.joint === undefined || typeof e.joint === 'boolean') && (e.plates === undefined || typeof e.plates === 'boolean') &&
   (e.load === undefined || e.load === 'total' || e.load === 'perHand' || e.load === 'bodyweight' || e.load === 'assisted') &&
   (e.muscles === undefined ||
     (!!e.muscles && Array.isArray(e.muscles.primary) && Array.isArray(e.muscles.secondary) &&
@@ -93,6 +93,7 @@ export function validateBackup(b: unknown): Backup {
     if (st.light && typeof st.light.start === 'string' && DATE.test(st.light.start)) settings.light = { start: st.light.start };
     if (st.diet === 'build' || st.diet === 'maintain' || st.diet === 'cut') settings.diet = st.diet;
     if (st.lang === 'en' || st.lang === 'sv') settings.lang = st.lang;
+    if (typeof st.roundPlates === 'boolean') settings.roundPlates = st.roundPlates;
     const pr = st.program;
     if (pr && isStr(pr.routineId)) {
       const wd = Array.isArray(pr.weekdays) ? pr.weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6) : undefined;

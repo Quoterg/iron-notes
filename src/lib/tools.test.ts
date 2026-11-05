@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, snapToPlates, usesPlatesByName, warmup, weightForReps } from './tools';
+import { cleanPlates, DEFAULT_PLATES, estimate, loadStep, MAX_PLATES, percentTable, platesPerSide, snapperFor, snapToPlates, usesPlatesByName, warmup, weightForReps } from './tools';
 import { validateBackup } from './backup';
 
 describe('1RM', () => {
@@ -83,12 +83,34 @@ describe('snapping to plates', () => {
   it('a home set without small plates: steps of 10 kg', () => {
     expect(snapToPlates(92.5, 20, [20, 10, 5])).toBe(90);
     expect(snapToPlates(96, 20, [20, 10, 5])).toBe(100);
+    // A weight increase (100 → 102.5) must not round back to 100: up to the next loadable weight.
+    expect(snapToPlates(102.5, 20, [20, 10, 5])).toBe(100);
+    expect(snapToPlates(102.5, 20, [20, 10, 5], true)).toBe(110);
+    expect(snapToPlates(100, 20, [20, 10, 5], true)).toBe(100);
   });
   it('barbell lifts by name', () => {
     expect(usesPlatesByName('Flat Barbell Bench Press')).toBe(true);
     expect(usesPlatesByName('Romanian Deadlift')).toBe(true);
     expect(usesPlatesByName('Cable Pushdown')).toBe(false);
     expect(usesPlatesByName('Leg Press')).toBe(false);
+  });
+});
+
+describe('rounding targets per exercise', () => {
+  const st = { unit: 'kg' as const, roundPlates: true };
+  const bench = { name: 'Flat Barbell Bench Press', type: 'weight,reps' as const };
+  it('barbell lifts round when the setting is on; machines, dumbbells and the setting off do not', () => {
+    expect(snapperFor(bench, st)(101)).toBe(100);
+    expect(snapperFor(bench, { ...st, roundPlates: false })(101)).toBe(101);
+    expect(snapperFor({ name: 'Cable Pushdown', type: 'weight,reps' }, st)(41)).toBe(41);
+    expect(snapperFor({ ...bench, plates: false }, st)(101)).toBe(101);
+    expect(snapperFor({ name: 'Cable Row', type: 'weight,reps', plates: true }, st)(41)).toBe(40);
+    expect(snapperFor({ name: 'Dumbbell Curl', type: 'weight,reps', load: 'perHand' }, st)(13)).toBe(13);
+  });
+  it('in pounds with the user’s own plates', () => {
+    const lb = { unit: 'lb' as const, roundPlates: true, plates: { unit: 'lb' as const, bar: 45, sizes: [45, 25, 10, 5] } };
+    const kg = snapperFor(bench, lb)(100); // 220.5 lb → 225 lb
+    expect(Math.round(kg / 0.45359237)).toBe(225);
   });
 });
 

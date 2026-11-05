@@ -1,5 +1,6 @@
 // Log sets of one exercise on one day: fields for the exercise type with +/- steppers, Save/Clear
 // (Update/Delete when a set is selected), the day's sets with record marks, and last time's sets.
+import { plateConfig, platesPerSide, roundsToPlates, snapperFor } from '../lib/tools';
 import { loadOf, needsBodyWeight, usesBodyWeight, withRealLoad } from '../lib/load';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { fillEmpty, fmtTime, isoDate, oneRM, parseIso, previousWorkout, recordIds, round, uid } from '../lib/calc';
@@ -159,6 +160,9 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   // Dorian HIT: each working set against the same set last time (double progression).
   const dorian = st.mode === 'dorian' && !!ex && fieldsOf(ex.type).includes('reps');
   const stepKg = ex ? wFromUser(ex.increment ?? defaultIncrement(st.unit), st.unit) : 0;
+  // Targets and warm-ups rounded to the bar and plates (setting; barbell lifts), with the plates shown.
+  const snap = snapperFor(ex, st);
+  const showPlates = roundsToPlates(ex, st);
   const top = ex?.repTop ?? DORIAN_TOP;
   // `prev` is a new array each render: keyed on the history instead (targets change only with it).
   const light = dorian && inLight(st.light, date);
@@ -180,7 +184,9 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     if (ex?.joint && tg.why === 'up') return { ...tg, weight: tg.prev.weight ?? tg.weight, reps: undefined, why: 'joint' };
     return tg;
   };
-  const target: Target | undefined = adjust(targets[workingDone]);
+  // A weight increase rounds up (never back to the same weight); everything else to the nearest.
+  const snapT = (tg: Target | undefined): Target | undefined => (tg ? { ...tg, weight: snap(tg.weight, tg.why === 'up') } : tg);
+  const target: Target | undefined = snapT(adjust(targets[workingDone]));
   const seedOf = (tg: Target): WorkoutSet => ({ ...tg.prev, weight: tg.weight, reps: tg.reps });
   // Lyle: one target for the exercise, from the cycle week and its first set last time.
   const lyle = st.mode === 'lyle' && !!ex && fieldsOf(ex.type).includes('reps');
@@ -194,12 +200,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     // Back after a long gap: a run-up week 2 session (~92.5 % of the best) instead of pushing on.
     if (longGap && !runUp) {
       const tg = lyleTarget(2, bestForRange(counted, range.bottom, date), first, stepKg, range);
-      if (tg) return { ...tg, why: 'gap' as const };
+      if (tg) return { ...tg, weight: snap(tg.weight), why: 'gap' as const };
     }
     const tg = lyleTarget(runUp ? week : 0, runUp ? bestForRange(counted, range.bottom, cycle!.start) : 0, first, stepKg, range);
     if (tg && ex.joint && tg.why === 'up') return { ...tg, weight: tg.prev!.weight!, reps: range.top, why: 'joint' as const };
-    return tg;
-  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start, longGap, ex?.joint]);
+    return tg && { ...tg, weight: snap(tg.weight, tg.why === 'up') };
+  }, [counted, date, lyle, week, stepKg, ex?.repTop, ex?.repBottom, cycle?.start, longGap, ex?.joint, st.roundPlates, st.plates, ex?.plates]);
 
   // Readiness, asked before a muscle's first set of the day (Dorian HIT / Lyle): saved with that set.
   const [sore, setSore] = useState<number | null>(null);
@@ -300,7 +306,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
       await saveSet(s);
       // Dorian HIT: after a working set the form moves on to the next set's target (a reverse pyramid's
       // back-off set is lighter); reps after failure never carry over.
-      const next = dorian && !s.warmup ? adjust(targets[workingDone + 1]) : undefined;
+      const next = dorian && !s.warmup ? snapT(adjust(targets[workingDone + 1])) : undefined;
       if (next) setForm((f) => ({ ...f, ...toForm(seedOf(next), st), comment: f.comment, after: '' }));
       else setForm((f) => ({ ...f, after: '', rir: lyle ? '' : f.rir }));
       // In a superset: on to the next exercise; rest only after the round's last one.
@@ -436,6 +442,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
               </div>
             )}
             {lyle && !selected && cycle && week > cycle.weeks && <p class="hint small">{t('cycleDone')}</p>}
+            {showPlates && !selected && (target || lyleT) && <Plates kg={(target ?? lyleT)!.weight} st={st} />}
             {lyle && !selected && lyleT && (
               <p class="target small">
                 <strong>
@@ -482,7 +489,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
             {dorian && !selected && workingDone === 0 && (target?.weight ?? 0) > 0 && (
               <div class="chips" aria-label={t('warmupsHint')}>
                 <span class="muted small">{t('warmupsHint')}:</span>
-                {warmups(target!.weight, stepKg).map((w) => (
+                {warmups(target!.weight, stepKg).map((w) => ({ ...w, weight: snap(w.weight) })).map((w) => (
                   <button
                     key={w.reps}
                     type="button"
@@ -654,6 +661,13 @@ function Effort({ s }: { s: WorkoutSet }) {
 
 function EffBadge({ n, est }: { n: number; est: boolean }) {
   return <span class={n > 0 ? 'eff' : 'eff zero'}>{t('effShort', { n: (est ? '≈' : '') + n })}</span>;
+}
+
+/** The plates per side for a target (rounding is on for this exercise). */
+function Plates({ kg, st }: { kg: number; st: Settings }) {
+  const cfg = plateConfig(st);
+  const { plates } = platesPerSide(wToUser(kg, st.unit), cfg.bar, cfg.sizes);
+  return <p class="muted small plates-line">{t('perSide')}: {plates.length ? plates.map((p) => num(p, 2)).join(' + ') : t('barOnly')}</p>;
 }
 
 /** The sets of `d` the screen knows about: the shown day's (with every exercise), else just this one's. */

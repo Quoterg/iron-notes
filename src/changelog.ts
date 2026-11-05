@@ -4,6 +4,7 @@ import type { Key } from './lib/i18n';
 export { LATEST } from './changelog-id';
 
 export const CHANGELOG: { id: number; items: Key[] }[] = [
+  { id: 13, items: ['new_13a'] },
   { id: 12, items: ['new_12a', 'new_12b'] },
   { id: 11, items: ['new_11a'] },
   { id: 10, items: ['new_10a', 'new_10b'] },
