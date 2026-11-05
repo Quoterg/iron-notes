@@ -100,8 +100,8 @@ calculation is local, incremental and lazy (no screen waits on history).
 - [x] **M21a Sync engine** — Change log (DB v5: every write stamps `store:key` → last change, deletions as
   tombstones kept 90 days), `lib/sync.ts` as in Iron Log: summary → what the other lacks → newest wins,
   every record validated by the backup rules, device-local settings kept.
-- [ ] **M21b Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
-  no account) on top of M21a.
+- [x] **M21b Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
+  no account) on top of M21a; each device's starter library matched by name.
 
 ## Phase 3 — Gym-floor flow, deeper coaching & ecosystem polish
 

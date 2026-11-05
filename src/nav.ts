@@ -29,6 +29,8 @@ export type Screen =
   | { kind: 'analysis' }
   /** Effective reps per muscle group: this week and the last weeks. */
   | { kind: 'muscles' }
+  /** Sync with another of the user's devices (QR + direct WebRTC). */
+  | { kind: 'sync' }
   /** Ready-made programs and your own (a routine folder + training weekdays). */
   | { kind: 'programs' }
   /** Review of a Lyle cycle or the last weeks: strength, muscles, readiness, swaps. */
