@@ -1,5 +1,6 @@
 // The training log of one day: its exercises with their sets, in the order they were logged. Reorder and
 // superset modes change the cards; the tools bar that switches them is DayTools (lazy).
+import { durationOf, fmtDuration } from '../lib/summary';
 import { loadOf, volumeWeight } from '../lib/load';
 import { useMemo, useState } from 'preact/hooks';
 import { dayTotals } from '../lib/calc';
@@ -41,6 +42,7 @@ export function Log() {
     else groups.set(set.exerciseId, [set]);
   }
   // Only sets of exercises that still exist; volume counts both dumbbells and no body weight.
+  const duration = durationOf(daySets.value);
   const totals = dayTotals([...groups.values()].flat(), (x) => volumeWeight(x.weight, loadOf(exById.value.get(x.exerciseId))));
   const addExercise = () => open({ kind: 'pick', date: d });
   const copy = () => open({ kind: 'copy', date: d });
@@ -76,6 +78,7 @@ export function Log() {
           <p class="summary muted small num">
             {groups.size} {t('exercises').toLowerCase()} · {totals.sets} {t('sets')}
             {totals.volume > 0 && ` · ${weight(totals.volume, s)} ${t('volume')}`}
+            {duration != null && ` · ${fmtDuration(duration)}`}
           </p>
           <dayMuscles.Lazy />
           {grouping && <p class="muted small center">{t('pickForSuperset')}</p>}

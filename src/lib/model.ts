@@ -99,6 +99,8 @@ export interface WorkoutSet {
   deload?: true;
   /** Readiness given before the exercise's first set that day: 0 fresh, 1 a bit sore, 2 still sore. */
   sore?: number;
+  /** When it was logged as done (ms): a workout's duration runs from its first to its last set. */
+  at?: number;
 }
 
 /** A planned set of a routine (values in stored units; missing values are filled in when logging). */

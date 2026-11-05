@@ -1,10 +1,9 @@
 // The day's workout tools under the log: copy, reorder, superset, share, delete. A lazy chunk: it
 // isn't needed to show the day, so it loads right after the first paint.
-import { parseIso } from '../lib/calc';
-import { locale, t } from '../lib/i18n';
+import { t } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { open } from '../nav';
-import { date, dayComment, daySets, exById, settings, toast } from '../state';
+import { date, daySets, toast } from '../state';
 import { deleteWorkout, groupExercises } from '../workout';
 
 export interface DayToolsProps {
@@ -20,24 +19,6 @@ export interface DayToolsProps {
 
 export default function DayTools({ groups, reordering, setReordering, grouping, setGrouping, picked, setPicked }: DayToolsProps) {
   const d = date.value;
-  const ids = [...groups.keys()];
-
-  async function share() {
-    const { workoutText } = await import('../lib/share');
-    const title = parseIso(d).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const text = workoutText(title, ids.map((id) => ({ ex: exById.value.get(id)!, sets: groups.get(id)! })), settings.value, dayComment.value);
-    try {
-      if (navigator.share) return void (await navigator.share({ text }));
-    } catch {
-      return; // cancelled
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      toast(t('shared'));
-    } catch {
-      toast(t('shareFailed')); // no share sheet and no clipboard (old browser, no permission)
-    }
-  }
 
   async function remove() {
     // Every set of the day goes, including sets of exercises deleted since (hidden in the log).
@@ -86,7 +67,7 @@ export default function DayTools({ groups, reordering, setReordering, grouping, 
             {grouping ? t('done') : t('superset')}
           </button>
         )}
-        <button class="chip" onClick={() => void share()}>
+        <button class="chip" onClick={() => open({ kind: 'summary', date: d })}>
           {t('share')}
         </button>
         <button class="chip danger" onClick={() => void remove()}>

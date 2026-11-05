@@ -293,13 +293,13 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
     const comment = form.comment.trim() || undefined;
     if (selected) {
       // Editing a planned set means it was done.
-      await saveSet(selected.planned ? { ...selected, ...values, comment, planned: undefined, done: true } : { ...selected, ...values, comment });
+      await saveSet(selected.planned ? { ...selected, ...values, comment, planned: undefined, done: true, at: selected.at ?? Date.now() } : { ...selected, ...values, comment });
       setSel(null);
     } else {
       // A routine's next planned set is filled in (and done); otherwise a new set.
       const s: WorkoutSet = planned
-        ? { ...planned, ...values, comment, planned: undefined, done: true, sore: firstForMuscle && sore != null ? sore : undefined }
-        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id), sore: firstForMuscle && sore != null ? sore : undefined };
+        ? { ...planned, ...values, comment, planned: undefined, done: true, sore: firstForMuscle && sore != null ? sore : undefined, at: Date.now() }
+        : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id), sore: firstForMuscle && sore != null ? sore : undefined, at: Date.now() };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
       const withNew = withRealLoad([...all.filter((x) => x.id !== s.id), s], load, bwAt ?? (() => undefined));
       if (counted!.some((x) => x.id !== s.id) && recordIds(withNew, ex.type).has(s.id)) toast(t('newRecord'));
@@ -604,7 +604,8 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                           aria-label={`${t('setDone')} ${i + 1}`}
                           checked={!!s.done}
                           onChange={(e) => {
-                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned };
+                            // Ticked off: logged now (a workout's duration runs from its first to its last set).
+                            const next = { ...s, done: e.currentTarget.checked, planned: e.currentTarget.checked ? undefined : s.planned, at: e.currentTarget.checked ? s.at ?? Date.now() : s.at };
                             // Shown at once: the box mustn't snap back while the write is in flight (slow phones).
                             setAll((a) => a && a.map((x) => (x.id === s.id ? next : x)));
                             void saveSet(next);
