@@ -31,6 +31,8 @@ export type Screen =
   | { kind: 'muscles' }
   /** Ready-made programs and your own (a routine folder + training weekdays). */
   | { kind: 'programs' }
+  /** Review of a Lyle cycle or the last weeks: strength, muscles, readiness, swaps. */
+  | { kind: 'review' }
   /** A body measure: entries, graph. */
   | { kind: 'metric'; id: string }
   /** Copy (part of) a previous workout into `date`. */

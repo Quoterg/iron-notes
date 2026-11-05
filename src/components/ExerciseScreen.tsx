@@ -441,7 +441,14 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                     ))}
               </div>
             )}
-            {lyle && !selected && cycle && week > cycle.weeks && <p class="hint small">{t('cycleDone')}</p>}
+            {lyle && !selected && cycle && week > cycle.weeks && (
+              <div class="hint small">
+                <p>{t('cycleDone')}</p>
+                <button type="button" class="btn small" onClick={() => open({ kind: 'review' })}>
+                  {t('reviewCycle')}
+                </button>
+              </div>
+            )}
             {showPlates && !selected && (target || lyleT) && <Plates kg={(target ?? lyleT)!.weight} st={st} />}
             {lyle && !selected && lyleT && (
               <p class="target small">

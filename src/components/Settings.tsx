@@ -161,6 +161,11 @@ export default function Settings() {
         <button class="btn wide" onClick={() => open({ kind: 'programs' })}>
           {t('programs')}
         </button>
+        {s.mode !== 'standard' && (
+          <button class="btn wide" onClick={() => open({ kind: 'review' })}>
+            {t(s.mode === 'lyle' ? 'reviewCycle' : 'reviewWeeks')}
+          </button>
+        )}
         <button class="btn wide" onClick={() => open({ kind: 'muscles' })}>
           {t('muscles')}
         </button>
