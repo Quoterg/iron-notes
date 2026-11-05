@@ -32,8 +32,16 @@ export const KEY_PATH: Record<SyncStore, string> = { categories: 'id', exercises
 export const metaKey = (store: SyncStore, key: string): string => `${store}:${key}`;
 
 let lastMt = 0;
-/** A change time, strictly increasing on this device (two writes in one millisecond stay ordered). */
-const changeTime = () => (lastMt = Math.max(lastMt + 1, Date.now()));
+/**
+ * A change time, strictly increasing on this device (two writes in one millisecond stay ordered). A bulk
+ * write of N records in one millisecond runs N ms ahead — harmless (the receiving side caps times 5 min
+ * ahead), and never behind a change already seen from another device (see `sawChangeTime`).
+ */
+export const changeTime = (): number => (lastMt = Math.max(lastMt + 1, Date.now()));
+/** A change time applied from another device (possibly ahead of this clock): later local edits beat it. */
+export function sawChangeTime(mt: number): void {
+  lastMt = Math.max(lastMt, mt);
+}
 type MetaTx = { objectStore(name: 'meta'): { put(v: Meta, k: string): Promise<unknown> } };
 /** Records a change of a synced record in the same transaction (every write goes through here). */
 function stamp(tx: MetaTx, store: SyncStore, key: string, del = false): Promise<unknown> {
@@ -93,7 +101,8 @@ export function db(): Promise<IDBPDatabase<Schema>> {
               if (await tx.objectStore('kv').get('settings')) await meta.put({ mt: 1 }, metaKey('kv', 'settings'));
               continue;
             }
-            for (const key of await tx.objectStore(store).getAllKeys()) await meta.put({ mt: 1 }, metaKey(store, String(key)));
+            // Queued, not awaited one by one: a big history upgrades in one pass on an old phone.
+            await Promise.all((await tx.objectStore(store).getAllKeys()).map((key) => meta.put({ mt: 1 }, metaKey(store, String(key)))));
           }
         }
       }
@@ -420,6 +429,8 @@ export async function getComment(date: string): Promise<string> {
 export async function putComment(date: string, text: string): Promise<void> {
   const tx = (await db()).transaction(['comments', 'meta'], 'readwrite');
   const t = text.trim();
+  // An empty field over no comment changes nothing (no tombstone filling the log).
+  if (!t && !(await tx.objectStore('comments').get(date))) return void (await tx.done);
   await Promise.all([t ? tx.objectStore('comments').put({ date, text: t }) : tx.objectStore('comments').delete(date), stamp(tx, 'comments', date, !t), tx.done]);
 }
 
@@ -437,8 +448,11 @@ export async function summarizeMeta(cutoff: number): Promise<Record<string, numb
   await tx.done;
   return out;
 }
-/** The change log and the synced stores' records, for building what another device lacks. */
-export async function readForSync(stores: SyncStore[]): Promise<{ meta: Map<string, Meta>; records: Map<SyncStore, Map<string, unknown>> }> {
+/**
+ * The change log and the wanted records (by store), for building what another device lacks: each record
+ * read by key, or the whole store when most of it is wanted (a first sync).
+ */
+export async function readForSync(wanted: [SyncStore, string][]): Promise<{ meta: Map<string, Meta>; records: Map<SyncStore, Map<string, unknown>> }> {
   const tx = (await db()).transaction([...SYNC_STORES, 'meta']);
   const meta = new Map<string, Meta>();
   let cur = await tx.objectStore('meta').openCursor();
@@ -446,10 +460,17 @@ export async function readForSync(stores: SyncStore[]): Promise<{ meta: Map<stri
     meta.set(cur.key, cur.value);
     cur = await cur.continue();
   }
+  const byStore = new Map<SyncStore, string[]>();
+  for (const [store, key] of wanted) byStore.get(store)?.push(key) ?? byStore.set(store, [key]);
   const records = new Map<SyncStore, Map<string, unknown>>();
-  for (const store of stores) {
-    const all: unknown[] = store === 'kv' ? [await tx.objectStore('kv').get('settings')].filter((x) => x !== undefined) : await tx.objectStore(store).getAll();
-    records.set(store, new Map(all.map((v) => [String((v as Record<string, unknown>)[KEY_PATH[store]]), v])));
+  for (const [store, keys] of byStore) {
+    const os = tx.objectStore(store) as unknown as { get(k: string): Promise<unknown>; getAll(): Promise<unknown[]>; count(): Promise<number> };
+    if (store !== 'kv' && keys.length > (await os.count()) / 3) {
+      records.set(store, new Map((await os.getAll()).map((v) => [String((v as Record<string, unknown>)[KEY_PATH[store]]), v])));
+    } else {
+      const got = await Promise.all(keys.map((k) => os.get(k)));
+      records.set(store, new Map(keys.flatMap((k, i) => (got[i] === undefined ? [] : [[k, got[i]] as [string, unknown]]))));
+    }
   }
   await tx.done;
   return { meta, records };
@@ -464,17 +485,21 @@ export async function applySynced(
   merge: (store: SyncStore, incoming: unknown, local: unknown) => unknown,
 ): Promise<{ k: string; store: SyncStore }[]> {
   const tx = (await db()).transaction([...SYNC_STORES, 'records', 'meta'], 'readwrite');
-  const applied: { k: string; store: SyncStore }[] = [];
-  for (const c of changes) {
-    const local = (await tx.objectStore('meta').get(c.k))?.mt ?? -1;
-    if (c.mt <= local) continue;
-    const os = tx.objectStore(c.store) as unknown as { get(k: string): Promise<unknown>; put(v: unknown): Promise<unknown>; delete(k: string): Promise<void> };
-    if (c.del) await os.delete(c.key);
-    else await os.put(merge(c.store, c.v, await os.get(c.key)));
-    await tx.objectStore('meta').put(c.del ? { mt: c.mt, del: true } : { mt: c.mt }, c.k);
-    applied.push({ k: c.k, store: c.store });
+  const meta = tx.objectStore('meta');
+  // All local times at once, then the writes queued without waiting on each other (a first sync is
+  // thousands of records on a slow phone).
+  const local = await Promise.all(changes.map((c) => meta.get(c.k)));
+  const newer = changes.filter((c, i) => c.mt > (local[i]?.mt ?? -1));
+  const settingsRow = newer.some((c) => c.store === 'kv') ? await tx.objectStore('kv').get('settings') : undefined;
+  const ops: Promise<unknown>[] = [];
+  for (const c of newer) {
+    const os = tx.objectStore(c.store) as unknown as { put(v: unknown): Promise<unknown>; delete(k: string): Promise<void> };
+    ops.push(c.del ? os.delete(c.key) : os.put(c.store === 'kv' ? merge(c.store, c.v, settingsRow) : merge(c.store, c.v, undefined)));
+    ops.push(meta.put(c.del ? { mt: c.mt, del: true } : { mt: c.mt }, c.k));
+    // A change seen from a clock ahead of this one: a later edit here must still be newer.
+    sawChangeTime(c.mt);
   }
-  if (applied.some((a) => a.store === 'sets' || a.store === 'exercises')) await tx.objectStore('records').clear();
-  await tx.done;
-  return applied;
+  if (newer.some((c) => c.store === 'sets' || c.store === 'exercises')) ops.push(tx.objectStore('records').clear());
+  await Promise.all([...ops, tx.done]);
+  return newer.map((c) => ({ k: c.k, store: c.store }));
 }
