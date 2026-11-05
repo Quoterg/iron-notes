@@ -11,26 +11,17 @@
   "navigationDividerColor": "#050912",
   "navigationDividerColorDark": "#050912",
   "backgroundColor": "#050912",
-  "splashScreenFadeOutDuration": 300,
   "enableNotifications": false,
   "startUrl": "/",
   "iconUrl": "https://iron-notes.pages.dev/icon-512.png",
   "maskableIconUrl": "https://iron-notes.pages.dev/icon-maskable-512.png",
-  "webManifestUrl": "https://iron-notes.pages.dev/manifest.webmanifest",
-  "fallbackType": "customtabs",
-  "features": {},
-  "alphaDependencies": { "enabled": false },
-  "enableSiteSettingsShortcut": true,
-  "isChromeOSOnly": false,
-  "isMetaQuest": false,
-  "orientation": "portrait",
-  "fingerprints": [
-    { "name": "upload key", "value": "66:CB:16:19:44:AF:78:5A:D2:3A:4F:6B:99:DE:50:4C:03:59:76:76:27:91:81:F3:DE:03:A3:B1:82:C8:8F:BB" }
-  ],
-  "appVersionCode": 1,
-  "appVersionName": "1.0.0",
-  "signingKey": { "path": "./android.keystore", "alias": "ironnotes" },
-  "generatorApp": "bubblewrap-cli",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "ironnotes"
+  },
+  "appVersionName": "1.0.1",
+  "appVersionCode": 2,
   "shortcuts": [
     {
       "name": "Add exercise",
@@ -39,5 +30,26 @@
       "chosenIconUrl": "https://iron-notes.pages.dev/icon-192.png"
     }
   ],
-  "minSdkVersion": 24
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://iron-notes.pages.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 24,
+  "orientation": "portrait",
+  "fingerprints": [
+    {
+      "name": "upload key",
+      "value": "66:CB:16:19:44:AF:78:5A:D2:3A:4F:6B:99:DE:50:4C:03:59:76:76:27:91:81:F3:DE:03:A3:B1:82:C8:8F:BB"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "displayOverride": [],
+  "appVersion": "1.0.1"
 }
