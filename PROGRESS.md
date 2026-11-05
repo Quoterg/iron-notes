@@ -15,6 +15,39 @@
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## 2026-11-05 — M21b Device sync
+
+- `lib/pair.ts` ported from Iron Log (codes `IN1.`: compressed session descriptions; framing into ≤ 16 KB
+  parts; `runSync` in 500-change batches; WebRTC data channel `iron-notes-sync`, no STUN/TURN, no server;
+  `allowLocalAddresses`). Tests ported (pair.test.ts: codes, framing limits, batches, version, protocol abuse).
+- Sync sheet (Settings → Sync): show a code / scan a code, answer, progress, result, errors; QR drawn with
+  `uqr` 0.1.2 (lazy chunk); scanning with the browser's `BarcodeDetector` (Chrome on Android) — no
+  zxing/WASM (the CSP stays strict) — else paste the code as text. "OK" reloads to show the merged data.
+- Each device seeded its own starter library: incoming categories / exercises / measures with another id
+  but the same name (and type) become per-device aliases (kv `syncAliases`, never synced) instead of
+  duplicates; sets, routine items, body entries and exercises' categories are mapped to local ids; library
+  stores are sent first. Deleting an aliased record elsewhere never deletes the local one.
+- Sync-only database code in a lazy `lib/db-sync.ts` (initial JS 22.5 KB; db.ts keeps only the stamping).
+- Checks: 255 unit tests, 39 e2e (new sync.spec: two contexts over real WebRTC, 1 500-set history,
+  one bench press after sync; garbled/wrong-step codes refused), Lighthouse passes.
+
+## 2026-11-05 — M21a Sync engine
+
+- DB v5: `meta` store (`store:key` → `{ mt, del? }`); the upgrade gives every existing record (and the
+  settings row) change time 1, so any real edit wins and records one device lacks still travel. Every
+  write path in `db.ts` stamps its change in the same transaction (`stamp`, strictly increasing times);
+  deletions leave tombstones; backup restore and CSV import stamp what they write; "Delete all" clears the
+  log too (another device brings its data back at the next sync).
+- `lib/sync.ts` (Iron Log's protocol): `summarize` (prunes tombstones older than 90 days), `changesFor`,
+  `applyChanges` — newest wins, ties keep the local copy, incoming times capped 5 min ahead, every record
+  through `SYNC_VALIDATORS` (the backup rules; `cleanSettings` factored out of `validateBackup`) and keyed
+  correctly, else the whole batch is refused; unknown stores from a newer version skipped. Settings sync
+  except device-local `lang`, `gymEnglish`, `keepScreenOn`, `restNotify`. Records cache cleared when sets
+  or exercises change.
+- Tests: two simulated devices (fresh modules + own IndexedDB): union, newer edit wins, deletions, settings,
+  invalid/mis-keyed refused, clock cap, a real v4 database upgraded and synced.
+- Checks: 245 unit tests, 37 e2e, initial JS 22.4 KB (+0.3: stamping in db.ts). Next: M21b pairing + UI.
+
 ## 2026-11-05 — M26 Session duration & workout summary
 
 - Sets get `at` (ms) when logged as done (new set, planned set filled in, ticked); copies and imports

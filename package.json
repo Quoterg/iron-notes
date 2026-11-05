@@ -19,7 +19,8 @@
   "dependencies": {
     "@preact/signals": "1",
     "idb": "8",
-    "preact": "10"
+    "preact": "10",
+    "uqr": "0.1.2"
   },
   "devDependencies": {
     "@lhci/cli": "0.15.1",

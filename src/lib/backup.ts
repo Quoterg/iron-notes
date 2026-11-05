@@ -1,5 +1,5 @@
 // Backup export, validation and restore. Only Settings uses it: kept out of the first-paint bundle.
-import { db, getSettings } from './db';
+import { changeTime, db, getSettings, metaKey, type SyncStore } from './db';
 import { MUSCLES, normalizeMuscles } from './muscles';
 import { cleanPlates } from './tools';
 import { DEFAULT_SETTINGS, TYPES, type BodyEntry, type BodyMetric, type Category, type Routine, type DayComment, type Exercise, type Settings, type WorkoutSet } from './model';
@@ -65,20 +65,8 @@ const validEntry = (e: BodyEntry) =>
   isStr(e?.id) && isStr(e.metricId) && typeof e.date === 'string' && DATE.test(e.date) && isNum(e.value) && isNum(e.at);
 const validComment = (c: DayComment) => typeof c?.date === 'string' && DATE.test(c.date) && typeof c.text === 'string';
 
-/** Checks a parsed backup file row by row. Throws on anything malformed: nothing is imported then. */
-export function validateBackup(b: unknown): Backup {
-  const x = b as Partial<Backup> | null;
-  if (!x || typeof x !== 'object' || x.app !== 'iron-notes') throw new Error('Not an Iron Notes backup');
-  if (x.version !== 1) throw new Error(`Unsupported backup version ${String(x.version)}`);
-  if (!Array.isArray(x.categories) || !x.categories.every(validCategory)) throw new Error('Invalid categories');
-  if (!Array.isArray(x.exercises) || !x.exercises.every(validExercise)) throw new Error('Invalid exercises');
-  if (!Array.isArray(x.sets) || !x.sets.every(validSet)) throw new Error('Invalid sets');
-  if (x.comments !== undefined && (!Array.isArray(x.comments) || !x.comments.every(validComment))) throw new Error('Invalid comments');
-  if (x.routines !== undefined && (!Array.isArray(x.routines) || !x.routines.every(validRoutine))) throw new Error('Invalid routines');
-  if (x.metrics !== undefined && (!Array.isArray(x.metrics) || !x.metrics.every(validMetric))) throw new Error('Invalid body measures');
-  if (x.body !== undefined && (!Array.isArray(x.body) || !x.body.every(validEntry))) throw new Error('Invalid body entries');
-  const st = x.settings as Partial<Settings> | undefined;
-  if (st !== undefined && (typeof st !== 'object' || st === null)) throw new Error('Invalid settings');
+/** Settings from a backup or another device: known keys with valid values only, the rest defaults. */
+export function cleanSettings(st: Partial<Settings> | undefined): Settings {
   const settings: Settings = { ...DEFAULT_SETTINGS };
   if (st) {
     if (st.mode === 'standard' || st.mode === 'dorian' || st.mode === 'lyle') settings.mode = st.mode;
@@ -106,6 +94,24 @@ export function validateBackup(b: unknown): Backup {
     const clean = p && (p.unit === 'kg' || p.unit === 'lb') && Array.isArray(p.sizes) && p.sizes.every(isNum) ? cleanPlates(p.bar, p.sizes) : null;
     if (p && clean) settings.plates = { unit: p.unit, ...clean };
   }
+  return settings;
+}
+
+/** Checks a parsed backup file row by row. Throws on anything malformed: nothing is imported then. */
+export function validateBackup(b: unknown): Backup {
+  const x = b as Partial<Backup> | null;
+  if (!x || typeof x !== 'object' || x.app !== 'iron-notes') throw new Error('Not an Iron Notes backup');
+  if (x.version !== 1) throw new Error(`Unsupported backup version ${String(x.version)}`);
+  if (!Array.isArray(x.categories) || !x.categories.every(validCategory)) throw new Error('Invalid categories');
+  if (!Array.isArray(x.exercises) || !x.exercises.every(validExercise)) throw new Error('Invalid exercises');
+  if (!Array.isArray(x.sets) || !x.sets.every(validSet)) throw new Error('Invalid sets');
+  if (x.comments !== undefined && (!Array.isArray(x.comments) || !x.comments.every(validComment))) throw new Error('Invalid comments');
+  if (x.routines !== undefined && (!Array.isArray(x.routines) || !x.routines.every(validRoutine))) throw new Error('Invalid routines');
+  if (x.metrics !== undefined && (!Array.isArray(x.metrics) || !x.metrics.every(validMetric))) throw new Error('Invalid body measures');
+  if (x.body !== undefined && (!Array.isArray(x.body) || !x.body.every(validEntry))) throw new Error('Invalid body entries');
+  const st = x.settings as Partial<Settings> | undefined;
+  if (st !== undefined && (typeof st !== 'object' || st === null)) throw new Error('Invalid settings');
+  const settings = cleanSettings(st);
   // Muscles normalised (primary wins, no repeats, canonical order): effective reps must not double count.
   const exercises = x.exercises.map((e) => (e.muscles ? { ...e, muscles: normalizeMuscles(e.muscles) } : e));
   return { app: 'iron-notes', version: 1, exported: String(x.exported ?? ''), categories: x.categories, exercises, sets: x.sets, comments: x.comments ?? [], settings, routines: x.routines ?? [], metrics: x.metrics ?? [],
@@ -119,7 +125,7 @@ export async function importAll(b: unknown): Promise<void> {
   const x = validateBackup(b);
   const d = await db();
   // `records` is a cache of the sets: cleared, refilled lazily.
-  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines', 'metrics', 'body'] as const;
+  const stores = ['categories', 'exercises', 'sets', 'comments', 'kv', 'records', 'routines', 'metrics', 'body', 'meta'] as const;
   const tx = d.transaction(stores, 'readwrite');
   await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
   const ops: Promise<unknown>[] = [];
@@ -135,5 +141,44 @@ export async function importAll(b: unknown): Promise<void> {
   ops.push(tx.objectStore('kv').put({ key: 'seeded', value: true }));
   // A backup with measures (even none) replaces the starter set; an older one without them keeps it coming.
   if (hasMetrics) ops.push(tx.objectStore('kv').put({ key: 'bodySeeded', value: true }));
+  // Device sync: the restored data is this device's newest (records only another device has come back
+  // at the next sync; nothing here deletes them there).
+  const meta = tx.objectStore('meta');
+  const stamp = (store: SyncStore, key: string) => ops.push(meta.put({ mt: changeTime() }, metaKey(store, key)));
+  for (const c of x.categories) stamp('categories', c.id);
+  for (const e of x.exercises) stamp('exercises', e.id);
+  for (const st of x.sets) stamp('sets', st.id);
+  for (const c of x.comments) stamp('comments', c.date);
+  for (const r of x.routines) stamp('routines', r.id);
+  for (const m of x.metrics) stamp('metrics', m.id);
+  for (const e of x.body) stamp('body', e.id);
+  stamp('kv', 'settings');
   await Promise.all([...ops, tx.done]);
 }
+
+/**
+ * Per synced store: the record as it may be stored, or a throw. Used by device sync (lib/sync.ts): a
+ * record from another device passes the same rules as a backup row.
+ */
+export const SYNC_VALIDATORS: Record<SyncStore, (v: unknown) => unknown> = {
+  categories: (v) => ok(validCategory(v as Category), v),
+  exercises: (v) => {
+    const e = ok(validExercise(v as Exercise), v) as Exercise;
+    return e.muscles ? { ...e, muscles: normalizeMuscles(e.muscles) } : e;
+  },
+  sets: (v) => ok(validSet(v as WorkoutSet), v),
+  comments: (v) => ok(validComment(v as DayComment), v),
+  routines: (v) => ok(validRoutine(v as Routine), v),
+  metrics: (v) => ok(validMetric(v as BodyMetric), v),
+  body: (v) => ok(validEntry(v as BodyEntry), v),
+  kv: (v) => {
+    const r = v as { key?: unknown; value?: unknown } | null;
+    if (!r || r.key !== 'settings' || typeof r.value !== 'object' || r.value === null) throw new Error('invalid');
+    return { key: 'settings', value: cleanSettings(r.value as Partial<Settings>) };
+  },
+};
+function ok(valid: boolean, v: unknown): unknown {
+  if (!valid) throw new Error('invalid');
+  return v;
+}
+

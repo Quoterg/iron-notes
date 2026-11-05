@@ -214,6 +214,14 @@ export default function Settings() {
       </section>
 
       <section class="card">
+        <h2>{t('syncTitle')}</h2>
+        <p class="muted small">{t('syncCardIntro')}</p>
+        <button class="btn wide" onClick={() => open({ kind: 'sync' })}>
+          {t('syncStart')}
+        </button>
+      </section>
+
+      <section class="card">
         <h2>{t('yourData')}</h2>
         <p class="muted small">{t('storedOnDevice')}</p>
         <Persistence />
