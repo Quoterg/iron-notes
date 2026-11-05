@@ -99,3 +99,44 @@ calculation is local, incremental and lazy (no screen waits on history).
   makes a program from saved workouts and a weekly schedule.
 - [ ] **M21 Device sync** — Device-to-device sync like Iron Log (QR + direct encrypted WebRTC, no server,
   no account).
+
+## Phase 3 — Gym-floor flow, deeper coaching & ecosystem polish
+
+Every milestone stays strictly within the performance budget (initial JS ≤ 30 KB gzip, CSS ≤ 8 KB
+gzip): lazy screens, pure tested helpers in `src/lib/*.ts`, zero external UI/chart dependencies.
+
+- [ ] **M22 Fast gym flow** — Tap any set in "Last time" to copy its values into the logging form (with
+  logged effort shown on last time's sets; Lyle mode never prefills RIR). Search exercises in the
+  picker by primary/secondary muscle group and category in English and Swedish (ranked: name →
+  primary/category → secondary). Opening Calculators from an exercise prefills `reps` alongside
+  `weight`; tapping an exercise under Statistics "Most trained exercises" opens its Exercise screen.
+- [ ] **M23 Muscle body map & drill-down** — Lightweight hand-written SVG front/back anatomy diagram on
+  the Muscles screen, coloured by this week's effective-rep status (under / in range / over /
+  untrained). Tap any muscle bar or region to see which exercises contributed this week and pick an
+  exercise targeting an under-trained muscle in one tap.
+- [ ] **M24 Plate badges & loadable targets** — Optional "Round targets to my plates" setting:
+  progression targets (Dorian, Lyle run-up/push, lighter week) and warm-up chips snap to the closest
+  weight loadable with the user's configured bar and plate set (`settings.plates`), with compact
+  per-side plate breakdown shown right under the target on the logging screen.
+- [ ] **M25 Unilateral & bodyweight+load exercises** — Per-exercise load mode (`barbell / total`,
+  `dumbbell / per hand`, `bodyweight + load`, `assisted`): volume and 1RM/effective-rep calculations
+  account for per-hand weight (`× 2` for total volume) or body weight (latest weight from Body tracker
+  ± added/assisted load) while keeping set entry natural.
+- [ ] **M26 Session duration & workout summary card** — Track workout span from the first to the last
+  logged set of the day; show duration, total effective reps, PR count and muscle-goal hits in a
+  compact shareable workout summary (plain text + clean self-contained SVG summary image).
+- [ ] **M27 Mesocycle & block review** — When a Lyle cycle or 4–8 week training block finishes, show a
+  Cycle Review sheet: starting vs ending e1RM per exercise, average weekly effective reps per muscle,
+  readiness/soreness history, and one-tap swap suggestions for exercises that stalled or flagged joint
+  pain before starting the next cycle.
+- [ ] **M28 Rest timer notifications & category defaults** — Service Worker / Web Notification alert
+  when the rest timer finishes while the screen is locked or the app is in the background, plus
+  optional per-category default rest times (e.g. longer for compounds/legs, shorter for arms/abs).
+- [ ] **M29 Swedish starter library & locale number formatting** — Stable exercise keys so starter
+  exercises and categories can show Swedish names (or gym English by toggle) without breaking program
+  templates or FitNotes imports; display-only decimal comma (`82,5 kg`) in Swedish while keeping `.`
+  in CSV exports and inputs.
+- [ ] **M30 Iron Log nutrition bridge** — Optional one-tap import/sync of body weight and energy/trend
+  data from a sister Iron Log backup or sync link, automatically driving Iron Notes' diet phase
+  (`Building` / `Maintaining` / `Cutting`) and recovery feedback.
+
