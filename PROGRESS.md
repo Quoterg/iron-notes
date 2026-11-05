@@ -41,8 +41,9 @@
 - Editor: Load select (for weight types, and reps-only exercises → body weight/assisted adds the weight
   field). Backups validate `load`. Body entries reset the body-weight cache. Body-weight routines keep
   3 × 10 as their default plan.
-- Known limit: stored records of body-weight exercises are refreshed on that exercise's next write, not
-  when a body weight is added later.
+- Records of body-weight exercises are re-ranked after the migration and rebuilt after any weigh-in.
+- CSV (FitNotes format) has no load column: export writes the typed weight and import reads it as total,
+  so per-hand and body-weight work round-trips as typed but with a total load type (backups keep it).
 - Checks: 212 unit tests, 32 e2e (new load.spec), initial JS 21.4 KB (+0.8: load helpers the day log
   needs, set text, migration hook, body-weight cache), Lighthouse passes.
 

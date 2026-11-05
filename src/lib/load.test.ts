@@ -28,6 +28,7 @@ describe('real load and volume', () => {
     expect(realLoad(20, 'bodyweight', 80)).toBe(100);
     expect(realLoad(undefined, 'bodyweight', 80)).toBe(80); // old reps-only sets: + 0 kg
     expect(realLoad(20, 'bodyweight', undefined)).toBe(20);
+    expect(realLoad(undefined, 'bodyweight', undefined)).toBe(0); // body weight alone, no weigh-in: ranked by reps
     expect(volumeWeight(20, 'bodyweight')).toBe(20); // body weight isn't external load
   });
   it('assisted: body weight minus the assistance; unknown without a body weight; no volume', () => {

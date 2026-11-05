@@ -53,7 +53,9 @@ export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType, sorte
   if (type === 'weight,reps') {
     const best = new Map<number, WorkoutSet>();
     for (const s of chrono) {
-      if (s.planned || s.warmup || !(s.weight! > 0) || !(s.reps! > 0)) continue;
+      // 0 kg counts only on a load-mapped copy (body weight alone before any weigh-in: ranked by reps).
+      const zeroOk = (s as { vol?: number }).vol !== undefined;
+      if (s.planned || s.warmup || !(s.reps! > 0) || !(s.weight! > 0 || (zeroOk && s.weight === 0))) continue;
       const b = best.get(s.reps!);
       if (!b || s.weight! > b.weight!) best.set(s.reps!, s);
     }

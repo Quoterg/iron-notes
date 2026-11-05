@@ -162,7 +162,8 @@ export async function putLoadsIfMissing(list: Exercise[]): Promise<Exercise[]> {
   for (const e of list) {
     const cur = await tx.store.get(e.id);
     if (cur && cur.load == null && e.load) {
-      const next = { ...cur, load: e.load, type: e.type };
+      // Only a reps-only or weight-and-reps type is converted; anything else (changed elsewhere) stays.
+      const next = { ...cur, load: e.load, type: cur.type === 'reps' || cur.type === 'weight,reps' ? e.type : cur.type };
       await tx.store.put(next);
       written.push(next);
     }

@@ -144,12 +144,14 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
   const counted = useMemo(() => all?.filter(isDone) ?? null, [all]);
   // Body weight by date, read only for body-weight load types (one read, cached until an entry changes).
   const load = loadOf(ex);
-  const [bwAt, setBwAt] = useState<(d: string) => number | undefined>(() => () => undefined);
+  const [bwAt, setBwAt] = useState<((d: string) => number | undefined) | null>(() => (usesBodyWeight(load) ? null : () => undefined));
   useEffect(() => {
     if (usesBodyWeight(load)) void bodyWeights().then((f) => setBwAt(() => f));
+    else setBwAt(() => () => undefined);
   }, [load]);
-  /** Calculations' view of the history: real load (body weight ±) and volume weight; never saved. */
-  const real = useMemo(() => (counted ? withRealLoad(counted, load, bwAt) : null), [counted, load, bwAt]);
+  /** Calculations' view of the history: real load (body weight ±) and volume weight; never saved. Held
+   *  back until the body weight is read, so no numbers without it flash on a slow phone. */
+  const real = useMemo(() => (counted && bwAt ? withRealLoad(counted, load, bwAt) : null), [counted, load, bwAt]);
   // "Last time" means sets actually done.
   const prev = counted ? previousWorkout(counted, date) : [];
   /** The next planned set of a routine logged today: Save fills it in. */
@@ -293,7 +295,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
         ? { ...planned, ...values, comment, planned: undefined, done: true, sore: firstForMuscle && sore != null ? sore : undefined }
         : { id: uid(), date, exerciseId: id, order: nextOrder(), ...values, comment, done: st.markDone ? true : undefined, group: groupOf(daySetsFor(date), id), sore: firstForMuscle && sore != null ? sore : undefined };
       // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
-      const withNew = withRealLoad([...all.filter((x) => x.id !== s.id), s], load, bwAt);
+      const withNew = withRealLoad([...all.filter((x) => x.id !== s.id), s], load, bwAt ?? (() => undefined));
       if (counted!.some((x) => x.id !== s.id) && recordIds(withNew, ex.type).has(s.id)) toast(t('newRecord'));
       await saveSet(s);
       // Dorian HIT: after a working set the form moves on to the next set's target (a reverse pyramid's
@@ -416,7 +418,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
               </div>
             )}
             {(dorian || lyle) && !selected && real && <Feedback ex={ex} date={date} counted={real} />}
-            {needsBodyWeight(load, bwAt, date) && <p class="hint small">{t('needBodyWeight')}</p>}
+            {bwAt && needsBodyWeight(load, bwAt, date) && <p class="hint small">{t('needBodyWeight')}</p>}
             {(dorian || lyle) && (
               <div class="chips">
                 <button type="button" class={ex.joint ? 'chip on' : 'chip'} aria-pressed={!!ex.joint} onClick={() => void saveExercise({ ...ex, joint: ex.joint ? undefined : true })}>

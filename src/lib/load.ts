@@ -34,7 +34,7 @@ export function bodyWeightAt(entries: readonly BodyEntry[]): (date: string) => n
  * load) or nothing (assisted).
  */
 export function realLoad(weight: number | undefined, t: LoadType, bw: number | undefined): number | undefined {
-  if (t === 'bodyweight') return bw != null ? bw + (weight ?? 0) : weight;
+  if (t === 'bodyweight') return (bw ?? 0) + (weight ?? 0); // no weigh-in: the added load (0 for body weight alone)
   if (t === 'assisted') return bw != null ? Math.max(0, bw - (weight ?? 0)) : undefined;
   return weight;
 }
