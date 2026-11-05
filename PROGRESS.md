@@ -15,6 +15,17 @@
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## 2026-11-05 — M26 Session duration & workout summary
+
+- Sets get `at` (ms) when logged as done (new set, planned set filled in, ticked); copies and imports
+  carry none. `lib/summary.ts`: duration from the first to the last `at`, `fmtDuration`, `summaryOf`
+  (sets, volume, effective reps, records of the day, muscles whose main session met the goal).
+- Day log summary line: "· 52 min". Day tools → Share opens the Workout summary sheet: stats, goals met,
+  exercises (best set); "Share as text" (share sheet, else clipboard) and "Share as image": a 1080 × 1350
+  PNG drawn on a canvas with the theme's colours (share sheet with files, else a download). Canvas, not
+  SVG: no `blob:`/`data:` in `img-src` needed, and PNG shares in every messenger.
+- Checks: 242 unit tests, 38 e2e (new summary.spec), initial JS 22.3 KB, Lighthouse passes.
+
 ## 2026-11-05 — M23 Muscle body map & drill-down
 
 - `BodyMap.tsx`: hand-drawn SVG, front and back (ellipses/rects, theme colours, no images); each muscle a

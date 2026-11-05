@@ -140,5 +140,6 @@ sync last (it has to carry every field the milestones before it add).
 - [x] **M23 Muscle body map & drill-down** — Hand-written SVG front/back figure on the Muscles screen,
   coloured by this week's effective-rep status; tap a region or bar for the exercises that contributed,
   and pick an exercise for an under-trained muscle in one tap.
-- [ ] **M26 Session duration & workout summary** — Workout span from the first to the last set; duration,
-  effective reps, PRs and muscle-goal hits in a shareable summary (text + self-contained SVG).
+- [x] **M26 Session duration & workout summary** — Workout span from the first to the last set; duration,
+  effective reps, PRs and muscle-goal hits in a shareable summary (text + an image drawn on a canvas — PNG
+  shares everywhere and needs no wider CSP than `img-src 'self'`).
