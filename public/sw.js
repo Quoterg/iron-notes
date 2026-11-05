@@ -44,6 +44,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
+  // Back in the foreground (an installed app is resumed, not reloaded): look for a newer app page now;
+  // a new one is stored with its assets and the app offers the restart, as at a start.
+  if (event.data?.type === 'check') {
+    event.waitUntil(checkForUpdate().catch(() => {}));
+    return;
+  }
   // The app asks once it listens (a message sent before that would be lost).
   if (event.data?.type !== 'update?') return;
   event.waitUntil(
@@ -116,6 +122,16 @@ async function storeAppPage(cache, res, oldText, atInstall = false) {
   await cache.put(UPDATE_MARK, new Response('1'));
   for (const c of await self.clients.matchAll({ type: 'window' })) c.postMessage({ type: 'update-ready' });
   return true;
+}
+
+/** Fetches the app page and stores it if it's new (storeAppPage tells the app). */
+async function checkForUpdate() {
+  const cache = await caches.open(CACHE);
+  const hit = await cache.match(SCOPE, ANY);
+  if (!hit) return;
+  const oldText = await hit.text();
+  const res = await fetch(SCOPE, { cache: 'no-cache' });
+  if (isHtml(res)) await storeAppPage(cache, res, oldText);
 }
 
 async function appPageCacheFirst(event, req) {

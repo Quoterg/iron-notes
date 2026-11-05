@@ -9,6 +9,9 @@ import { applyLang, detectLang, lastLang, setLang, t } from './lib/i18n';
 import { date, loadDay, loadLibrary, loadSettings, settings, updateReady } from './state';
 import './styles.css';
 
+/** How often coming back to the app looks for a new version. */
+const UPDATE_CHECK_MS = 30 * 60 * 1000;
+
 async function start() {
   initNav();
   // An older version open in another tab blocks a database upgrade, and with it the first render: a
@@ -39,8 +42,16 @@ async function start() {
   void showWhatsNew();
   // Back in the foreground on a new day: show today.
   let shownToday = isoDate(new Date());
+  let checked = Date.now();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
+    // An installed app is resumed, not reloaded: look for a new version now and then (the bar offers
+    // the restart, as at a start). The worker checks the page; the browser its own script.
+    if (Date.now() - checked > UPDATE_CHECK_MS && 'serviceWorker' in navigator) {
+      checked = Date.now();
+      navigator.serviceWorker.controller?.postMessage({ type: 'check' });
+      void navigator.serviceWorker.getRegistration().then((r) => r?.update().catch(() => {}));
+    }
     const today = isoDate(new Date());
     if (today !== shownToday && date.value === shownToday) void loadDay(today);
     shownToday = today;
