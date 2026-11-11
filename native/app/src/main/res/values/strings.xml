@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Iron Notes Next</string>
-    <string name="preview_title">Native preview</string>
-    <string name="preview_body">This is the native Android version of Iron Notes, being built. Keep logging in the current app — your data stays there until you move it.</string>
-    <string name="preview_core">Rust core %1$s · 100 kg × 8 ≈ %2$s kg 1RM</string>
 </resources>

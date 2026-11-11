@@ -4,7 +4,7 @@
 use std::sync::Mutex;
 
 use crate::model::{BodyMetric, BodyMetricEntry, Category, Exercise, Routine, Settings, WorkoutSet};
-use crate::seed;
+use crate::{load, records, seed};
 use crate::store::{Store, StoreError};
 
 #[derive(Debug, uniffi::Error)]
@@ -37,12 +37,27 @@ impl From<StoreError> for CoreError {
 
 type R<T> = Result<T, CoreError>;
 
-/// The library and the day's sets in one call (the day log's first paint).
+/// A day's log in one call (the day log's first paint).
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct DayData {
     pub date: String,
     pub sets: Vec<WorkoutSet>,
     pub comment: Option<String>,
+    /// Ids of the day's sets that are personal records (rep-max rule, real load — as the web's trophies).
+    pub records: Vec<String>,
+}
+
+/// What the logging screen of one exercise on one day needs.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct ExerciseLog {
+    pub exercise_id: String,
+    pub date: String,
+    /// The exercise's sets on that day, in order.
+    pub sets: Vec<WorkoutSet>,
+    /// The last earlier day's sets ("last time"; planned sets left out).
+    pub previous: Vec<WorkoutSet>,
+    /// Ids of the exercise's record sets over its whole history.
+    pub records: Vec<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -110,7 +125,41 @@ impl IronCore {
 
     // ---- Sets ----
     pub fn day(&self, date: String) -> R<DayData> {
-        self.with(|s| Ok(DayData { sets: s.sets_on(&date)?, comment: s.comment(&date)?, date }))
+        self.with(|s| {
+            let sets = s.sets_on(&date)?;
+            let mut records = Vec::new();
+            let mut seen: Vec<&str> = Vec::new();
+            let exercises = s.exercises()?;
+            for set in &sets {
+                if seen.contains(&set.exercise_id.as_str()) {
+                    continue;
+                }
+                seen.push(&set.exercise_id);
+                if let Some(ex) = exercises.iter().find(|e| e.id == set.exercise_id) {
+                    let ids = records_of(s, ex)?;
+                    records.extend(sets.iter().filter(|x| x.exercise_id == ex.id && ids.contains(&x.id)).map(|x| x.id.clone()));
+                }
+            }
+            Ok(DayData { comment: s.comment(&date)?, sets, records, date })
+        })
+    }
+    /// One exercise's logging screen for a day: its sets, last time, records.
+    pub fn exercise_log(&self, exercise_id: String, date: String) -> R<ExerciseLog> {
+        self.with(|s| {
+            let all = s.sets_of(&exercise_id)?;
+            let records = match s.exercises()?.into_iter().find(|e| e.id == exercise_id) {
+                Some(ex) => records_of(s, &ex)?,
+                None => Vec::new(),
+            };
+            let done: Vec<WorkoutSet> = all.iter().filter(|x| !x.is_planned()).cloned().collect();
+            Ok(ExerciseLog {
+                sets: all.iter().filter(|x| x.date == date).cloned().collect(),
+                previous: records::previous_workout(&done, &date),
+                records,
+                exercise_id,
+                date,
+            })
+        })
     }
     /// Every set of an exercise, by date and order (history, records, targets).
     pub fn sets_of(&self, exercise_id: String) -> R<Vec<WorkoutSet>> {
@@ -185,6 +234,35 @@ pub fn new_id() -> String {
     seed::uid()
 }
 
+static LAST_ORDER: Mutex<f64> = Mutex::new(0.0);
+
+/// A unique, increasing order key for a new set (state.ts `nextOrder`: ms time, made unique).
+#[uniffi::export]
+pub fn next_order() -> f64 {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as f64).unwrap_or(0.0);
+    let mut last = LAST_ORDER.lock().unwrap_or_else(|p| p.into_inner());
+    *last = (*last + 1.0).max(now);
+    *last
+}
+
+/// An exercise's record set ids over its whole history, by the real load (state.ts `refreshRecords` with
+/// `loadedSetsOf`: body-weight exercises count the body weight of the day — the first weight measure).
+fn records_of(s: &Store, ex: &Exercise) -> Result<Vec<String>, StoreError> {
+    let sets = s.sets_of(&ex.id)?;
+    let t = load::load_of(Some(ex));
+    if t == crate::model::LoadType::Total {
+        return Ok(records::record_ids(&sets, ex.kind, true));
+    }
+    let mut weights: Vec<BodyMetric> = s.metrics()?.into_iter().filter(|m| m.kind == crate::model::BodyKind::Weight).collect();
+    weights.sort_by(|a, b| a.order.partial_cmp(&b.order).unwrap_or(std::cmp::Ordering::Equal));
+    let entries = match weights.first() {
+        Some(m) => s.body_of(&m.id)?,
+        None => Vec::new(),
+    };
+    let bw = load::body_weight_at(&entries);
+    Ok(records::record_ids_loaded(&load::with_real_load(&sets, t, |d| bw.at(d)), ex.kind, true))
+}
+
 fn seed_if_new(store: &Store) -> Result<(), StoreError> {
     if !store.is_seeded()? {
         if store.categories()?.is_empty() {
@@ -228,6 +306,36 @@ mod tests {
         }
         core.with(|s| seed_if_new(s)).unwrap();
         assert!(core.library().unwrap().exercises.is_empty());
+    }
+
+    #[test]
+    fn day_records_and_exercise_log() {
+        let core = IronCore::in_memory().unwrap();
+        let lib = core.library().unwrap();
+        let bench = lib.exercises.iter().find(|e| e.name == "Flat Barbell Bench Press").unwrap().id.clone();
+        let pull = lib.exercises.iter().find(|e| e.name == "Pull Up").unwrap();
+        assert_eq!(pull.load, Some(crate::model::LoadType::Bodyweight));
+        let set = |id: &str, ex: &str, date: &str, w: f64, r: f64| WorkoutSet {
+            id: id.into(), date: date.into(), exercise_id: ex.into(), order: next_order(), weight: Some(w), reps: Some(r), ..Default::default()
+        };
+        core.put_sets(vec![
+            set("a", &bench, "2026-11-10", 100.0, 5.0),
+            set("b", &bench, "2026-11-12", 90.0, 5.0),  // lighter for the same reps: no record
+            set("c", &bench, "2026-11-12", 80.0, 12.0), // a new rep count: record
+            set("p1", &pull.id, "2026-11-10", 0.0, 10.0),
+            set("p2", &pull.id, "2026-11-12", 0.0, 10.0), // same reps, but heavier body weight that day
+        ]).unwrap();
+        let w = core.metrics().unwrap().into_iter().find(|m| m.kind == crate::model::BodyKind::Weight).unwrap();
+        core.put_entry(BodyMetricEntry { id: "w1".into(), metric_id: w.id.clone(), date: "2026-11-10".into(), value: 80.0, at: 1.0 }).unwrap();
+        core.put_entry(BodyMetricEntry { id: "w2".into(), metric_id: w.id, date: "2026-11-12".into(), value: 81.0, at: 2.0 }).unwrap();
+        let day = core.day("2026-11-12".into()).unwrap();
+        assert_eq!(day.records, vec!["c".to_string(), "p2".to_string()]);
+        let log = core.exercise_log(bench.clone(), "2026-11-12".into()).unwrap();
+        assert_eq!(log.sets.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["b", "c"]);
+        assert_eq!(log.previous.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["a"]);
+        assert!(log.records.contains(&"a".to_string()) && !log.records.contains(&"b".to_string()));
+        let (a, b) = (next_order(), next_order());
+        assert!(b > a);
     }
 
     #[test]
