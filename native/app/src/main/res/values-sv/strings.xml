@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Iron Notes Next</string>
+    <string name="preview_title">Förhandsversion</string>
+    <string name="preview_body">Det här är Iron Notes som Android-app, under arbete. Fortsätt logga i den nuvarande appen — dina data stannar där tills du flyttar dem.</string>
+</resources>
