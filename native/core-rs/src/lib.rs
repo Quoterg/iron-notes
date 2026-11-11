@@ -26,6 +26,9 @@ pub mod backup;
 pub mod seed;
 pub mod store;
 
+// What the apps call (UniFFI)
+pub mod api;
+
 uniffi::setup_scaffolding!();
 
 /// The core's version, shown in the app to prove the bridge works.

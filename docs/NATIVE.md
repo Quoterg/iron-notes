@@ -136,8 +136,9 @@ PR that touches `native/`.
 - [x] **N1b Logic port** — records, effective reps, targets (Dorian, Lyle run-up/push, lighter week),
   volume and goals, cycles, feedback, plates, load types; golden fixtures from the TypeScript tests
   (src/lib/golden-*.test.ts → native/core-rs/tests/golden/, ~7,600 cases).
-- [ ] **N2 Storage & backup (Rust)** — SQLite schema (rusqlite, bundled, WAL), the web backup JSON in
-  and out (round-trip tested with a real web backup), starter library.
+- [x] **N2 Storage & backup (Rust)** — SQLite schema (rusqlite, bundled, WAL), the web backup JSON in
+  and out (round-trip tested with a real web backup), starter library. Also: the `IronCore` UniFFI object,
+  web strings generated into assets/strings.json. APKs 2.6–3.1 MB per CPU type.
 - [ ] **N3 Day log & logging** — the main screen: days, swipe, add exercise, log sets for all types,
   steppers, records toast, comments; rest timer as an exact alarm + ongoing notification.
 - [ ] **N4 Exercise screen** — history, graph (Canvas), records, targets and readiness.

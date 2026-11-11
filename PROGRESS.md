@@ -12,8 +12,9 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
-  N1a = #45 (review fixes pushed), N1b logic port = stacked PR on #45. Next: **N2 storage & backup in Rust**
-  (rusqlite bundled + WAL, schema, web backup JSON in/out, starter library), then N3 day log UI.
+  N1a = #45 (merged), N1b = #46 (approved), N2 storage = stacked PR on #46. Next: **N3 day log & logging**
+  (Compose screens over `IronCore`: days, add exercise, log sets, records toast, comments, rest timer as an
+  exact alarm + notification).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
   APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
   `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
@@ -21,6 +22,27 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-12 — N2 Storage & backup (Rust)
+
+- `store.rs` (Sonnet agent): SQLite via rusqlite (bundled), WAL; document-style tables (record JSON + indexed
+  key columns, so backups round-trip losslessly and new optional fields need no migration); `meta` change log
+  with tombstones (keys as db.ts `metaKey`, strictly increasing change time) for sync later; `user_version`
+  migrations (refuses a newer database). Deletes cascade as db.ts (exercise → its sets, measure → its entries;
+  category alone). 10k-set import 211 ms, `sets_of` 1.4 ms (debug build).
+- `backup.rs` (Sonnet agent): validateBackup + cleanSettings + per-store validators (for sync), error messages
+  as the web's; `muscles.rs` default/normalize; `seed.rs` starter library, DEFAULT_LOADS, default measures,
+  `uid()`. Golden: src/lib/golden-backup.test.ts → backup/muscles/seed.json (1,039 cases).
+- `api.rs`: the UniFFI surface — `IronCore` object (open/in_memory, seeds once like the web, settings, library,
+  day, sets, routines, body, comments, backup JSON both ways) and `CoreError`. tests/roundtrip.rs: every valid
+  web backup in the fixtures imports and exports equal (numbers by value), awkward floats bit-exact
+  (serde_json `float_roundtrip`, which the backup agent flagged).
+- Android: `Core` opens the database (app-private, no cloud backup); `I18n` = the web's `t()` over
+  assets/strings.json, generated from the web tables by src/lib/native-strings.test.ts (fails when stale).
+  lint.xml ignores NewApi in UniFFI's generated code only (it checks for java.lang.ref.Cleaner at run time and
+  falls back to JNA's — verified on the Android 7.0 emulator).
+- Sizes: release APK 2.6–3.1 MB per CPU type (SQLite + serde_json), universal 7.6 MB (budgets 6 / 9 MB).
+  Emulator cold start unchanged (~510 ms).
 
 ## 2026-11-11 — N1b Logic port (Rust)
 

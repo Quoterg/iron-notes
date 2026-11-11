@@ -7,16 +7,8 @@ use serde::{Deserialize, Serialize};
 
 pub const LOAD_TYPES: [LoadType; 4] = [LoadType::Total, LoadType::PerHand, LoadType::Bodyweight, LoadType::Assisted];
 
-/// A body-metric entry (model.ts `BodyEntry`).
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BodyEntry {
-    pub id: String,
-    pub metric_id: String,
-    pub date: String,
-    pub value: f64,
-    pub at: f64,
-}
+/// A body-metric entry (model.ts `BodyEntry`): one type, shared with the store and backups.
+pub use crate::model::BodyMetricEntry as BodyEntry;
 
 /// A read-only copy for calculations: `weight` is the real load, `vol` the weight that counts in volume.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
