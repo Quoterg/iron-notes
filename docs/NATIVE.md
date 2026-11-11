@@ -127,10 +127,12 @@ PR that touches `native/`.
   *Iron Notes Next*, Iron Log's colours (Hologram night / Daylight day) on a first screen; CI job
   (build, unit tests, lint, APK size); cold-start measurement script for the TWA and the native app.
   Release APK 717 KB.
-- [ ] **N1a Rust core & bridge** — `native/core-rs` crate with UniFFI, built per CPU type by Gradle
+- [x] **N1a Rust core & bridge** — `native/core-rs` crate with UniFFI, built per CPU type by Gradle
   (cargo-ndk, NDK r28c), Kotlin bindings generated at build time; replaces the Kotlin `core` module;
   units + 1RM ported with the golden-fixture harness; the first screen shows a value computed in Rust;
-  per-CPU APKs; CI installs Rust; library size measured.
+  per-CPU APKs; CI installs Rust; library size measured. Release APKs 1.1–1.3 MB per CPU type
+  (universal 2.8 MB); the shrunk build runs on Android 7.0 (emulator, cold start ~535 ms there
+  without a baseline profile and with software graphics — phone numbers come from coldstart.sh).
 - [ ] **N1b Logic port** — records, effective reps, targets (Dorian, Lyle run-up/push, lighter week),
   volume and goals, cycles, feedback, plates, load types; golden fixtures from the TypeScript tests.
 - [ ] **N2 Storage & backup (Rust)** — SQLite schema (rusqlite, bundled, WAL), the web backup JSON in
