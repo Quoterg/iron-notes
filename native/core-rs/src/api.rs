@@ -271,25 +271,22 @@ fn records_of(s: &Store, ex: &Exercise) -> Result<Vec<String>, StoreError> {
 }
 
 fn seed_if_new(store: &Store) -> Result<(), StoreError> {
-    if !store.is_seeded()? {
-        if store.categories()?.is_empty() {
-            let (cats, exs) = seed::starter_library(&mut seed::uid);
-            for c in &cats {
-                store.put_category(c)?;
-            }
-            for e in &exs {
-                store.put_exercise(e)?;
-            }
-        }
-        store.set_seeded()?;
+    // Seed only a fresh library (never over the user's own, even if they deleted every starter); all of
+    // it in one transaction (store.rs `seed`).
+    let lib = if !store.is_seeded()? {
+        if store.categories()?.is_empty() { Some(seed::starter_library(&mut seed::uid)) } else { Some((Vec::new(), Vec::new())) }
+    } else {
+        None
+    };
+    let metrics = if !store.is_body_seeded()? {
+        if store.metrics()?.is_empty() { Some(seed::default_metrics(&mut seed::uid)) } else { Some(Vec::new()) }
+    } else {
+        None
+    };
+    if lib.is_none() && metrics.is_none() {
+        return Ok(());
     }
-    if !store.is_body_seeded()? {
-        if store.metrics()?.is_empty() {
-            store.put_metrics(&seed::default_metrics(&mut seed::uid))?;
-        }
-        store.set_body_seeded()?;
-    }
-    Ok(())
+    store.seed(lib.as_ref().map(|(c, e)| (c.as_slice(), e.as_slice())), metrics.as_deref())
 }
 
 #[cfg(test)]

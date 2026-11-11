@@ -147,6 +147,8 @@ fn put_comment_row(tx: &Transaction, c: &DayComment) -> Result<()> {
     stamp(tx, "comments", &c.date, false)
 }
 
+/// A kv row. Not stamped in the change log: only `settings` syncs (callers stamp "kv:settings"); the
+/// one-time flags (`seeded`, `bodySeeded`) are this device's own.
 fn put_kv(tx: &Transaction, key: &str, value: &serde_json::Value) -> Result<()> {
     tx.prepare_cached("INSERT INTO kv (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value")?
         .execute(params![key, value.to_string()])?;
@@ -172,6 +174,12 @@ impl Store {
     fn init(conn: Connection) -> Result<Store> {
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=OFF;")?;
         migrate(&conn)?;
+        // Change times continue after the newest stored one, even if the clock went back since.
+        let newest: Option<f64> = conn.query_row("SELECT MAX(mt) FROM meta", [], |r| r.get(0))?;
+        if let Some(mt) = newest {
+            let mut last = LAST_MT.lock().unwrap_or_else(|e| e.into_inner());
+            *last = (*last).max(mt as u64);
+        }
         Ok(Store { conn })
     }
 
@@ -189,7 +197,13 @@ impl Store {
         let rows = st.query_map(p, |r| r.get::<_, String>(0))?;
         let mut out = Vec::new();
         for row in rows {
-            out.push(serde_json::from_str(&row?)?);
+            let row = row?;
+            out.push(serde_json::from_str(&row).map_err(|e| {
+                // Which table and record, so a bug report can point at it.
+                let table = sql.split_whitespace().skip_while(|w| !w.eq_ignore_ascii_case("FROM")).nth(1).unwrap_or("?");
+                let head: String = row.chars().take(80).collect();
+                StoreError::Json(format!("{table}: unreadable record {head}: {e}"))
+            })?);
         }
         Ok(out)
     }
@@ -211,14 +225,12 @@ impl Store {
 
     // ---- Settings ----
 
-    /// The stored settings over the defaults (a partial or older row gets the defaults for what it lacks).
+    /// The stored settings, cleaned like a backup's (backup.ts `cleanSettings`): a partial, older or
+    /// damaged row gets the defaults for what it lacks or has wrong — settings never stop the app opening.
     pub fn settings(&self) -> Result<Settings> {
-        let Some(raw) = self.kv("settings")? else { return Ok(Settings::default()) };
-        let mut base = serde_json::to_value(Settings::default())?;
-        if let (Some(b), serde_json::Value::Object(over)) = (base.as_object_mut(), serde_json::from_str(&raw)?) {
-            b.extend(over);
-        }
-        Ok(serde_json::from_value(base)?)
+        let raw = self.kv("settings")?;
+        let v: Option<serde_json::Value> = raw.as_deref().and_then(|r| serde_json::from_str(r).ok());
+        Ok(crate::backup::clean_settings(v.as_ref()))
     }
 
     pub fn put_settings(&self, s: &Settings) -> Result<()> {
@@ -398,6 +410,29 @@ impl Store {
         put_kv(&tx, key, &serde_json::Value::Bool(true))?;
         Ok(tx.commit()?)
     }
+    /// First start (state.ts / body-state.ts): the starter library and body measures written once, with
+    /// their flags, in ONE transaction — a kill half-way leaves nothing, so the next start seeds again.
+    /// `library`/`metrics` are None when that part is already seeded (or the user has their own data).
+    pub fn seed(&self, library: Option<(&[Category], &[Exercise])>, metrics: Option<&[BodyMetric]>) -> Result<()> {
+        let tx = self.tx()?;
+        if let Some((cats, exs)) = library {
+            for c in cats {
+                put_doc(&tx, "categories", &c.id, c)?;
+            }
+            for e in exs {
+                put_doc(&tx, "exercises", &e.id, e)?;
+            }
+            put_kv(&tx, "seeded", &serde_json::Value::Bool(true))?;
+        }
+        if let Some(list) = metrics {
+            for m in list {
+                put_doc(&tx, "metrics", &m.id, m)?;
+            }
+            put_kv(&tx, "bodySeeded", &serde_json::Value::Bool(true))?;
+        }
+        Ok(tx.commit()?)
+    }
+
     pub fn is_seeded(&self) -> Result<bool> {
         self.flag("seeded")
     }
@@ -495,10 +530,27 @@ mod tests {
     use serde_json::json;
     use std::time::Instant;
 
-    fn tmp_dir() -> std::path::PathBuf {
-        let d = std::path::PathBuf::from("/home/suleyman/.claude/jobs/959ed44d/tmp/store-tests");
+    /// A fresh directory under the system's temp dir, removed when dropped.
+    struct TmpDir(std::path::PathBuf);
+    impl TmpDir {
+        fn path(&self) -> &std::path::Path {
+            &self.0
+        }
+        fn join(&self, name: &str) -> std::path::PathBuf {
+            self.0.join(name)
+        }
+    }
+    impl Drop for TmpDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    fn tmp_dir() -> TmpDir {
+        static N: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let d = std::env::temp_dir().join(format!("iron-core-store-{}-{n}-{}", std::process::id(), change_time()));
         std::fs::create_dir_all(&d).unwrap();
-        d
+        TmpDir(d)
     }
 
     fn set(id: &str, date: &str, ex: &str, order: f64) -> WorkoutSet {
@@ -765,7 +817,8 @@ mod tests {
 
     #[test]
     fn file_backed_database_reopens_with_data() {
-        let path = tmp_dir().join("reopen.db");
+        let dir = tmp_dir();
+        let path = dir.join("reopen.db");
         for ext in ["", "-wal", "-shm"] {
             let _ = std::fs::remove_file(format!("{}{ext}", path.display()));
         }
@@ -788,7 +841,8 @@ mod tests {
         let s = Store::open_in_memory().unwrap();
         assert_eq!(s.schema_version().unwrap(), 1);
         // A newer database is refused, not mangled.
-        let path = tmp_dir().join("newer.db");
+        let dir = tmp_dir();
+        let path = dir.join("newer.db");
         for ext in ["", "-wal", "-shm"] {
             let _ = std::fs::remove_file(format!("{}{ext}", path.display()));
         }
@@ -822,5 +876,83 @@ mod tests {
         assert_eq!(mine.len(), 250);
         assert!(mine.windows(2).all(|w| (&w[0].date, w[0].order) <= (&w[1].date, w[1].order)));
         assert_eq!(s.export_backup("x").unwrap().sets.len(), 10_000);
+        // Loose bounds (debug build, shared CI runners): ~0.2 s and ~1–5 ms here.
+        assert!(import.as_secs_f64() < 10.0 && q.as_secs_f64() < 1.0 && q2.as_secs_f64() < 1.0, "too slow");
+    }
+
+    #[test]
+    fn seeding_is_all_or_nothing() {
+        let s = Store::open_in_memory().unwrap();
+        let cats = vec![Category { id: "c".into(), name: "Chest".into(), color: "#aabbcc".into(), order: 0.0, rest: None }];
+        let exs = vec![Exercise { id: "e".into(), name: "Bench".into(), category_id: "c".into(), ..Default::default() }];
+        let ms = vec![BodyMetric { id: "m".into(), name: "Body weight".into(), kind: Default::default(), order: 0.0 }];
+        // A failure half-way (here: the measures' table is gone) leaves no partial library and no flags.
+        s.conn.execute_batch("ALTER TABLE metrics RENAME TO metrics_gone").unwrap();
+        assert!(s.seed(Some((&cats, &exs)), Some(&ms)).is_err());
+        assert!(s.categories().unwrap().is_empty() && s.exercises().unwrap().is_empty());
+        assert!(!s.is_seeded().unwrap() && !s.is_body_seeded().unwrap());
+        s.conn.execute_batch("ALTER TABLE metrics_gone RENAME TO metrics").unwrap();
+        s.seed(Some((&cats, &exs)), Some(&ms)).unwrap();
+        assert_eq!((s.categories().unwrap().len(), s.exercises().unwrap().len(), s.metrics().unwrap().len()), (1, 1, 1));
+        assert!(s.is_seeded().unwrap() && s.is_body_seeded().unwrap());
+    }
+
+    #[test]
+    fn damaged_settings_fall_back_to_defaults() {
+        let s = Store::open_in_memory().unwrap();
+        for raw in ["not json", r#"{"mode":"lyle","unit":42,"rest":-5}"#, "[]"] {
+            let tx = s.tx().unwrap();
+            tx.execute("INSERT OR REPLACE INTO kv (key, value) VALUES ('settings', ?1)", [raw]).unwrap();
+            tx.commit().unwrap();
+            let st = s.settings().unwrap();
+            assert_eq!(st.unit, Settings::default().unit, "{raw}");
+            assert_eq!(st.rest, 90.0, "{raw}");
+        }
+        assert_eq!(s.settings().unwrap(), Settings::default());
+        let tx = s.tx().unwrap();
+        tx.execute("INSERT OR REPLACE INTO kv (key, value) VALUES ('settings', ?1)", [r#"{"mode":"lyle","unit":42}"#]).unwrap();
+        tx.commit().unwrap();
+        assert_eq!(s.settings().unwrap().mode, crate::model::TrainingMode::Lyle); // the valid parts are kept
+    }
+
+    #[test]
+    fn an_unreadable_row_names_its_table() {
+        let s = Store::open_in_memory().unwrap();
+        let tx = s.tx().unwrap();
+        tx.execute("INSERT INTO exercises (id, data) VALUES ('x', '{\"id\":1}')", []).unwrap();
+        tx.commit().unwrap();
+        let e = s.exercises().unwrap_err().to_string();
+        assert!(e.contains("exercises: unreadable record"), "{e}");
+    }
+
+    #[test]
+    fn restore_leaves_no_tombstones_like_the_web() {
+        // backup.ts importAll: the restored data becomes this device's newest; records only another
+        // device has come back at the next sync — a restore deletes nothing elsewhere.
+        let s = Store::open_in_memory().unwrap();
+        s.put_set(&set("old", "2026-01-01", "e", 1.0)).unwrap();
+        s.import_backup(&rich(), true).unwrap();
+        let log = s.changes_since(0.0).unwrap();
+        assert!(log.iter().all(|(k, _, del)| !del && k != "sets:old"));
+        assert!(log.iter().any(|(k, _, _)| k == "kv:settings"));
+    }
+
+    #[test]
+    fn change_times_continue_after_a_restart() {
+        let dir = tmp_dir();
+        let path = dir.join("clock.db");
+        let p = path.to_str().unwrap();
+        let ahead = change_time() + 3_600_000.0; // as if the clock went back an hour since
+        {
+            let s = Store::open(p).unwrap();
+            let tx = s.tx().unwrap();
+            tx.execute("INSERT INTO meta (key, mt, del) VALUES ('sets:x', ?1, 0)", [ahead]).unwrap();
+            tx.commit().unwrap();
+        }
+        let s = Store::open(p).unwrap();
+        s.put_set(&set("y", "2026-01-01", "e", 1.0)).unwrap();
+        let mt = s.changes_since(0.0).unwrap().into_iter().find(|(k, _, _)| k == "sets:y").unwrap().1;
+        assert!(mt > ahead);
+        let _ = dir.path();
     }
 }
