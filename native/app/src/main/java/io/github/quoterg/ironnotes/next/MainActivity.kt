@@ -16,16 +16,19 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import io.github.quoterg.ironnotes.core.Formula
-import io.github.quoterg.ironnotes.core.coreVersion
-import io.github.quoterg.ironnotes.core.oneRm
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.quoterg.ironnotes.core.Formula
+import io.github.quoterg.ironnotes.core.coreVersion
+import io.github.quoterg.ironnotes.core.oneRm
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,12 +65,17 @@ private fun Preview() {
             Spacer(Modifier.height(8.dp))
             BasicText(stringResource(R.string.preview_body), style = TextStyle(color = p.muted, fontSize = 15.sp, lineHeight = 21.sp))
             Spacer(Modifier.height(12.dp))
-            // Computed by the Rust core (proves the bridge on every CPU type).
-            val e1rm = remember { oneRm(100.0, 8.0, Formula.EPLEY) }
-            BasicText(
-                stringResource(R.string.preview_core, coreVersion(), fmtNum(e1rm)),
-                style = TextStyle(color = p.muted, fontSize = 13.sp),
-            )
+            // Computed by the Rust core (proves the bridge on every CPU type) — off the main thread and
+            // after the first frame, so loading the library (JNA) never delays the app opening.
+            val core by produceState<Pair<String, Double>?>(null) {
+                value = withContext(Dispatchers.Default) { coreVersion() to oneRm(100.0, 8.0, Formula.EPLEY) }
+            }
+            core?.let { (version, e1rm) ->
+                BasicText(
+                    stringResource(R.string.preview_core, version, fmtNum(e1rm)),
+                    style = TextStyle(color = p.muted, fontSize = 13.sp),
+                )
+            }
         }
     }
 }

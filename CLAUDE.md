@@ -40,7 +40,9 @@ pnpm lighthouse                # Lighthouse CI on dist/; locally:
 pnpm icons                     # public/icon.svg → PNG icons
 pnpm assetlinks                # android/twa-manifest.json fingerprints → public/.well-known/assetlinks.json
                                # Android build guide: docs/ANDROID.md (the owner signs; keys never committed)
-cd native && ./gradlew :core:test :app:assembleDebug   # native app (Phase 4, docs/NATIVE.md; needs JDK 17 + SDK)
+cargo test --manifest-path native/core-rs/Cargo.toml --locked   # native: Rust core + golden fixtures
+cd native && ./gradlew :app:assembleDebug [-PrustAbis=x86_64]  # native app (Phase 4); needs JDK 17, SDK,
+                               # Rust + Android targets, cargo-ndk 4.1.2, NDK r28c — setup in docs/NATIVE.md
 ```
 
 ## Rules

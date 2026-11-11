@@ -12,11 +12,21 @@ fn cases(name: &str) -> Vec<Value> {
     list
 }
 
+/// A fixture number: JSON numbers as they are, "NaN" / "Infinity" / "-Infinity" as those values.
 fn num(c: &Value, k: &str) -> f64 {
-    c[k].as_f64().unwrap_or_else(|| panic!("{k} in {c}"))
+    match &c[k] {
+        Value::String(s) if s == "NaN" => f64::NAN,
+        Value::String(s) if s == "Infinity" => f64::INFINITY,
+        Value::String(s) if s == "-Infinity" => f64::NEG_INFINITY,
+        v => v.as_f64().unwrap_or_else(|| panic!("{k} in {c}")),
+    }
 }
 
 fn close(got: f64, want: f64, c: &Value) {
+    if want.is_nan() || want.is_infinite() {
+        assert!(got.is_nan() == want.is_nan() && (want.is_nan() || got == want), "{c}: got {got}");
+        return;
+    }
     assert!((got - want).abs() <= 1e-9 * want.abs().max(1.0), "{c}: got {got}");
 }
 

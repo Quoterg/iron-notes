@@ -4,8 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-/** The CPU types the Rust core is built for: phones (64- and 32-bit ARM) and the emulator. */
-val abis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+/**
+ * The CPU types the Rust core is built for: phones (64- and 32-bit ARM) and the emulator. For a faster
+ * local loop build only the one you install: `./gradlew :app:assembleDebug -PrustAbis=x86_64`.
+ */
+val abis = providers.gradleProperty("rustAbis").orNull?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+    ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
 
 android {
     // Side by side with the TWA (io.github.quoterg.ironnotes) until the cut-over (docs/NATIVE.md).

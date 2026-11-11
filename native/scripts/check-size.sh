@@ -8,6 +8,7 @@ found=0
 for apk in "$dir"/*.apk; do
   [ -e "$apk" ] || continue
   found=1
+  # Any APK not named "universal" is a per-CPU split and gets the 6 MB budget.
   case "$apk" in *universal*) limit=$((9 * 1024 * 1024)) ;; *) limit=$((6 * 1024 * 1024)) ;; esac
   size=$(wc -c < "$apk")
   status=ok
