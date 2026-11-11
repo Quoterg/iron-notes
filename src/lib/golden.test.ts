@@ -2,23 +2,11 @@
 // inputs, kept in native/core-rs/tests/golden/. This test fails when the web logic and the file
 // disagree; the Rust tests check the Rust core against the same file. After a deliberate change in the
 // web logic, regenerate with `UPDATE_GOLDEN=1 pnpm test golden` and port the change to Rust.
-import { readFileSync, writeFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+// More modules: src/lib/golden-*.test.ts, with the helpers in golden-fixtures.ts.
+import { describe, it } from 'vitest';
 import { addDays, fmtTime, oneRM } from './calc';
+import { golden, j, n } from './golden-fixtures';
 import { dFromUser, dToUser, wFromUser, wToUser } from './units';
-
-const dir = new URL('../../native/core-rs/tests/golden/', import.meta.url);
-
-function golden(name: string, cases: unknown[]) {
-  const file = new URL(`${name}.json`, dir);
-  const text = `[\n${cases.map((c) => JSON.stringify(c)).join(',\n')}\n]\n`; // one case per line
-  if (process.env.UPDATE_GOLDEN) writeFileSync(file, text);
-  expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(cases);
-}
-
-/** A fixture number: numbers as they are, 'NaN' / 'Infinity' / '-Infinity' as those values. */
-const n = (x: number | string): number => (typeof x === 'string' ? Number(x) : x);
-const j = (x: number): number | string => (Number.isFinite(x) ? x : String(x));
 
 const weights = [0, 2.5, 20, 60, 82.5, 100, 142.5, 227.5];
 const reps = [0, 1, 2, 3, 5, 8, 10, 12, 15, 20, 30, 36, 37, 40];

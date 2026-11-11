@@ -1,34 +1,10 @@
 //! The Rust core against the web app's answers (tests/golden/*.json, written by src/lib/golden.test.ts).
 
+mod common;
+
+use common::{cases, close, num};
 use iron_core::calc::{add_days, fmt_time, one_rm, Formula};
 use iron_core::units::{d_from_user, d_to_user, w_from_user, w_to_user, DistUnit, WeightUnit};
-use serde_json::Value;
-
-fn cases(name: &str) -> Vec<Value> {
-    let path = format!("{}/tests/golden/{name}.json", env!("CARGO_MANIFEST_DIR"));
-    let v: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-    let list = v.as_array().unwrap().clone();
-    assert!(!list.is_empty());
-    list
-}
-
-/// A fixture number: JSON numbers as they are, "NaN" / "Infinity" / "-Infinity" as those values.
-fn num(c: &Value, k: &str) -> f64 {
-    match &c[k] {
-        Value::String(s) if s == "NaN" => f64::NAN,
-        Value::String(s) if s == "Infinity" => f64::INFINITY,
-        Value::String(s) if s == "-Infinity" => f64::NEG_INFINITY,
-        v => v.as_f64().unwrap_or_else(|| panic!("{k} in {c}")),
-    }
-}
-
-fn close(got: f64, want: f64, c: &Value) {
-    if want.is_nan() || want.is_infinite() {
-        assert!(got.is_nan() == want.is_nan() && (want.is_nan() || got == want), "{c}: got {got}");
-        return;
-    }
-    assert!((got - want).abs() <= 1e-9 * want.abs().max(1.0), "{c}: got {got}");
-}
 
 #[test]
 fn calc() {

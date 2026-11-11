@@ -4,7 +4,22 @@
 //! fixtures (tests/golden/, generated from the TypeScript).
 
 pub mod calc;
+pub mod model;
 pub mod units;
+
+// Training logic (src/lib/effective.ts → targets.ts → lyle.ts → cycle.ts; volume.ts, muscles.ts)
+pub mod cycle;
+pub mod effective;
+pub mod lyle;
+pub mod muscles;
+pub mod targets;
+pub mod volume;
+
+// Weights and records (calc.ts records, load.ts, tools.ts plates, feedback.ts)
+pub mod feedback;
+pub mod load;
+pub mod records;
+pub mod tools;
 
 uniffi::setup_scaffolding!();
 

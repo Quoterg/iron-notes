@@ -23,6 +23,32 @@ pub fn js_round(x: f64) -> f64 {
     }
 }
 
+/// JavaScript's `Math.max(a, b)`: NaN if either is NaN (`f64::max` would ignore it); +0 beats −0.
+pub fn js_max(a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else if a == b {
+        if a.is_sign_positive() { a } else { b } // ±0: +0 if either is +0
+    } else if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+/// JavaScript's `Math.min(a, b)`: NaN if either is NaN; −0 beats +0.
+pub fn js_min(a: f64, b: f64) -> f64 {
+    if a.is_nan() || b.is_nan() {
+        f64::NAN
+    } else if a == b {
+        if a.is_sign_negative() { a } else { b }
+    } else if a < b {
+        a
+    } else {
+        b
+    }
+}
+
 /// `round(x, d)` from calc.ts.
 pub fn round_to(x: f64, d: i32) -> f64 {
     let f = 10f64.powi(d);
