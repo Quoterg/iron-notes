@@ -12,9 +12,10 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
-  N1a = #45 (merged), N1b = #46 (approved), N2 storage = stacked PR on #46. Next: **N3 day log & logging**
-  (Compose screens over `IronCore`: days, add exercise, log sets, records toast, comments, rest timer as an
-  exact alarm + notification).
+  N1a #45, N1b #46 merged; N2 = #47 (review fixes pushed), N3 day log = stacked PR on #47. Next: **N4 exercise
+  screen** (history, graph on Canvas, records; tabs on the logging screen).
+- **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
+  notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
   APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
   `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
@@ -22,6 +23,26 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-12 — N3 Day log & logging (native)
+
+- Core: `day()` adds record ids (real load via body weight, as state.ts `loadedSetsOf`), set count and volume
+  (both dumbbells, no body weight); `exercise_log(id, date)` (the day's sets, last time, records); `next_order()`.
+- App shell (App.kt, AppState.kt): top bar with the date nav (‹ Today ›, tap = today), swipe between days,
+  floating tab bar (other tabs empty until their milestones), stacked screens with system back, toast with
+  action; component kit (Ui.kt) mirroring styles.css; Format.kt (setText, weight, dayLabel, decimal comma).
+- Screens by three parallel Sonnet agents: DayLog (cards, trophies, superset colours, summary), CommentScreen,
+  Picker (search as the web's index incl. Swedish names and muscles, favourites, categories), ExerciseScreen
+  Track (all 10 types, steppers, units, prefill, save/update/delete/clear, set comments, last time with copy +
+  undo, record toast) and RestTimer (auto/ manual, ±15 s, bar; exact alarm → "Rest over" notification with
+  sound/vibration, channels per timerSound; SCHEDULE_EXACT_ALARM — not USE_EXACT_ALARM, which Play reserves for
+  alarm/calendar apps; inexact fallback).
+- Verified on the Android 7.0 emulator (debug and shrunk release): start a workout → Chest → bench 100 × 8 →
+  trophy, rest timer 1:30, notification fired (also with the screen off); squat 120 × 5 then 122.5 × 5 → "New
+  personal record!" and the trophy moves. APKs 3.0–3.5 MB per CPU type, universal 8.1 MB (budget 9 MB; drop
+  x86_64 from the universal build if it gets tight).
+- Left for later milestones: day tools (reorder, supersets, share, delete, copy), DayPlan/DayMuscles, duration,
+  targets/RIR/readiness/warm-ups/plates (N6), routines' planned sets (N5), new/edit exercise (N8), wake lock.
 
 ## 2026-11-12 — N2 Storage & backup (Rust)
 
