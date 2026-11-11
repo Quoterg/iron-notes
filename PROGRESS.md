@@ -8,12 +8,20 @@
 - Android 1.0.0 signed by the owner and on GitHub Releases (v1.0.0); assetlinks.json with the upload-key
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
-- Phase 3 order (owner 2026-11-05): M25 → M24 → M27 → M29 → M28 → M30 → M23 → M26, then M21 sync.
-- **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes) — decides the
-  native fallback.
-- Next: **M26 Session duration & workout summary**, then M21 device sync.
+- Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
+- **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
+- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Next: **N0 shell** (in
+  progress on `milestone/n0-native-plan`), then N1 core logic port. Owner decides Kotlin-only (recommended)
+  vs a Rust core before N1. The PWA + TWA stay live throughout.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-11 — N0 Native plan
+
+- docs/NATIVE.md: what a native app buys Iron Notes (cold start, exact rest alarms, Health Connect; the
+  food-database/SIMD/wasm points from the Iron Log review don't apply), Kotlin + Compose + SQLite with a
+  pure-Kotlin core and golden fixtures shared with the TS tests, budgets, and the never-offline switch
+  (side-by-side "Iron Notes Next", then an update over the TWA with the same key at parity).
 
 ## 2026-11-05 — M21b Device sync
 

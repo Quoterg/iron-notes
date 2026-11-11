@@ -146,3 +146,8 @@ sync last (it has to carry every field the milestones before it add).
 - [x] **M26 Session duration & workout summary** — Workout span from the first to the last set; duration,
   effective reps, PRs and muscle-goal hits in a shareable summary (text + an image drawn on a canvas — PNG
   shares everywhere and needs no wider CSP than `img-src 'self'`).
+
+## Phase 4 — Native Android app
+
+Plan, reasoning and the never-offline switch in [NATIVE.md](NATIVE.md); milestones N0–N11 are tracked
+there. The PWA and the TWA stay live until the native app reaches parity.
