@@ -24,6 +24,17 @@
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
+## TODO next session — #48 review fixes (Merge after fixes), on milestone/n3-day-log, then merge into n4
+- SF1 RestTimer: persist endsAt (wall-clock end) + flags in prefs, restore in RestTimer.get.
+- SF2 inexact on 14+: fall back to `am.setAlarmClock(AlarmClockInfo(...), pi)` instead of setAndAllowWhileIdle.
+- SF3 JVM unit tests (app/src/test, junit; jna.library.path = core-rs/target/debug): parse "82,5"/"82.5", 135 lb
+  → 61.235 kg, empty weight for body-weight, 0×10 ok / 0×0 rejected, time rounding; make helpers internal.
+- Perf: day() reads body weights once + HashMap lookups; exercise_log passes `all` to records; cache
+  exById/catById; remember fromForm. Nits: Form.load round seconds first; fix App.kt stack comment; Save
+  double-tap guard; channel name re-created per language (createNotificationChannel updates names); delete
+  undo: not fixed (web has none). Reply on #48 with "n. fixed in <sha>".
+- #47: review fixes pushed (0ff629f), awaiting re-review. #49 (N4) open, stacked on #48.
+
 ## 2026-11-12 — N3 Day log & logging (native)
 
 - Core: `day()` adds record ids (real load via body weight, as state.ts `loadedSetsOf`), set count and volume
