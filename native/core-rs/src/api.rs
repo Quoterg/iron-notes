@@ -4,7 +4,7 @@
 use std::sync::Mutex;
 
 use crate::model::{BodyMetric, BodyMetricEntry, Category, Exercise, Routine, Settings, WorkoutSet};
-use crate::{load, records, seed};
+use crate::{load, progress, records, seed};
 use crate::store::{Store, StoreError};
 
 #[derive(Debug, uniffi::Error)]
@@ -67,6 +67,23 @@ pub struct ExerciseLog {
 pub struct ExerciseLibrary {
     pub categories: Vec<Category>,
     pub exercises: Vec<Exercise>,
+}
+
+/// What the exercise screen's History and Records tabs show (ExerciseProgress.tsx), in one call.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct ExerciseProgress {
+    /// Logged days with their sets, newest first (planned sets left out).
+    pub workouts: Vec<progress::Workout>,
+    /// Ids of record sets (trophies).
+    pub records: Vec<String>,
+    /// Rep maxes 1–15 that have a set, by the real load (weight and reps exercises).
+    pub rep_maxes: Vec<progress::RepMax>,
+    /// The best estimated 1RM (weight and reps exercises).
+    pub best_orm: Option<progress::BestOrm>,
+    /// Best per field (+ fastest pace), by the real load.
+    pub bests: Vec<progress::Best>,
+    /// The graph's metrics for this exercise type.
+    pub metrics: Vec<progress::Metric>,
 }
 
 #[derive(uniffi::Object)]
@@ -172,6 +189,36 @@ impl IronCore {
     pub fn sets_of(&self, exercise_id: String) -> R<Vec<WorkoutSet>> {
         self.with(|s| s.sets_of(&exercise_id))
     }
+    /// History and Records tabs of an exercise.
+    pub fn exercise_progress(&self, exercise_id: String) -> R<ExerciseProgress> {
+        self.with(|s| {
+            let Some(ex) = s.exercises()?.into_iter().find(|e| e.id == exercise_id) else {
+                return Ok(ExerciseProgress { workouts: vec![], records: vec![], rep_maxes: vec![], best_orm: None, bests: vec![], metrics: vec![] });
+            };
+            let counted: Vec<WorkoutSet> = s.sets_of(&ex.id)?.into_iter().filter(|x| !x.is_planned()).collect();
+            let real: Vec<WorkoutSet> = real_load(s, &ex, &counted)?.into_iter().map(|l| l.set).collect();
+            let strength = ex.kind == crate::model::ExerciseType::WeightReps;
+            let settings = s.settings()?;
+            Ok(ExerciseProgress {
+                workouts: progress::workouts(&counted),
+                records: records_of(s, &ex)?,
+                rep_maxes: if strength { progress::rep_max_table(&real, 15).into_iter().filter(|r| r.set.is_some()).collect() } else { vec![] },
+                best_orm: if strength { progress::best_orm(&real, settings.formula) } else { None },
+                bests: progress::bests(&real, ex.kind),
+                metrics: progress::metrics_for(ex.kind),
+            })
+        })
+    }
+    /// The graph: one point per workout day of `metric` over `range` (ending `today`), by the real load.
+    /// Values in stored units (kg, km, s; pace s/km) — the app converts for display.
+    pub fn exercise_series(&self, exercise_id: String, metric: progress::Metric, range: progress::Range, today: String) -> R<Vec<progress::Point>> {
+        self.with(|s| {
+            let Some(ex) = s.exercises()?.into_iter().find(|e| e.id == exercise_id) else { return Ok(vec![]) };
+            let counted: Vec<WorkoutSet> = s.sets_of(&ex.id)?.into_iter().filter(|x| !x.is_planned()).collect();
+            let real = real_load(s, &ex, &counted)?;
+            Ok(progress::daily_series(&real, metric, s.settings()?.formula, &progress::range_start(range, &today)))
+        })
+    }
     pub fn sets_between(&self, from: String, to: String) -> R<Vec<WorkoutSet>> {
         self.with(|s| s.sets_between(&from, &to))
     }
@@ -256,9 +303,18 @@ pub fn next_order() -> f64 {
 /// `loadedSetsOf`: body-weight exercises count the body weight of the day — the first weight measure).
 fn records_of(s: &Store, ex: &Exercise) -> Result<Vec<String>, StoreError> {
     let sets = s.sets_of(&ex.id)?;
+    if load::load_of(Some(ex)) == crate::model::LoadType::Total {
+        return Ok(records::record_ids(&sets, ex.kind, true));
+    }
+    Ok(records::record_ids_loaded(&real_load(s, ex, &sets)?, ex.kind, true))
+}
+
+/// state.ts `loadedSetsOf`: sets as calculations see them — the real load (body weight ± for body-weight
+/// exercises, by the first weight measure's value on the day) and the volume weight.
+fn real_load(s: &Store, ex: &Exercise, sets: &[WorkoutSet]) -> Result<Vec<load::LoadedSet>, StoreError> {
     let t = load::load_of(Some(ex));
     if t == crate::model::LoadType::Total {
-        return Ok(records::record_ids(&sets, ex.kind, true));
+        return Ok(load::with_real_load(sets, t, |_| None));
     }
     let mut weights: Vec<BodyMetric> = s.metrics()?.into_iter().filter(|m| m.kind == crate::model::BodyKind::Weight).collect();
     weights.sort_by(|a, b| a.order.partial_cmp(&b.order).unwrap_or(std::cmp::Ordering::Equal));
@@ -267,7 +323,7 @@ fn records_of(s: &Store, ex: &Exercise) -> Result<Vec<String>, StoreError> {
         None => Vec::new(),
     };
     let bw = load::body_weight_at(&entries);
-    Ok(records::record_ids_loaded(&load::with_real_load(&sets, t, |d| bw.at(d)), ex.kind, true))
+    Ok(load::with_real_load(sets, t, |d| bw.at(d)))
 }
 
 fn seed_if_new(store: &Store) -> Result<(), StoreError> {
