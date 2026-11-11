@@ -50,11 +50,16 @@ measurement (N0) before and after.
   coarse — "today's log with targets", "save this set" — so a screen makes one or two calls, not one
   per set.
 - **One native library per CPU type** (arm64, 32-bit ARM for old phones, x86_64 for the emulator),
-  built with `cargo-ndk` from Gradle. Release builds use `opt-level = "z"`, LTO, `panic = "abort"`,
-  stripped. GitHub releases get **one APK per CPU type** (and a universal one), so each phone downloads
-  only its own library.
+  built with `cargo-ndk` from Gradle. Release builds use `opt-level = "z"`, LTO, one codegen unit,
+  stripped; panics unwind, so a bug in the core becomes a Kotlin exception rather than a crash.
+  GitHub releases get **one APK per CPU type** (and a universal one), so each phone downloads only its
+  own library. N1a sizes: the core is 389 KB (arm64) / 268 KB (32-bit ARM), JNA (which UniFFI's
+  Kotlin uses) 166 KB / 116 KB.
+- Kotlin bindings are generated at build time (`build/generated/uniffi`, package
+  `io.github.quoterg.ironnotes.core`), from a host build of the core — the Android libraries are
+  stripped, which removes the metadata UniFFI reads. Swift bindings come from the same crate later
+  (`staticlib`, module `IronCore`).
 - Weights in kg, distances in km, time in seconds — as on the web; converted only for display.
-- The pure-Kotlin `core` module from N0 is replaced by the Rust core in N1a.
 
 ### Keeping the apps the same
 
@@ -68,7 +73,8 @@ measurement (N0) before and after.
 
 ### Budgets (hard gates, like the web app's)
 
-- Release APK per CPU type ≤ 6 MB (R8 + resource shrinking + stripped Rust), no Play Services.
+- Release APK per CPU type ≤ 6 MB, universal ≤ 9 MB (R8 + resource shrinking + stripped Rust), no
+  Play Services.
 - Cold start ≤ 500 ms on the owner's phone (`adb shell am start -W`, median of 10), with a baseline profile.
 - No analytics, no network permission until sync needs it; data stays on the device.
 
@@ -78,15 +84,23 @@ measurement (N0) before and after.
 cd native
 echo "sdk.dir=$HOME/.bubblewrap/android_sdk" > local.properties   # any Android SDK with platform 36
 export JAVA_HOME=$HOME/.bubblewrap/jdk/jdk-17.0.11+9               # a JDK 17 (not just a JRE)
-./gradlew :core:test                 # logic tests (JVM)
-./gradlew :app:assembleDebug         # app/build/outputs/apk/debug/app-debug.apk — install with adb
+# Once: Rust (rustup.rs) + Android targets, cargo-ndk, and NDK r28c
+rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+cargo install cargo-ndk --version 4.1.2 --locked
+sdkmanager --sdk_root=$HOME/.bubblewrap/android_sdk "ndk;28.2.13676358"
+
+cargo test --manifest-path core-rs/Cargo.toml   # Rust core, incl. the golden fixtures
+./gradlew :app:assembleDebug         # app/build/outputs/apk/debug/app-<cpu>-debug.apk — install with adb
 ./gradlew :app:assembleRelease       # shrunk, debug-signed: for the size budget only
-./scripts/check-size.sh              # release APK ≤ 6 MB
+./scripts/check-size.sh              # per-CPU release APKs ≤ 6 MB, universal ≤ 9 MB
 ./scripts/coldstart.sh io.github.quoterg.ironnotes.next   # phone over USB; median of 10 cold starts
 ```
 
 Versions are pinned to what works with Android Gradle plugin 8.11 and SDK 36 (Compose BOM 2025.12,
 Activity 1.11); the newest Compose needs plugin 9.1 and SDK 37 — a deliberate upgrade later.
+
+After changing logic in `src/lib` that has golden cases: `UPDATE_GOLDEN=1 pnpm test golden`, then port
+the change to `native/core-rs` until `cargo test` passes again (CI runs both).
 
 ## Never offline: how the switch happens
 

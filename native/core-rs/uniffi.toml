@@ -1,0 +1,6 @@
+[bindings.kotlin]
+package_name = "io.github.quoterg.ironnotes.core"
+cdylib_name = "iron_core"
+
+[bindings.swift]
+module_name = "IronCore"
