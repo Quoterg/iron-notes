@@ -2,6 +2,14 @@
 <!-- No INTERNET permission: data stays on the device (sync adds what it needs later). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Rest timer: the "rest over" notification (13+ asks at runtime), vibration, and an exact alarm so it
+         fires on time with the screen off. SCHEDULE_EXACT_ALARM: granted on Android 7–13 (12/13 by
+         default); on 14+ the user may grant it in system settings, else the alarm falls back to an inexact
+         one. Not USE_EXACT_ALARM: Play reserves it for alarm-clock and calendar apps. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -20,5 +28,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver android:name=".RestAlarmReceiver" android:exported="false" />
     </application>
 </manifest>

@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -55,6 +56,8 @@ fun App(state: AppState) {
             state.stack.forEachIndexed { i, screen ->
                 if (i == state.stack.lastIndex) Box(Modifier.fillMaxSize()) { ScreenView(state, screen) }
             }
+            // Above the sheets, under the toast; draws nothing without a running timer.
+            RestTimerBar(state, RestTimer.get(LocalContext.current), Modifier.align(Alignment.BottomCenter))
         }
         state.toast?.let { ToastView(state, it, Modifier.align(Alignment.BottomCenter)) }
     }
