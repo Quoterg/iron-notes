@@ -142,7 +142,7 @@ PR that touches `native/`.
 - [x] **N3 Day log & logging** — the main screen: days, swipe, add exercise, log sets for all types,
   steppers, records toast, comments; rest timer as an exact alarm + notification. (Day tools, targets and
   routines' planned sets come with N5/N6.)
-- [ ] **N4 Exercise screen** — history, graph (Canvas), records, targets and readiness.
+- [x] **N4 Exercise screen** — history, graph (Canvas), records (targets and readiness move to N6).
 - [ ] **N5 Calendar, routines, saved workouts, programs.**
 - [ ] **N6 Training modes** — Dorian, Lyle cycles, lighter week, feedback, day plan.
 - [ ] **N7 Muscles, body map, statistics, review.**

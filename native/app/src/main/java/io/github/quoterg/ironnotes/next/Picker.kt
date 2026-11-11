@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,7 +107,7 @@ fun PickerScreen(state: AppState, date: String) {
 
     Sheet(state.t("addExercise"), { state.back() }, state.t("back")) {
         Field(q, { q = it }, state.t("searchExercises"), Modifier.fillMaxWidth().padding(16.dp, 12.dp))
-        LazyColumn(Modifier.fillMaxWidth()) {
+        LazyColumn(Modifier.fillMaxWidth().navigationBarsPadding(), contentPadding = PaddingValues(bottom = 96.dp)) {
             items(items, key = { it.key }) { item ->
                 when (item) {
                     is Item.Title -> Txt(

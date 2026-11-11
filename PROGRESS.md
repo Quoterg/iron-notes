@@ -12,8 +12,8 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
-  N1a #45, N1b #46 merged; N2 = #47 (review fixes pushed), N3 day log = stacked PR on #47. Next: **N4 exercise
-  screen** (history, graph on Canvas, records; tabs on the logging screen).
+  N1a #45, N1b #46 merged; N2 = #47 (review fixes pushed), N3 = #48 (on #47), N4 exercise progress = stacked PR on
+  #48. Next: **N5 calendar, routines, saved workouts, programs** (+ the day tools left from N3).
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
@@ -23,6 +23,20 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-12 — N4 Exercise screen (native)
+
+- Core: `progress.rs` = progress.ts (metrics per type, daily series with load-mapped volume, ranges, rep-max
+  table, best e1RM, bests incl. pace, workouts, niceScale with time steps) — Sonnet agent, 1,492 golden cases
+  (src/lib/golden-progress.test.ts → progress.json). `exercise_progress(id)` (History + Records, by the real
+  load) and `exercise_series(id, metric, range, today)`; `real_load` factored out of `records_of`.
+- App: tabs Track | History | Graph | Records on the exercise screen; ExerciseProgress.kt (History: workouts
+  newest first, trophies, open a day; Records: best e1RM, rep maxes, best values incl. pace); Graph.kt (Canvas
+  port of LineChart.tsx: metric + range chips, niceScale axis, decimation, tap/drag readout, a11y summary).
+  Two Sonnet agents for the UI. Fixed: Graph used java.time (Android 8+) — would crash on 7.x; now a civil-date
+  function. Picker list padded above the navigation bar.
+- Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
+  with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
 
 ## 2026-11-12 — N3 Day log & logging (native)
 

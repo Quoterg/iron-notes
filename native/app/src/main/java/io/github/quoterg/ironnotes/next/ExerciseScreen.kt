@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -137,6 +138,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     var sel by remember(id, date) { mutableStateOf<String?>(null) }
     var showComment by remember(id, date) { mutableStateOf(false) }
     var filled by remember(id, date) { mutableStateOf(false) }
+    var tab by rememberSaveable(id) { mutableStateOf("track") }
 
     /** Reads the log again (after every write); the first arrival also seeds the form. */
     fun reload(then: (ExerciseLog) -> Unit = {}) {
@@ -241,9 +243,24 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             }
             if (!ex.notes.isNullOrBlank()) Txt(ex.notes!!, Modifier.padding(top = 4.dp), muted = true, small = true)
 
-            Track(state, ex, form, fields, load, values != null, selected != null, showComment, { showComment = true }, ::save, ::clearOrDelete)
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("track", "history", "graph", "records").forEach { k ->
+                    Chip(
+                        state.t(k), tab == k, { tab = k },
+                        Modifier.weight(1f).semantics { this.selected = tab == k },
+                    )
+                }
+            }
 
-            if (current != null) {
+            when (tab) {
+                "history" -> HistoryTab(state, ex)
+                "graph" -> GraphTab(state, ex)
+                "records" -> RecordsTab(state, ex)
+            }
+
+            if (tab == "track") Track(state, ex, form, fields, load, values != null, selected != null, showComment, { showComment = true }, ::save, ::clearOrDelete)
+
+            if (tab == "track" && current != null) {
                 if (todays.isNotEmpty()) {
                     Card(Modifier.padding(top = 12.dp), padding = 8.dp) {
                         todays.forEachIndexed { i, s -> SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records) { select(s) } }
