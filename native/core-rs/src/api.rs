@@ -45,6 +45,9 @@ pub struct DayData {
     pub comment: Option<String>,
     /// Ids of the day's sets that are personal records (rep-max rule, real load — as the web's trophies).
     pub records: Vec<String>,
+    /// Log.tsx summary: sets of exercises that still exist, and their volume (kg; both dumbbells, no body weight).
+    pub set_count: u32,
+    pub volume: f64,
 }
 
 /// What the logging screen of one exercise on one day needs.
@@ -140,7 +143,11 @@ impl IronCore {
                     records.extend(sets.iter().filter(|x| x.exercise_id == ex.id && ids.contains(&x.id)).map(|x| x.id.clone()));
                 }
             }
-            Ok(DayData { comment: s.comment(&date)?, sets, records, date })
+            let known: Vec<WorkoutSet> = sets.iter().filter(|x| exercises.iter().any(|e| e.id == x.exercise_id)).cloned().collect();
+            let totals = records::day_totals(&known, |x| {
+                load::volume_weight(x.weight, load::load_of(exercises.iter().find(|e| e.id == x.exercise_id)))
+            });
+            Ok(DayData { comment: s.comment(&date)?, sets, records, set_count: totals.sets as u32, volume: totals.volume, date })
         })
     }
     /// One exercise's logging screen for a day: its sets, last time, records.
@@ -330,6 +337,7 @@ mod tests {
         core.put_entry(BodyMetricEntry { id: "w2".into(), metric_id: w.id, date: "2026-11-12".into(), value: 81.0, at: 2.0 }).unwrap();
         let day = core.day("2026-11-12".into()).unwrap();
         assert_eq!(day.records, vec!["c".to_string(), "p2".to_string()]);
+        assert_eq!((day.set_count, day.volume), (3, 90.0 * 5.0 + 80.0 * 12.0)); // the pull up adds no volume
         let log = core.exercise_log(bench.clone(), "2026-11-12".into()).unwrap();
         assert_eq!(log.sets.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["b", "c"]);
         assert_eq!(log.previous.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["a"]);
