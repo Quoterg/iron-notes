@@ -14,9 +14,8 @@
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
   N1a = #45 (review fixes pushed), N1b logic port = stacked PR on #45. Next: **N2 storage & backup in Rust**
   (rusqlite bundled + WAL, schema, web backup JSON in/out, starter library), then N3 day log UI.
-- Native perf follow-ups (from the #45 review): (1) **owner:** run `native/scripts/coldstart.sh` on a real
-  low-end phone, with and without the core call (now off the first frame), to see JNA's cold-start cost;
-  (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
+- Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
+  APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
   `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
 - Local native toolchain: JDK 17 at ~/.bubblewrap/jdk, SDK ~/.bubblewrap/android_sdk (NDK r28c, emulator,
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
