@@ -133,8 +133,9 @@ PR that touches `native/`.
   per-CPU APKs; CI installs Rust; library size measured. Release APKs 1.1–1.3 MB per CPU type
   (universal 2.8 MB); the shrunk build runs on Android 7.0 (emulator, cold start ~535 ms there
   without a baseline profile and with software graphics — phone numbers come from coldstart.sh).
-- [ ] **N1b Logic port** — records, effective reps, targets (Dorian, Lyle run-up/push, lighter week),
-  volume and goals, cycles, feedback, plates, load types; golden fixtures from the TypeScript tests.
+- [x] **N1b Logic port** — records, effective reps, targets (Dorian, Lyle run-up/push, lighter week),
+  volume and goals, cycles, feedback, plates, load types; golden fixtures from the TypeScript tests
+  (src/lib/golden-*.test.ts → native/core-rs/tests/golden/, ~7,600 cases).
 - [ ] **N2 Storage & backup (Rust)** — SQLite schema (rusqlite, bundled, WAL), the web backup JSON in
   and out (round-trip tested with a real web backup), starter library.
 - [ ] **N3 Day log & logging** — the main screen: days, swipe, add exercise, log sets for all types,

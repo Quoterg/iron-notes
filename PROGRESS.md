@@ -11,13 +11,32 @@
 - Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
-  Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = PR #44,
-  N1a (Rust core & bridge) = stacked PR on it. Next: **N1b logic port** (records, effective reps, targets,
-  volume, cycles, feedback, plates, load types — golden cases added to src/lib/golden.test.ts).
+  Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
+  N1a = #45 (review fixes pushed), N1b logic port = stacked PR on #45. Next: **N2 storage & backup in Rust**
+  (rusqlite bundled + WAL, schema, web backup JSON in/out, starter library), then N3 day log UI.
+- Native perf follow-ups (from the #45 review): (1) **owner:** run `native/scripts/coldstart.sh` on a real
+  low-end phone, with and without the core call (now off the first frame), to see JNA's cold-start cost;
+  (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
+  `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
 - Local native toolchain: JDK 17 at ~/.bubblewrap/jdk, SDK ~/.bubblewrap/android_sdk (NDK r28c, emulator,
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-11 — N1b Logic port (Rust)
+
+- Ported with two parallel Sonnet agents, each in its own files: effective, targets, lyle, cycle, volume, MUSCLES
+  (training logic) and records (calc.ts remainder), load, tools (plates), feedback (weights & records).
+  `model.rs` (serde types matching the web JSON) and the shared golden helpers were set up first.
+- Golden fixtures: src/lib/golden-training.test.ts and golden-weights.test.ts (helpers in golden-fixtures.ts)
+  → 9 new JSON files (~7,600 cases, 1.85 MB in all); tests/golden_training.rs and golden_weights.rs. Each agent
+  mutation-checked its harness (8 deliberate breaks, all caught).
+- JS semantics replicated: `Math.max/min` NaN and ±0 (`calc::js_max/js_min`, deduplicated), `|| 0` / `||`
+  fallbacks, `slice(-0)`, Map insertion order, stable sorts with NaN comparators, strict `Date.parse` in
+  targets' `daysBetween` vs lenient elsewhere (each as in its TS source).
+- Known gaps: NaN inside set fields isn't covered (JSON turns it into null); minimal `Routine` types live in
+  cycle.rs until routines are ported (N5). Nothing is exported over UniFFI yet (N3 adds what screens call),
+  so the APKs are unchanged in size (1.2–1.4 MB per CPU type).
 
 ## 2026-11-11 — N1a Rust core & bridge
 
