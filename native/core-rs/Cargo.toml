@@ -1,0 +1,34 @@
+[package]
+name = "iron_core"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+description = "Iron Notes core: training logic and storage shared by the Android and (later) iPhone apps"
+publish = false
+
+[lib]
+# cdylib: Android (.so per CPU type); staticlib: iPhone later; lib: tests and the bindings generator.
+crate-type = ["cdylib", "staticlib", "lib"]
+
+[[bin]]
+# Generates the Kotlin (later Swift) bindings from the compiled library.
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+uniffi = "0.32.2"
+
+[dev-dependencies]
+serde_json = "1.0.154"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+# Panics unwind so UniFFI turns a bug in the core into a Kotlin exception instead of a crash.
+panic = "unwind"

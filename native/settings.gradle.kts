@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "iron-notes-native"
-include(":app", ":core")
+include(":app")

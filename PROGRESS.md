@@ -10,11 +10,28 @@
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
-- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. N0 done (PR open). Next: **N1 core
-  logic port** (golden fixtures from the TS tests). Owner decides Kotlin-only (recommended)
-  vs a Rust core before N1. The PWA + TWA stay live throughout.
+- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
+  Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = PR #44,
+  N1a (Rust core & bridge) = stacked PR on it. Next: **N1b logic port** (records, effective reps, targets,
+  volume, cycles, feedback, plates, load types — golden cases added to src/lib/golden.test.ts).
+- Local native toolchain: JDK 17 at ~/.bubblewrap/jdk, SDK ~/.bubblewrap/android_sdk (NDK r28c, emulator,
+  AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-11 — N1a Rust core & bridge
+
+- `native/core-rs` (crate `iron_core`, UniFFI 0.32 proc macros): `calc` (oneRM, fmtTime, addDays with a
+  civil-date algorithm, JS rounding) and `units` ported; replaces the N0 Kotlin `core` module.
+- Golden fixtures: `src/lib/golden.test.ts` writes/checks `native/core-rs/tests/golden/*.json` from the web
+  logic (`UPDATE_GOLDEN=1`); `tests/golden.rs` checks Rust against them (a deliberately wrong Epley fails it).
+- Gradle: `cargoNdk` (arm64-v8a, armeabi-v7a, x86_64, NDK r28c, platform 24) → jniLibs; `rustHostLib` +
+  `uniffiBindings` → Kotlin in build/generated/uniffi (bindings come from the host build: the Android libs
+  are stripped and lose UniFFI's metadata). JNA 5.19.1 aar; R8 keep rules. ABI splits + universal APK.
+- Sizes: release APKs 1.1–1.3 MB per CPU type, universal 2.8 MB (core 389 KB arm64, JNA 166 KB).
+  Shrunk build verified on an Android 7.0 emulator: the first screen shows "100 kg × 8 ≈ 126.67 kg" from Rust.
+- CI `native.yml`: rustup targets, cargo-ndk, NDK, `cargo test --locked`, build, lint, size; also runs on
+  `src/lib/**` changes (golden fixtures).
 
 ## 2026-11-11 — N0 Native plan
 
