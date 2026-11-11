@@ -10,8 +10,8 @@
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
-- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Next: **N0 shell** (in
-  progress on `milestone/n0-native-plan`), then N1 core logic port. Owner decides Kotlin-only (recommended)
+- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. N0 done (PR open). Next: **N1 core
+  logic port** (golden fixtures from the TS tests). Owner decides Kotlin-only (recommended)
   vs a Rust core before N1. The PWA + TWA stay live throughout.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
@@ -22,6 +22,10 @@
   food-database/SIMD/wasm points from the Iron Log review don't apply), Kotlin + Compose + SQLite with a
   pure-Kotlin core and golden fixtures shared with the TS tests, budgets, and the never-offline switch
   (side-by-side "Iron Notes Next", then an update over the TWA with the same key at parity).
+- `native/`: Gradle project (AGP 8.11, Kotlin 2.2, Compose foundation only — no Material), `app`
+  (`io.github.quoterg.ironnotes.next`, minSdk 24, no INTERNET permission, no cloud backup, Hologram/Daylight
+  palette, first screen) + `core` (pure Kotlin; units ported with tests). Release APK 717 KB (budget 6 MB).
+  `scripts/coldstart.sh` (median of `am start -W`), `scripts/check-size.sh`; CI workflow `native.yml`.
 
 ## 2026-11-05 — M21b Device sync
 

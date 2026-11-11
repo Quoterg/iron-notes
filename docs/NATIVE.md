@@ -53,6 +53,22 @@ measurement (N0) before and after.
 - Cold start ≤ 500 ms on the owner's phone (`adb shell am start -W`, median of 10), with a baseline profile.
 - No analytics, no network permission until sync needs it; data stays on the device.
 
+## Build and measure
+
+```sh
+cd native
+echo "sdk.dir=$HOME/.bubblewrap/android_sdk" > local.properties   # any Android SDK with platform 36
+export JAVA_HOME=$HOME/.bubblewrap/jdk/jdk-17.0.11+9               # a JDK 17 (not just a JRE)
+./gradlew :core:test                 # logic tests (JVM)
+./gradlew :app:assembleDebug         # app/build/outputs/apk/debug/app-debug.apk — install with adb
+./gradlew :app:assembleRelease       # shrunk, debug-signed: for the size budget only
+./scripts/check-size.sh              # release APK ≤ 6 MB
+./scripts/coldstart.sh io.github.quoterg.ironnotes.next   # phone over USB; median of 10 cold starts
+```
+
+Versions are pinned to what works with Android Gradle plugin 8.11 and SDK 36 (Compose BOM 2025.12,
+Activity 1.11); the newest Compose needs plugin 9.1 and SDK 37 — a deliberate upgrade later.
+
 ## Never offline: how the switch happens
 
 1. **The website keeps running** at iron-notes.pages.dev throughout — and after: it stays the app
@@ -74,9 +90,10 @@ measurement (N0) before and after.
 Each is one PR, reviewed like the web milestones. CI builds the native app and runs its tests on every
 PR that touches `native/`.
 
-- [ ] **N0 Plan & shell** — this document; `native/` Gradle project (app + core modules) installable as
+- [x] **N0 Plan & shell** — this document; `native/` Gradle project (app + core modules) installable as
   *Iron Notes Next*, Iron Log's colours (Hologram night / Daylight day) on a first screen; CI job
-  (build, unit tests, APK size); cold-start measurement script for the TWA and the native app.
+  (build, unit tests, lint, APK size); cold-start measurement script for the TWA and the native app.
+  Release APK 717 KB.
 - [ ] **N1 Core logic port** — 1RM, records, effective reps, targets (Dorian, Lyle run-up/push,
   lighter week), volume and goals, cycles, feedback, plates, load types, units; golden fixtures
   exported from the TypeScript tests.

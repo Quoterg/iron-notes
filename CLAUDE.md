@@ -40,6 +40,7 @@ pnpm lighthouse                # Lighthouse CI on dist/; locally:
 pnpm icons                     # public/icon.svg → PNG icons
 pnpm assetlinks                # android/twa-manifest.json fingerprints → public/.well-known/assetlinks.json
                                # Android build guide: docs/ANDROID.md (the owner signs; keys never committed)
+cd native && ./gradlew :core:test :app:assembleDebug   # native app (Phase 4, docs/NATIVE.md; needs JDK 17 + SDK)
 ```
 
 ## Rules
