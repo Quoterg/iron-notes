@@ -510,6 +510,18 @@
   "yourData": "Your data",
   "yourProgram": "Your program"
  },
+ "enTypes": {
+  "weight,reps": "Weight and reps",
+  "weight,distance": "Weight and distance",
+  "weight,time": "Weight and time",
+  "reps,distance": "Reps and distance",
+  "reps,time": "Reps and time",
+  "distance,time": "Distance and time",
+  "weight": "Weight",
+  "reps": "Reps",
+  "distance": "Distance",
+  "time": "Time"
+ },
  "sv": {
   "strings": {
    "about": "Om",

@@ -6,7 +6,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { coreStrings } from './i18n';
 import sv from './lang/sv';
-import { later } from './strings-later';
+import { TYPES } from './model';
+import { later, typeName } from './strings-later';
 
 it('native strings.json matches the web string tables', () => {
   const en = { ...coreStrings(), ...(later as Record<string, string>) };
@@ -14,6 +15,7 @@ it('native strings.json matches the web string tables', () => {
   const sorted = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
   const data = {
     en: sorted(en),
+    enTypes: Object.fromEntries(TYPES.map((ty) => [ty, typeName(ty)])), // lang is English here
     sv: {
       strings: sorted(sv.strings as Record<string, string>),
       types: sorted(sv.types),
