@@ -10,9 +10,9 @@
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
-- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. N0 done (PR open). Next: **N1 core
-  logic port** (golden fixtures from the TS tests). Owner decides Kotlin-only (recommended)
-  vs a Rust core before N1. The PWA + TWA stay live throughout.
+- **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. N0 = PR #44. Next: **N1a Rust core
+  & bridge** (UniFFI, cargo-ndk), then N1b logic port. Owner chose (2026-11-11) a **Rust core +
+  Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
 
