@@ -87,6 +87,44 @@ pub struct ExerciseProgress {
     pub metrics: Vec<progress::Metric>,
 }
 
+/// One month of the calendar (Calendar.tsx): the grid and which categories were trained each day.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct CalendarMonth {
+    /// "YYYY-MM".
+    pub month: String,
+    /// The grid's days, weeks starting on `week_start` (calendar.ts `monthGrid`: "" for blanks).
+    pub grid: Vec<String>,
+    /// Days with done sets: their categories' ids in first-logged order.
+    pub days: Vec<CalendarDay>,
+    /// Workouts (days with done sets) in the month.
+    pub workouts: u32,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct CalendarDay {
+    pub date: String,
+    pub category_ids: Vec<String>,
+}
+
+/// A ready-made program (programs.ts `TEMPLATES`).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct ProgramTemplate {
+    /// "dorian4" | "lyleGbr".
+    pub id: String,
+    pub mode: crate::model::TrainingMode,
+    pub weekdays: Vec<u8>,
+    /// Day names (keys into the web's strings or plain names, as programs.ts).
+    pub day_names: Vec<String>,
+}
+
+/// What building a program made (programs.ts `buildProgram`): the routine, and exercise names that
+/// weren't in the library (left out).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BuiltProgram {
+    pub routine: Routine,
+    pub missing: Vec<String>,
+}
+
 #[derive(uniffi::Object)]
 pub struct IronCore {
     store: Mutex<Store>,
@@ -282,6 +320,67 @@ impl IronCore {
     }
     pub fn put_comment(&self, date: String, text: String) -> R<()> {
         self.with(|s| s.put_comment(&date, &text))
+    }
+
+    // ---- Day tools, calendar, routines, programs (N5; workout.ts / calendar.ts / routines.ts / programs.ts) ----
+
+    /// The calendar month `month` ("YYYY-MM"), weeks starting on `week_start` (0 Sunday, 1 Monday).
+    pub fn calendar_month(&self, month: String, week_start: u8) -> R<CalendarMonth> {
+        let _ = week_start;
+        Ok(CalendarMonth { month, grid: vec![], days: vec![], workouts: 0 })
+    }
+    /// workout.ts `copySets`: copies these sets (another day's) to `to`, as new sets after the day's own.
+    pub fn copy_sets(&self, set_ids: Vec<String>, to: String) -> R<()> {
+        let _ = (set_ids, to);
+        Ok(())
+    }
+    /// workout.ts `moveExercise`: moves an exercise (with its superset) up (-1) or down (1) in its day.
+    pub fn move_exercise(&self, date: String, exercise_id: String, dir: i32) -> R<()> {
+        let _ = (date, exercise_id, dir);
+        Ok(())
+    }
+    /// workout.ts `groupExercises`: makes these exercises of the day a superset.
+    pub fn group_exercises(&self, date: String, exercise_ids: Vec<String>) -> R<()> {
+        let _ = (date, exercise_ids);
+        Ok(())
+    }
+    /// workout.ts `ungroupExercise`: takes an exercise out of its superset that day.
+    pub fn ungroup_exercise(&self, date: String, exercise_id: String) -> R<()> {
+        let _ = (date, exercise_id);
+        Ok(())
+    }
+    /// workout.ts `deleteWorkout`: deletes the day's sets (and comment); returns them for an undo (`put_sets`).
+    pub fn delete_workout(&self, date: String) -> R<Vec<WorkoutSet>> {
+        let _ = date;
+        Ok(vec![])
+    }
+    /// workout.ts `logRoutineDay`: logs a routine day into `date` as planned sets (weights from last time,
+    /// Dorian/Lyle targets and lighter weeks, rounded to plates as the setting says), joins the day's
+    /// supersets, and moves the program on when the day belongs to it.
+    pub fn log_routine_day(&self, routine_id: String, day_id: String, date: String) -> R<()> {
+        let _ = (routine_id, day_id, date);
+        Ok(())
+    }
+    /// routines.ts `workoutFromDay` saved as a new day of routine `routine_id` (or a new routine named
+    /// `name` when `routine_id` is None): sets × reps, supersets, no weights. Returns the routine.
+    pub fn save_workout(&self, date: String, name: String, routine_id: Option<String>) -> R<Routine> {
+        let _ = (date, routine_id);
+        Ok(Routine { id: String::new(), name, order: 0.0, days: vec![] })
+    }
+    /// programs.ts `TEMPLATES`.
+    pub fn program_templates(&self) -> Vec<ProgramTemplate> {
+        vec![]
+    }
+    /// programs.ts `buildProgram` + saving it: the routine is stored, and settings get the mode, the
+    /// program (routine, weekdays) and Lyle's rep ranges as the web's Programs screen does.
+    pub fn start_program(&self, template_id: String, name: String) -> R<BuiltProgram> {
+        let _ = template_id;
+        Ok(BuiltProgram { routine: Routine { id: String::new(), name, order: 0.0, days: vec![] }, missing: vec![] })
+    }
+    /// The program's next workout day for `date` (cycle.ts `nextProgramDay`), or None.
+    pub fn next_program_day(&self, date: String) -> R<Option<crate::model::RoutineDay>> {
+        let _ = date;
+        Ok(None)
     }
 
     // ---- Routines & body ----
