@@ -99,7 +99,7 @@ fun HistoryTab(state: AppState, ex: Exercise) {
                         Txt(state.i18n.setText(s, ex.kind, state.settings, load), size = 15.sp)
                         if (!s.comment.isNullOrEmpty()) Txt(s.comment!!, small = true, muted = true)
                     }
-                    if (s.id in records) Trophy(state.t("newRecord"))
+                    if (s.id in records) Trophy(state.t("record"))
                 }
             }
         }
