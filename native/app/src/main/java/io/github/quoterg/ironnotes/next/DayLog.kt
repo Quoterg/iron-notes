@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -18,6 +19,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +72,12 @@ fun DayLog(state: AppState) {
     val entries = remember(day, state.exercises) { buildEntries(day, exById) }
     val records = remember(day) { day.records.toHashSet() }
     val comment = day.comment.orEmpty()
+    val tools = remember { DayToolsState() }
+    // Another day: leave reorder / superset mode.
+    androidx.compose.runtime.LaunchedEffect(date) { tools.reset() }
+
+    // Cycle phase / the program's next workout (Log.tsx: only with a training mode or a program).
+    if (s.mode != io.github.quoterg.ironnotes.core.TrainingMode.STANDARD || s.program != null) DayPlan(state)
 
     if (comment.isNotEmpty()) {
         Card(
@@ -87,6 +95,9 @@ fun DayLog(state: AppState) {
             Actions(center = true) {
                 Btn(state.t("startWorkout"), { state.open(Screen.Pick(date)) }, kind = BtnKind.PRIMARY)
             }
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                LinkBtn(state.t("copyPrevious"), { state.open(Screen.Copy(date)) })
+            }
         }
     } else {
         val volume = if (day.volume > 0) " · ${state.i18n.weight(day.volume, s)} ${state.t("volume")}" else ""
@@ -96,19 +107,44 @@ fun DayLog(state: AppState) {
             muted = true,
             small = true,
         )
-        for (e in entries) {
+        if (tools.grouping) Txt(state.t("pickForSuperset"), Modifier.fillMaxWidth().padding(bottom = 8.dp), muted = true, small = true, align = TextAlign.Center)
+        for ((i, e) in entries.withIndex()) {
             val ex = e.ex
             Card(borderColor = e.color) {
                 if (e.color != null) Txt(state.t("superset"), color = e.color, small = true, bold = true)
+                val exName = state.i18n.shown("exercises", ex.name)
                 Row(
-                    Modifier.fillMaxWidth()
-                        .heightIn(min = 44.dp)
-                        .clickable(role = Role.Button) { state.open(Screen.Exercise(ex.id, date)) },
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Dot(state.catById[ex.categoryId]?.color)
-                    Txt(state.i18n.shown("exercises", ex.name), Modifier.semantics { heading() }, bold = true, size = 17.sp)
+                    if (tools.grouping) {
+                        val on = ex.id in tools.picked
+                        Box(
+                            Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp)
+                                .clickable(role = Role.Checkbox) { tools.picked = if (on) tools.picked - ex.id else tools.picked + ex.id }
+                                .semantics {
+                                    contentDescription = "${state.t("selectExercise")}: $exName"
+                                    stateDescription = if (on) "checked" else "unchecked"
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) { Txt(if (on) "☑" else "☐", size = 26.sp) }
+                    }
+                    Row(
+                        Modifier.weight(1f).heightIn(min = 44.dp).clickable(role = Role.Button) { state.open(Screen.Exercise(ex.id, date)) },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Dot(state.catById[ex.categoryId]?.color)
+                        Txt(exName, Modifier.semantics { heading() }, bold = true, size = 17.sp)
+                    }
+                    if (tools.grouping && e.color != null) {
+                        Btn(state.t("ungroup"), { state.run({ it.ungroupExercise(date, ex.id) }) { state.loadDay(date) } }, small = true)
+                    }
+                    if (tools.reordering) {
+                        IconBtn("↑", "${state.t("moveUp")}: $exName", { state.run({ it.moveExercise(date, ex.id, -1) }) { state.loadDay(date) } }, small = true, enabled = i > 0)
+                        IconBtn("↓", "${state.t("moveDown")}: $exName", { state.run({ it.moveExercise(date, ex.id, 1) }) { state.loadDay(date) } }, small = true, enabled = i < entries.lastIndex)
+                    }
                 }
                 Column(Modifier.padding(top = 4.dp)) {
                     for (set in e.sets) {
@@ -132,5 +168,9 @@ fun DayLog(state: AppState) {
             Btn("+ " + state.t("addExercise"), { state.open(Screen.Pick(date)) }, kind = BtnKind.PRIMARY)
         }
         if (comment.isEmpty()) Btn(state.t("comment"), { state.open(Screen.Comment(date)) })
+    }
+    if (entries.isNotEmpty()) {
+        val groups = remember(entries) { entries.map { it.ex to it.sets } }
+        DayTools(state, day, groups, tools)
     }
 }

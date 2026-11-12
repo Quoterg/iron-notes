@@ -69,17 +69,8 @@ private fun metricKey(m: Metric): String {
     return parts.first() + parts.drop(1).joinToString("") { it.replaceFirstChar(Char::uppercase) }
 }
 
-private fun dayMs(d: String): Long = epochDay(d.substring(0, 4).toInt(), d.substring(5, 7).toInt(), d.substring(8, 10).toInt()) * DAY
+private fun dayMs(d: String): Long = epochDay(d) * DAY
 
-/** Days since 1970-01-01 (H. Hinnant's civil-date algorithm; java.time needs Android 8). */
-private fun epochDay(year: Int, m: Int, d: Int): Long {
-    val y = (if (m <= 2) year - 1 else year).toLong()
-    val era = Math.floorDiv(y, 400L)
-    val yoe = y - era * 400
-    val doy = (153 * ((m + 9) % 12) + 2) / 5 + d - 1
-    val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
-    return era * 146_097 + doe - 719_468
-}
 
 /** LineChart.tsx `decimate`: beyond MAX_DOTS keep the min and max point per x-bucket. */
 private fun decimate(v: DoubleArray): IntArray {
