@@ -125,6 +125,80 @@ pub struct BuiltProgram {
     pub missing: Vec<String>,
 }
 
+/// A progression target for the next set (ExerciseScreen.tsx `target` / `lyleT`), already adjusted (long
+/// gap, joint pain, lighter week) and rounded to the plates as the web does.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct GuideTarget {
+    /// kg.
+    pub weight: f64,
+    /// Reps to reach; None right after a weight increase (Dorian) or when the rule gives none.
+    pub reps: Option<f64>,
+    /// Why (the web's `why`): Dorian "up" | "reps" | "same" | "light" | "gap" | "joint" …; Lyle "runUp" |
+    /// "up" | "reps" | "gap" | "joint" … — the app shows the matching hint string.
+    pub why: String,
+    /// The set it's based on (last time's), if any.
+    pub prev: Option<WorkoutSet>,
+    /// Lyle: the cycle week (0 outside a cycle).
+    pub week: f64,
+}
+
+/// A muscle trained in a main session too recently (Dorian HIT, targets.ts `tooSoon`).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct TooSoonMuscle {
+    pub muscle: crate::model::MuscleId,
+    pub days: f64,
+}
+
+/// Effective reps of one of the day's sets (effective.ts `setEffective`); `est` when the effort was estimated.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct SetEffort {
+    pub set_id: String,
+    pub n: f64,
+    pub est: bool,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct WarmupHint {
+    /// kg.
+    pub weight: f64,
+    pub reps: f64,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct PlatesHint {
+    /// The bar (in the user's unit, as the setting holds it).
+    pub bar: f64,
+    /// Plates for one side, heaviest first (user's unit).
+    pub per_side: Vec<f64>,
+    /// Whether the weight can be loaded exactly.
+    pub exact: bool,
+}
+
+/// What the logging screen shows beside the form in Dorian HIT / Lyle mode (ExerciseScreen.tsx), in one call.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct ExerciseGuide {
+    /// Dorian: the target per working set today (index = working sets already done), adjusted and snapped.
+    pub dorian_targets: Vec<GuideTarget>,
+    /// Lyle: the exercise's target for this session.
+    pub lyle_target: Option<GuideTarget>,
+    /// Dorian lighter week on `date`.
+    pub light: bool,
+    /// Days since the last normal session of the exercise (0 if none), and whether that's a long gap.
+    pub gap_days: f64,
+    pub long_gap: bool,
+    /// Ask readiness before this set: the first set today of a muscle in a training mode.
+    pub ask_readiness: bool,
+    /// Dorian: muscles of this exercise trained in a main session less than ~5 days ago.
+    pub too_soon: Vec<TooSoonMuscle>,
+    /// Dorian + program: the program's next workout that doesn't train these muscles (for "still sore").
+    pub swap_day: Option<crate::model::RoutineDay>,
+    /// Effective reps of the day's sets of this exercise, and their sum (reps exercises).
+    pub effort: Vec<SetEffort>,
+    pub effective_today: f64,
+    /// Whether targets and warm-ups are rounded to plates and plates are shown for this exercise.
+    pub shows_plates: bool,
+}
+
 #[derive(uniffi::Object)]
 pub struct IronCore {
     store: Mutex<Store>,
@@ -399,6 +473,36 @@ impl IronCore {
     }
     pub fn put_comment(&self, date: String, text: String) -> R<()> {
         self.with(|s| s.put_comment(&date, &text))
+    }
+
+    // ---- Training modes on the logging screen (N6; ExerciseScreen.tsx) ----
+
+    /// Targets, readiness, too-soon, effort and plates for logging `exercise_id` on `date`.
+    pub fn exercise_guide(&self, exercise_id: String, date: String) -> R<ExerciseGuide> {
+        let _ = (exercise_id, date);
+        Ok(ExerciseGuide {
+            dorian_targets: vec![],
+            lyle_target: None,
+            light: false,
+            gap_days: 0.0,
+            long_gap: false,
+            ask_readiness: false,
+            too_soon: vec![],
+            swap_day: None,
+            effort: vec![],
+            effective_today: 0.0,
+            shows_plates: false,
+        })
+    }
+    /// Warm-up sets before a working weight (targets.ts `warmups`), snapped to plates as the web does.
+    pub fn warmups_for(&self, exercise_id: String, work_kg: f64) -> R<Vec<WarmupHint>> {
+        let _ = (exercise_id, work_kg);
+        Ok(vec![])
+    }
+    /// Plates per side for a weight in kg on this exercise's bar (None when plates aren't used/shown).
+    pub fn plates_for(&self, exercise_id: String, kg: f64) -> R<Option<PlatesHint>> {
+        let _ = (exercise_id, kg);
+        Ok(None)
     }
 
     // ---- Day tools, calendar, routines, programs (N5; workout.ts / calendar.ts / routines.ts / programs.ts) ----
