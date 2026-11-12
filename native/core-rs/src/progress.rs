@@ -215,21 +215,35 @@ pub fn rep_max_table(sets: &[WorkoutSet], max_reps: u32) -> Vec<RepMax> {
         }
         top = js_max(top, r);
     }
-    let earlier = |a: &WorkoutSet, b: &WorkoutSet| a.date < b.date || (a.date == b.date && a.order < b.order);
     let n = max_reps as usize;
     let mut rows: Vec<Option<RepMax>> = vec![None; n];
     let mut best: Option<&WorkoutSet> = None;
-    let mut r = top;
+    fn consider<'a>(e: &'a WorkoutSet, best: &mut Option<&'a WorkoutSet>) {
+        let earlier = |a: &WorkoutSet, b: &WorkoutSet| a.date < b.date || (a.date == b.date && a.order < b.order);
+        let take = match *best {
+            None => true,
+            Some(b) => e.weight.unwrap() > b.weight.unwrap() || (e.weight == b.weight && earlier(e, b)),
+        };
+        if take {
+            *best = Some(e);
+        }
+    }
+    // progress.ts walks r = top, top − 1, … down to 1. Rows exist only for r ≤ max_reps, so the rep counts
+    // above it are folded into `best` from the (few) exact keys instead of walking every integer between —
+    // one mistyped huge reps value must not stall the core. Same keys, same order (highest reps first).
+    let steps_above = if top > max_reps as f64 { (top - max_reps as f64).ceil() } else { 0.0 };
+    let mut above: Vec<&(f64, &WorkoutSet)> = exact
+        .iter()
+        .filter(|(k, _)| *k >= 1.0 && *k > top - steps_above && (top - *k).fract() == 0.0)
+        .collect();
+    above.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    for (_, e) in above {
+        consider(e, &mut best);
+    }
+    let mut r = top - steps_above;
     while r >= 1.0 {
-        let e = exact.iter().find(|(k, _)| *k == r).map(|(_, s)| *s);
-        if let Some(e) = e {
-            let take = match best {
-                None => true,
-                Some(b) => e.weight.unwrap() > b.weight.unwrap() || (e.weight == b.weight && earlier(e, b)),
-            };
-            if take {
-                best = Some(e);
-            }
+        if let Some((_, e)) = exact.iter().find(|(k, _)| *k == r) {
+            consider(e, &mut best);
         }
         if r <= max_reps as f64 && r.fract() == 0.0 {
             rows[r as usize - 1] = Some(RepMax { reps: r, set: best.cloned() });
@@ -375,4 +389,81 @@ pub fn nice_scale(min: f64, max: f64, time_steps: bool) -> Scale {
         v += step;
     }
     Scale { lo, hi, ticks }
+}
+
+#[cfg(test)]
+mod rep_max_tests {
+    use super::*;
+
+    fn set(i: usize, date: &str, w: f64, r: f64) -> WorkoutSet {
+        WorkoutSet { id: format!("s{i}"), date: date.into(), exercise_id: "e".into(), order: i as f64, weight: Some(w), reps: Some(r), ..Default::default() }
+    }
+
+    /// progress.ts `repMaxTable` step by step (the original loop), for comparison.
+    fn reference(sets: &[WorkoutSet], max_reps: u32) -> Vec<RepMax> {
+        let mut exact: Vec<(f64, &WorkoutSet)> = Vec::new();
+        let mut top = 0.0f64;
+        for s in sets {
+            let (Some(w), Some(r)) = (s.weight, s.reps) else { continue };
+            if !(w > 0.0 && r > 0.0) {
+                continue;
+            }
+            match exact.iter_mut().find(|(k, _)| *k == r) {
+                Some(slot) => {
+                    if w > slot.1.weight.unwrap() {
+                        slot.1 = s;
+                    }
+                }
+                None => exact.push((r, s)),
+            }
+            top = top.max(r);
+        }
+        let earlier = |a: &WorkoutSet, b: &WorkoutSet| a.date < b.date || (a.date == b.date && a.order < b.order);
+        let mut rows: Vec<Option<RepMax>> = vec![None; max_reps as usize];
+        let mut best: Option<&WorkoutSet> = None;
+        let mut r = top;
+        while r >= 1.0 {
+            if let Some((_, e)) = exact.iter().find(|(k, _)| *k == r) {
+                if best.map_or(true, |b| e.weight.unwrap() > b.weight.unwrap() || (e.weight == b.weight && earlier(e, b))) {
+                    best = Some(e);
+                }
+            }
+            if r <= max_reps as f64 && r.fract() == 0.0 {
+                rows[r as usize - 1] = Some(RepMax { reps: r, set: best.cloned() });
+            }
+            r -= 1.0;
+        }
+        rows.into_iter().enumerate().map(|(i, row)| row.unwrap_or(RepMax { reps: (i + 1) as f64, set: None })).collect()
+    }
+
+    #[test]
+    fn a_huge_reps_value_is_instant() {
+        let sets = vec![set(0, "2026-01-01", 100.0, 5.0), set(1, "2026-01-02", 120.0, 1e9), set(2, "2026-01-03", 110.0, 3.0)];
+        let t = std::time::Instant::now();
+        let rows = rep_max_table(&sets, 15);
+        assert!(t.elapsed().as_millis() < 50, "took {:?}", t.elapsed());
+        // The 1e9-rep set at 120 kg is the heaviest for every row 1–15.
+        assert!(rows.iter().all(|r| r.set.as_ref().map(|s| s.id.as_str()) == Some("s1")));
+    }
+
+    #[test]
+    fn matches_the_step_by_step_walk() {
+        // Deterministic pseudo-random histories incl. fractional reps, ties, and tops above max_reps.
+        let mut seed = 12345u64;
+        let mut rnd = |n: u64| {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) % n
+        };
+        let reps = [1.0, 2.0, 3.0, 5.0, 8.0, 8.5, 10.0, 12.0, 15.0, 16.0, 20.0, 25.5, 30.0, 40.0, 0.5, 0.0];
+        let weights = [0.0, 20.0, 40.0, 60.0, 60.0, 80.0, 100.0, 100.0, 120.0];
+        for case in 0..400 {
+            let n = rnd(25) as usize;
+            let sets: Vec<WorkoutSet> = (0..n)
+                .map(|i| set(i, &format!("2026-01-{:02}", 1 + rnd(28)), weights[rnd(weights.len() as u64) as usize], reps[rnd(reps.len() as u64) as usize]))
+                .collect();
+            for max in [0, 1, 5, 15, 25] {
+                assert_eq!(rep_max_table(&sets, max), reference(&sets, max), "case {case}, max {max}");
+            }
+        }
+    }
 }
