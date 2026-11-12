@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import io.github.quoterg.ironnotes.core.Exercise
 import io.github.quoterg.ironnotes.core.ExerciseLog
 import io.github.quoterg.ironnotes.core.LoadType
+import io.github.quoterg.ironnotes.core.Settings
 import io.github.quoterg.ironnotes.core.WorkoutSet
 import io.github.quoterg.ironnotes.core.dFromUser
 import io.github.quoterg.ironnotes.core.dToUser
@@ -44,7 +46,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 /** The Track tab's inputs as typed (ExerciseScreen.tsx `Form`), in the user's units. */
-private class Form {
+internal class Form {
     var weight by mutableStateOf("")
     var reps by mutableStateOf("")
     var distance by mutableStateOf("")
@@ -53,20 +55,21 @@ private class Form {
     var comment by mutableStateOf("")
 
     /** `own`: the set itself is being edited (its comment too); otherwise it only seeds the next set. */
-    fun load(s: WorkoutSet, state: AppState, own: Boolean) {
-        val st = state.settings
+    fun load(s: WorkoutSet, st: Settings, own: Boolean) {
         weight = s.weight?.let { num(wToUser(it, st.unit)) } ?: ""
         reps = s.reps?.let { num(it) } ?: ""
         distance = s.distance?.let { num(dToUser(it, st.dist), 3) } ?: ""
-        min = s.time?.let { Math.floor(it / 60).toLong().toString() } ?: ""
-        sec = s.time?.let { Math.round(it % 60).toString() } ?: ""
+        // Round the total first, then split: 119.6 s is 2:00, not 1:60.
+        val total = s.time?.let { Math.round(it) }
+        min = total?.let { (it / 60).toString() } ?: ""
+        sec = total?.let { (it % 60).toString() } ?: ""
         if (own) comment = s.comment ?: ""
     }
 
     /** Only into empty fields: on a slow phone the user may have typed before the history arrived. */
-    fun fillEmpty(s: WorkoutSet, state: AppState) {
+    fun fillEmpty(s: WorkoutSet, st: Settings) {
         val before = listOf(weight, reps, distance, min, sec)
-        val seed = Form().also { it.load(s, state, false) }
+        val seed = Form().also { it.load(s, st, false) }
         if (before[0].isBlank()) weight = seed.weight
         if (before[1].isBlank()) reps = seed.reps
         if (before[2].isBlank()) distance = seed.distance
@@ -80,15 +83,14 @@ private class Form {
 }
 
 /** The set values a form holds (stored units), as ExerciseScreen.tsx `fromForm`. */
-private class Values(val weight: Double?, val reps: Double?, val distance: Double?, val time: Double?)
+internal class Values(val weight: Double?, val reps: Double?, val distance: Double?, val time: Double?)
 
 /** Accepts "82,5" as well as "82.5". Empty or invalid → null. */
-private fun parse(v: String): Double? =
+internal fun parse(v: String): Double? =
     v.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
 
 /** Null if a field the type needs is missing, or nothing is above zero (0 kg × 10 is fine, 0 × 0 isn't a set). */
-private fun fromForm(f: Form, ex: Exercise, state: AppState): Values? {
-    val st = state.settings
+internal fun fromForm(f: Form, ex: Exercise, st: Settings): Values? {
     var weight: Double? = null
     var reps: Double? = null
     var distance: Double? = null
@@ -147,7 +149,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             if (!filled) {
                 filled = true
                 // Start from the last set logged (today, else last time), like a paper log.
-                (l.sets.lastOrNull() ?: l.previous.firstOrNull())?.let { form.fillEmpty(it, state) }
+                (l.sets.lastOrNull() ?: l.previous.firstOrNull())?.let { form.fillEmpty(it, state.settings) }
             }
             then(l)
         }
@@ -166,19 +168,24 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     val todays = current?.sets ?: emptyList()
     val selected = sel?.let { s -> todays.firstOrNull { it.id == s } }
     val records = remember(current) { current?.records?.toHashSet() ?: HashSet() }
-    val values = fromForm(form, ex, state)
+    // Validity is recomputed only when a field (or the exercise/settings) changes, not on every recomposition.
+    val values by remember(ex, st) { derivedStateOf { fromForm(form, ex, st) } }
+    var saving by remember(id, date) { mutableStateOf(false) }
 
     fun afterWrite() {
         state.loadDay(state.date)
     }
 
     fun save() {
+        if (saving) return
         val v = values ?: return
         val l = current ?: return
         val comment = form.comment.trim().ifEmpty { null }
         if (selected != null) {
             val s = selected.copy(weight = v.weight, reps = v.reps, distance = v.distance, time = v.time, comment = comment)
-            state.run({ it.putSet(s) }) {
+            saving = true
+            state.run({ it.putSet(s) }, { saving = false }) {
+                saving = false
                 sel = null
                 form.comment = ""
                 showComment = false
@@ -195,7 +202,9 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
         )
         // A record only counts as "new" when it beats earlier sets (the first ever set always holds one).
         val hadOthers = l.sets.isNotEmpty() || l.previous.isNotEmpty()
-        state.run({ it.putSet(s) }) {
+        saving = true
+        state.run({ it.putSet(s) }, { saving = false }) {
+            saving = false
             form.comment = ""
             showComment = false
             reload { nl ->
@@ -223,7 +232,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             showComment = false
         } else {
             sel = s.id
-            form.load(s, state, true)
+            form.load(s, state.settings, true)
             showComment = !s.comment.isNullOrEmpty()
         }
     }
@@ -258,7 +267,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                 "records" -> RecordsTab(state, ex)
             }
 
-            if (tab == "track") Track(state, ex, form, fields, load, values != null, selected != null, showComment, { showComment = true }, ::save, ::clearOrDelete)
+            if (tab == "track") Track(state, ex, form, fields, load, values != null && !saving, selected != null, showComment, { showComment = true }, ::save, ::clearOrDelete)
 
             if (tab == "track" && current != null) {
                 if (todays.isNotEmpty()) {
@@ -279,7 +288,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                                 // Copies the set into the form to log it again; what was typed comes back with Undo.
                                 val before = form.snapshot()
                                 sel = null
-                                form.load(s, state, false)
+                                form.load(s, state.settings, false)
                                 state.showToast(state.t("setCopied"), state.t("undo")) { form.restore(before) }
                             }
                         }

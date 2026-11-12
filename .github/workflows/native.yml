@@ -65,5 +65,8 @@ jobs:
       - name: Build (debug + shrunk release per CPU type, debug-signed)
         run: ./gradlew :app:assembleDebug :app:assembleRelease :app:lintRelease --console=plain
 
+      - name: App unit tests
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+
       - name: Size budget
         run: ./scripts/check-size.sh

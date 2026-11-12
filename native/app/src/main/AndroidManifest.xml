@@ -4,8 +4,9 @@
 
     <!-- Rest timer: the "rest over" notification (13+ asks at runtime), vibration, and an exact alarm so it
          fires on time with the screen off. SCHEDULE_EXACT_ALARM: granted on Android 7–13 (12/13 by
-         default); on 14+ the user may grant it in system settings, else the alarm falls back to an inexact
-         one. Not USE_EXACT_ALARM: Play reserves it for alarm-clock and calendar apps. -->
+         default); on 14+ the user may grant it in system settings. Without it the timer uses
+         AlarmManager.setAlarmClock, which is exact, needs no permission and passes Doze. Not
+         USE_EXACT_ALARM: Play reserves it for alarm-clock and calendar apps. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />

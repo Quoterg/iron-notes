@@ -276,6 +276,10 @@ impl Store {
 
     // ---- Sets ----
 
+    /// One set by id.
+    pub fn set(&self, id: &str) -> Result<Option<WorkoutSet>> {
+        Ok(self.docs("SELECT data FROM sets WHERE id = ?1", [id])?.into_iter().next())
+    }
     pub fn sets_on(&self, date: &str) -> Result<Vec<WorkoutSet>> {
         self.docs("SELECT data FROM sets WHERE date = ?1 ORDER BY ord, rowid", [date])
     }

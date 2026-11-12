@@ -38,6 +38,15 @@
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
 
+## 2026-11-12 — #48 review fixes (N3)
+
+- Core: record ids cached per exercise in `IronCore` (cleared on that exercise's set/exercise writes; all on
+  body entries, measures, imports); body weights read once per call; `exercise_log` reuses its history.
+- App (Sonnet agent): rest timer persisted (wall-clock end) and restored after process death (checked with
+  kill -9 on the emulator: bar back, still counting); `setAlarmClock` when exact alarms aren't allowed (14+);
+  JVM unit tests app/src/test FormTest (10, against the real core via JNA, CI step "App unit tests");
+  derived exById/catById; Save guard; saveable state per stacked screen; channel names per language.
+
 ## 2026-11-12 — N3 Day log & logging (native)
 
 - Core: `day()` adds record ids (real load via body weight, as state.ts `loadedSetsOf`), set count and volume
