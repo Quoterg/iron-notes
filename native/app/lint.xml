@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- UniFFI's generated Kotlin uses java.lang.ref.Cleaner (Android 13+) only after checking at run
+         time that it exists, and falls back to JNA's cleaner on older Android (checked on the Android
+         7.0 emulator). Lint can't see the check; our own code stays under the NewApi rule. -->
+    <issue id="NewApi">
+        <ignore path="build/generated/uniffi/**" />
+    </issue>
+</lint>

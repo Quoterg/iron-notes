@@ -21,6 +21,14 @@ pub mod load;
 pub mod records;
 pub mod tools;
 
+// Storage (N2): backup format and validation, starter data, the SQLite store
+pub mod backup;
+pub mod seed;
+pub mod store;
+
+// What the apps call (UniFFI)
+pub mod api;
+
 uniffi::setup_scaffolding!();
 
 /// The core's version, shown in the app to prove the bridge works.

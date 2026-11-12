@@ -3,7 +3,8 @@
 //! The golden fixtures are the contract, so these follow JavaScript's number semantics exactly, edge
 //! cases included (NaN, negative or huge seconds, unreadable dates): see tests/golden/calc.json.
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, uniffi::Enum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize, uniffi::Enum)]
+#[serde(rename_all = "lowercase")]
 pub enum Formula {
     #[default]
     Epley,

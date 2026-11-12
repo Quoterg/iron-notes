@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +77,18 @@ private fun Preview() {
                     style = TextStyle(color = p.muted, fontSize = 13.sp),
                 )
             }
+            // The database (SQLite in the Rust core) and the web app's strings: the starter library,
+            // with the category names as shown in the current language.
+            val context = LocalContext.current
+            val db by produceState<String?>(null) {
+                value = withContext(Dispatchers.IO) {
+                    val i18n = I18n.load(context)
+                    val lib = Core.get(context).library()
+                    "${i18n.t("exercises")}: ${lib.exercises.size} · " +
+                        lib.categories.sortedBy { it.order }.joinToString(", ") { i18n.shown("categories", it.name) }
+                }
+            }
+            db?.let { BasicText(it, style = TextStyle(color = p.muted, fontSize = 13.sp)) }
         }
     }
 }

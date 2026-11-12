@@ -4,6 +4,7 @@
 
 use crate::calc::add_days;
 use crate::lyle::{cycle_week, RUN_UP};
+pub use crate::model::{Routine, RoutineDay};
 use crate::model::{TrainingMode, WorkoutSet};
 use crate::targets::{down, Target, TargetWhy};
 use serde::{Deserialize, Serialize};
@@ -110,23 +111,6 @@ pub fn redated(s: &WorkoutSet, to: &str, light: Option<&Light>) -> WorkoutSet {
 /// Sets that drive progression: done, not from a lighter week.
 pub fn progressing(s: &WorkoutSet) -> bool {
     !s.is_planned() && !s.is_deload()
-}
-
-/// A workout of a routine (the part the program rotation reads).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct RoutineDay {
-    pub id: String,
-    pub name: String,
-}
-
-/// A routine (the part the program rotation reads; days' items are left out for now).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Routine {
-    pub id: String,
-    pub name: String,
-    pub order: f64,
-    #[serde(default)]
-    pub days: Vec<RoutineDay>,
 }
 
 /// The program's next workout: the one after the last logged from it (the first when none).
