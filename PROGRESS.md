@@ -12,9 +12,9 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
-  N1a #45, N1b #46 merged; N2 = #47, N3 = #48 (both: review fixes pushed), N4 = #49 (on #48), N5 = stacked PR on #49.
-  Next: **N6 training modes** (Dorian/Lyle targets, RIR, readiness, warm-ups, plates and load hints on the
-  logging screen, feedback card, effective-reps badges).
+  N1a #45, N1b #46 merged; N2 #47, N3 #48 merged; N4 = #49 (review fixes pushed), N5 = #50 (on #49), N6 = stacked PR
+  on #50. Next: **N7 muscles, body map, statistics, review** (Muscles screen + BodyMap, DayMuscles, Analysis,
+  Review; the Body tab may come with N8).
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
@@ -38,6 +38,22 @@
   function. Picker list padded above the navigation bar.
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
+
+## 2026-11-12 — N6 Training modes on the logging screen (native)
+
+- Core (Sonnet agents): `exercise_guide(id, date)` — Dorian targets per working set (gap/joint adjusted,
+  snapped to plates, lighter week), Lyle target (run-up/push/gap/joint), readiness (first set of a muscle),
+  too soon, swap day for "still sore", effective reps of the day's sets; `warmups_for`, `plates_for`;
+  `exercise_feedback(id, date)` — trend, advice key + n, cause, lighter-week/new-cycle action, needs body weight.
+- App: effort inputs (Dorian working/warm-up + reps after failure, lighter week RIR 1 + deload; Lyle RIR chips
+  never prefilled), target line with the web's hints and plates per side, prefill from the target, next set's
+  target after saving, warm-up chips, readiness chips (+ swap day), too-soon hint, joint-pain toggle with swap
+  chips, effective-reps badges and day total, feedback card with its one-tap action, body-weight hint. JVM tests
+  GuideTest (effortOf). Fixed: trophy label "Personal record" (was "New personal record!").
+- Verified on the Android 7.0 emulator (release; mode set in the database — Settings come in N8): Dorian → "Set 1
+  target: 100 kg × 9+ · 8 reps last time: beat it", warm-ups 50 × 10 / 75 × 6, save → "Set 2 target: 80 kg ×
+  11+", effective reps 6; Lyle → "Week 1 of 6 (run-up) · Target: 100 kg × 9+", RIR chips; Pull Up without a
+  weigh-in → body-weight hint. APKs arm64 3.8 MB, armeabi-v7a 3.3 MB, universal 6.4 MB.
 
 ## 2026-11-12 — N5 Calendar, routines, saved workouts, programs, day tools (native)
 

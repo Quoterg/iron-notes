@@ -199,6 +199,25 @@ pub struct ExerciseGuide {
     pub shows_plates: bool,
 }
 
+/// The logging screen's feedback card (Feedback.tsx) and the body-weight hint, for one exercise and day.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ExerciseFeedback {
+    /// The last sessions' direction: "none" | "up" | "stalled" | "weaker".
+    pub trend: String,
+    /// The i18n key of the advice; empty when the card shows nothing (Standard mode, or not stalled/weaker).
+    pub advice: String,
+    /// The advice's `{n}` variable: the spacing (stalled) or the longest gap in days (weaker).
+    pub n: f64,
+    /// Weaker only: "inconsistent" | "cutting" | "exercise" | "fatigue"; empty otherwise.
+    pub cause: String,
+    /// The one-tap lever (cause "fatigue"): a new cycle (Lyle, `start_cycle`) or a lighter week (Dorian).
+    pub action: bool,
+    /// Whether the action starts a new cycle (Lyle) rather than a lighter week.
+    pub start_cycle: bool,
+    /// A body-weight exercise with no body weight logged: only the added load counts (`needBodyWeight`).
+    pub needs_body_weight: bool,
+}
+
 #[derive(uniffi::Object)]
 pub struct IronCore {
     store: Mutex<Store>,
@@ -634,6 +653,87 @@ impl IronCore {
             shows_plates: tools::rounds_to_plates(Some(&ex), round_plates),
         })
     }
+    /// Feedback.tsx: when the exercise got weaker or stalled over its last sessions (Dorian HIT / Lyle), the
+    /// advice key by cause, plus the body-weight hint. None for an unknown exercise.
+    pub fn exercise_feedback(&self, exercise_id: String, date: String) -> R<Option<ExerciseFeedback>> {
+        let date = date.as_str();
+        let data = self.with(|s| {
+            let Some(ex) = s.exercise(&exercise_id)? else { return Ok(None) };
+            let real = self.loaded_cached(s, &ex)?;
+            let st = s.settings()?;
+            let mut weights: Vec<BodyMetric> = s.metrics()?.into_iter().filter(|m| m.kind == crate::model::BodyKind::Weight).collect();
+            weights.sort_by(|a, b| a.order.partial_cmp(&b.order).unwrap_or(std::cmp::Ordering::Equal));
+            let entries = match weights.first() {
+                Some(m) => s.body_of(&m.id)?,
+                None => Vec::new(),
+            };
+            let others = s.sets_between(&calc::add_days(date.to_string(), -28), &calc::add_days(date.to_string(), -1))?;
+            Ok(Some((st, ex, real, entries, others)))
+        })?;
+        let Some((st, ex, real, entries, others)) = data else { return Ok(None) };
+        let needs_body_weight = load::uses_body_weight(load::load_of(Some(&ex))) && load::body_weight_at(&entries).at(date).is_none();
+        let mut out = ExerciseFeedback {
+            trend: "none".into(),
+            advice: String::new(),
+            n: 0.0,
+            cause: String::new(),
+            action: false,
+            start_cycle: false,
+            needs_body_weight,
+        };
+        let lyle = st.mode == TrainingMode::Lyle;
+        // Lyle: only the push weeks of the running cycle compare (run-up weeks are lighter on purpose).
+        let since = match st.cycle.as_ref() {
+            Some(c) if lyle && c.start.as_str() <= date => calc::add_days(c.start.clone(), 14),
+            _ => String::new(),
+        };
+        let counted: Vec<WorkoutSet> = real.iter().filter(|x| x.set.date.as_str() < date).map(|x| x.set.clone()).collect();
+        let list = feedback::sessions(&counted, st.formula, &since);
+        let trend = feedback::trend_of(&list);
+        out.trend = match trend {
+            feedback::Trend::None => "none",
+            feedback::Trend::Up => "up",
+            feedback::Trend::Stalled => "stalled",
+            feedback::Trend::Weaker => "weaker",
+        }
+        .into();
+        if st.mode == TrainingMode::Standard || !matches!(trend, feedback::Trend::Stalled | feedback::Trend::Weaker) {
+            return Ok(Some(out));
+        }
+        let rate = feedback::weekly_rate(&entries, date, 21.0);
+        let cutting = feedback::is_cutting(st.diet, rate);
+        let Some(last) = list.last() else { return Ok(Some(out)) };
+        if trend == feedback::Trend::Stalled {
+            let spacing = if list.len() > 1 { feedback::days_between(&list[list.len() - 2].date, &last.date) } else { 7.0 };
+            out.advice = feedback::stalled_advice(lyle, cutting, last.sore, spacing).into();
+            out.n = spacing;
+            return Ok(Some(out));
+        }
+        // Weaker: how many other exercises of the last 4 weeks got weaker too.
+        let mut by: Vec<(String, Vec<WorkoutSet>)> = Vec::new();
+        for x in others.into_iter().filter(|x| x.exercise_id != ex.id) {
+            match by.iter_mut().find(|(id, _)| *id == x.exercise_id) {
+                Some((_, v)) => v.push(x),
+                None => by.push((x.exercise_id.clone(), vec![x])),
+            }
+        }
+        let others_weaker = by.iter().filter(|(_, v)| feedback::trend_of(&feedback::sessions(v, st.formula, &since)) == feedback::Trend::Weaker).count();
+        let gap = feedback::longest_gap(&list, 3);
+        let cause = feedback::cause_of(gap, cutting, others_weaker as f64);
+        out.advice = feedback::weaker_advice(cause, lyle).into();
+        out.n = gap;
+        out.cause = match cause {
+            feedback::Cause::Inconsistent => "inconsistent",
+            feedback::Cause::Cutting => "cutting",
+            feedback::Cause::Exercise => "exercise",
+            feedback::Cause::Fatigue => "fatigue",
+        }
+        .into();
+        out.action = cause == feedback::Cause::Fatigue;
+        out.start_cycle = lyle;
+        Ok(Some(out))
+    }
+
     /// Warm-up sets before a working weight (targets.ts `warmups`), snapped to plates as the web does.
     pub fn warmups_for(&self, exercise_id: String, work_kg: f64) -> R<Vec<WarmupHint>> {
         let (st, ex) = self.with(|s| Ok((s.settings()?, s.exercise(&exercise_id)?)))?;
@@ -1591,6 +1691,102 @@ mod tests {
         assert_eq!((st.mode, st.cycle.unwrap().start), (TrainingMode::Dorian, "2026-11-12".to_string()));
         assert!(core.start_program_on("nope", "x", "2026-11-12").is_err());
         assert_eq!(core.start_program("dorian4".into(), "Today".into(), "2026-11-12".into()).unwrap().routine.order, 5.0);
+    }
+
+    // ---- N6: the feedback card ----
+
+    fn fb(core: &IronCore, ex: &Exercise, date: &str) -> ExerciseFeedback {
+        core.exercise_feedback(ex.id.clone(), date.into()).unwrap().unwrap()
+    }
+    /// One set per date at a weight (10 reps).
+    fn sessions_at(core: &IronCore, ex: &Exercise, list: &[(&str, f64)]) {
+        core.put_sets(list.iter().map(|(d, w)| logged(ex, d, *w, 10.0)).collect()).unwrap();
+    }
+
+    #[test]
+    fn feedback_none_up_and_standard() {
+        let core = IronCore::in_memory().unwrap();
+        let curl = exercise(&core, "Dumbbell Curl");
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        sessions_at(&core, &curl, &[("2026-11-02", 20.0), ("2026-11-05", 20.0)]);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.trend.as_str(), f.advice.as_str(), f.action), ("none", "", false));
+        sessions_at(&core, &curl, &[("2026-11-08", 25.0)]);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.trend.as_str(), f.advice.as_str()), ("up", ""));
+        assert!(core.exercise_feedback("nope".into(), "2026-11-12".into()).unwrap().is_none());
+    }
+
+    #[test]
+    fn feedback_standard_mode_shows_nothing() {
+        let core = IronCore::in_memory().unwrap();
+        let curl = exercise(&core, "Dumbbell Curl");
+        sessions_at(&core, &curl, &[("2026-11-03", 30.0), ("2026-11-06", 25.0), ("2026-11-09", 20.0)]);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.trend.as_str(), f.advice.as_str()), ("weaker", ""));
+    }
+
+    #[test]
+    fn feedback_stalled_by_mode_and_cut() {
+        let core = IronCore::in_memory().unwrap();
+        let curl = exercise(&core, "Dumbbell Curl");
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        sessions_at(&core, &curl, &[("2026-11-01", 30.0), ("2026-11-08", 25.0), ("2026-11-10", 25.0)]);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.trend.as_str(), f.advice.as_str(), f.n, f.action), ("stalled", "fbStalledDorianSpacing", 2.0, false));
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        assert_eq!(fb(&core, &curl, "2026-11-12").advice, "fbStalledLyle");
+        mode(&core, |st| st.diet = Some(crate::model::Diet::Cut));
+        assert_eq!(fb(&core, &curl, "2026-11-12").advice, "fbStalledCut");
+    }
+
+    #[test]
+    fn feedback_weaker_causes() {
+        let core = IronCore::in_memory().unwrap();
+        let curl = exercise(&core, "Dumbbell Curl");
+        let row = exercise(&core, "Barbell Row");
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        // Only this exercise down: no lever.
+        sessions_at(&core, &curl, &[("2026-11-03", 30.0), ("2026-11-06", 25.0), ("2026-11-09", 20.0)]);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.trend.as_str(), f.cause.as_str(), f.advice.as_str(), f.n, f.action), ("weaker", "exercise", "fbExerciseDorian", 3.0, false));
+        // Another exercise down too: real fatigue, with the mode's own lever.
+        sessions_at(&core, &row, &[("2026-11-03", 60.0), ("2026-11-06", 50.0), ("2026-11-09", 40.0)]);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.cause.as_str(), f.advice.as_str(), f.action, f.start_cycle), ("fatigue", "fbFatigueDorian", true, false));
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.advice.as_str(), f.action, f.start_cycle), ("fbFatigueLyle", true, true));
+        // A cut outranks fatigue.
+        mode(&core, |st| st.diet = Some(crate::model::Diet::Cut));
+        let f = fb(&core, &curl, "2026-11-12");
+        assert_eq!((f.cause.as_str(), f.advice.as_str(), f.action), ("cutting", "fbCuttingLyle", false));
+        // A long gap outranks both.
+        mode(&core, |st| st.diet = None);
+        let slow = exercise(&core, "Lat Pulldown");
+        sessions_at(&core, &slow, &[("2026-10-10", 30.0), ("2026-10-25", 25.0), ("2026-11-09", 20.0)]);
+        let f = fb(&core, &slow, "2026-11-12");
+        assert_eq!((f.cause.as_str(), f.advice.as_str(), f.n), ("inconsistent", "fbInconsistent", 15.0));
+        assert!(!f.action);
+    }
+
+    #[test]
+    fn feedback_lyle_compares_only_push_weeks_and_needs_body_weight() {
+        let core = IronCore::in_memory().unwrap();
+        let curl = exercise(&core, "Dumbbell Curl");
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        sessions_at(&core, &curl, &[("2026-11-03", 30.0), ("2026-11-06", 25.0), ("2026-11-09", 20.0)]);
+        assert_eq!(fb(&core, &curl, "2026-11-12").trend, "weaker");
+        // Inside a cycle that began 2026-11-01 the run-up (two weeks) doesn't count.
+        mode(&core, |st| st.cycle = Some(CycleSettings { start: "2026-11-01".into(), weeks: 6.0 }));
+        assert_eq!(fb(&core, &curl, "2026-11-12").trend, "none");
+        // Body weight: needed by a body-weight exercise until a weigh-in exists.
+        let pull = exercise(&core, "Pull Up");
+        assert!(fb(&core, &pull, "2026-11-12").needs_body_weight);
+        assert!(!fb(&core, &curl, "2026-11-12").needs_body_weight);
+        let m = core.metrics().unwrap().into_iter().find(|m| m.kind == crate::model::BodyKind::Weight).unwrap();
+        core.put_entry(BodyMetricEntry { id: new_id(), metric_id: m.id, date: "2026-11-10".into(), value: 80.0, at: 1.0 }).unwrap();
+        assert!(!fb(&core, &pull, "2026-11-12").needs_body_weight);
     }
 
     // ---- N6: the exercise guide ----

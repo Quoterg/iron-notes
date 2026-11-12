@@ -367,6 +367,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                 val g = guide
                 Column(Modifier.padding(top = 12.dp)) {
                     if (g != null && asking && selected == null) Readiness(state, ex, g, dorian, date, sore) { sore = it }
+                    FeedbackCard(state, ex, date, (dorian || lyle) && selected == null, current)
                     if (dorian || lyle) {
                         JointRow(
                             state, ex,
