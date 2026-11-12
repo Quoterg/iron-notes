@@ -119,6 +119,12 @@ val uniffiBindings by tasks.registering(Exec::class) {
     )
 }
 
+// Unit tests run on this computer and load the Rust core through JNA (the host library built above).
+tasks.withType<Test>().configureEach {
+    dependsOn(rustHostLib)
+    systemProperty("jna.library.path", rustDir.resolve("target/debug").path)
+}
+
 tasks.named("preBuild") { dependsOn(cargoNdk, uniffiBindings) }
 
 dependencies {
@@ -131,4 +137,7 @@ dependencies {
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // UniFFI's Kotlin bindings call the Rust library through JNA.
     implementation("net.java.dev.jna:jna:5.19.1@aar")
+    // Host JVM unit tests: the jar (the aar only holds Android libraries).
+    testImplementation("net.java.dev.jna:jna:5.19.1")
+    testImplementation("junit:junit:4.13.2")
 }
