@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -49,6 +50,7 @@ import io.github.quoterg.ironnotes.core.Range
 import io.github.quoterg.ironnotes.core.dToUser
 import io.github.quoterg.ironnotes.core.fmtTime
 import io.github.quoterg.ironnotes.core.metricKind
+import io.github.quoterg.ironnotes.core.metricsFor
 import io.github.quoterg.ironnotes.core.niceScale
 import io.github.quoterg.ironnotes.core.wToUser
 import java.text.SimpleDateFormat
@@ -120,22 +122,24 @@ private class ChartModel(
 @Composable
 fun GraphTab(state: AppState, ex: Exercise) {
     val s = state.settings
-    var metrics by remember(ex.id) { mutableStateOf<List<Metric>>(emptyList()) }
-    var metric by remember(ex.id) { mutableStateOf<Metric?>(null) }
-    var range by remember(ex.id) { mutableStateOf(Range.M3) }
+    val metrics = remember(ex.kind) { metricsFor(ex.kind) }
+    var metricName by rememberSaveable(ex.id) { mutableStateOf<String?>(null) }
+    var rangeName by rememberSaveable(ex.id) { mutableStateOf(Range.M3.name) }
+    val metric = metricName?.let { n -> metrics.firstOrNull { it.name == n } } ?: metrics.firstOrNull()
+    val range = Range.valueOf(rangeName)
+    val latest = remember { Latest() }
     var raw by remember(ex.id) { mutableStateOf<List<Point>>(emptyList()) }
     var loaded by remember(ex.id) { mutableStateOf(false) }
     var active by remember(ex.id, metric, range) { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(ex.id) {
-        state.run({ it.exerciseProgress(ex.id).metrics }) {
-            metrics = it
-            if (metric == null) metric = it.firstOrNull()
-        }
-    }
     LaunchedEffect(ex.id, metric, range) {
         val m = metric ?: return@LaunchedEffect
-        state.run({ it.exerciseSeries(ex.id, m, range, today()) }) { raw = it; loaded = true }
+        val id = latest.next()
+        raw = emptyList()
+        loaded = false
+        state.run({ it.exerciseSeries(ex.id, m, range, today()) }) {
+            if (latest.isLatest(id)) { raw = it; loaded = true }
+        }
     }
 
     val m = metric
@@ -181,14 +185,14 @@ fun GraphTab(state: AppState, ex: Exercise) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 for (mm in metrics) {
-                    Chip(state.t("m_" + metricKey(mm)), mm == m, { metric = mm }, Modifier.semantics { selected = mm == m })
+                    Chip(state.t("m_" + metricKey(mm)), mm == m, { metricName = mm.name }, Modifier.semantics { selected = mm == m })
                 }
             }
         }
         Txt(state.t("range"), muted = true, small = true)
         Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for ((r, key) in RANGES) {
-                Chip(state.t(key), r == range, { range = r }, Modifier.semantics { selected = r == range })
+                Chip(state.t(key), r == range, { rangeName = r.name }, Modifier.semantics { selected = r == range })
             }
         }
         if (points.size >= 2) {
