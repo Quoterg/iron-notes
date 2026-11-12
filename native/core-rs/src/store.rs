@@ -256,6 +256,10 @@ impl Store {
         del_doc(&tx, "categories", id)?;
         Ok(tx.commit()?)
     }
+    /// One exercise by id.
+    pub fn exercise(&self, id: &str) -> Result<Option<Exercise>> {
+        Ok(self.docs("SELECT data FROM exercises WHERE id = ?1", [id])?.into_iter().next())
+    }
     pub fn exercises(&self) -> Result<Vec<Exercise>> {
         self.docs("SELECT data FROM exercises ORDER BY rowid", [])
     }

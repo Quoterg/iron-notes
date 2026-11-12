@@ -21,6 +21,9 @@ pub mod load;
 pub mod records;
 pub mod tools;
 
+// Exercise progress (src/lib/progress.ts): graph series, rep maxes, bests, workouts
+pub mod progress;
+
 // Storage (N2): backup format and validation, starter data, the SQLite store
 pub mod backup;
 pub mod seed;
