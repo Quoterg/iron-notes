@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,15 +37,30 @@ import java.util.Locale
 private const val PAGE = 20
 private const val KM_PER_MI = 1.609344
 
-private fun dateText(d: String, lang: String, weekday: Boolean): String =
-    SimpleDateFormat(if (weekday) "EEE d MMM yyyy" else "d MMM yyyy", if (lang == "sv") Locale("sv", "SE") else Locale.getDefault())
-        .format(parseIso(d).time)
+/** One pair of date formatters per language (SimpleDateFormat is costly to build and not thread-safe). */
+private class DateFmt(lang: String) {
+    private val locale = if (lang == "sv") Locale("sv", "SE") else Locale.getDefault()
+    private val plain = SimpleDateFormat("d MMM yyyy", locale)
+    private val withDay = SimpleDateFormat("EEE d MMM yyyy", locale)
+
+    fun text(d: String, weekday: Boolean): String = (if (weekday) withDay else plain).format(parseIso(d).time)
+}
+
+@Composable
+private fun rememberDateFmt(state: AppState): DateFmt {
+    val lang = state.i18n.lang
+    return remember(lang) { DateFmt(lang) }
+}
 
 /** Loads the exercise's progress; it reloads when the day's data changes (a save on Track). */
 @Composable
 private fun rememberProgress(state: AppState, ex: Exercise): ExerciseProgress? {
     var progress by remember(ex.id) { mutableStateOf<ExerciseProgress?>(null) }
-    LaunchedEffect(ex.id, state.day) { state.run({ it.exerciseProgress(ex.id) }) { progress = it } }
+    val latest = remember { Latest() }
+    LaunchedEffect(ex.id, state.day) {
+        val id = latest.next()
+        state.run({ it.exerciseProgress(ex.id) }) { if (latest.isLatest(id)) progress = it }
+    }
     return progress
 }
 
@@ -56,12 +72,14 @@ fun HistoryTab(state: AppState, ex: Exercise) {
     val load = ex.load ?: LoadType.TOTAL
     val records = remember(progress) { progress.records.toHashSet() }
     val list = progress.workouts
+    val dates = rememberDateFmt(state)
     if (list.isEmpty()) {
         Txt(state.t("noHistory"), Modifier.fillMaxWidth().padding(vertical = 12.dp), muted = true, align = TextAlign.Center)
         return
     }
     list.take(shown).forEach { w ->
-        val label = dateText(w.date, state.i18n.lang, true)
+        key(w.date) {
+        val label = dates.text(w.date, true)
         Card(Modifier.padding(top = 12.dp), padding = 8.dp) {
             Txt(
                 label,
@@ -84,6 +102,7 @@ fun HistoryTab(state: AppState, ex: Exercise) {
                     if (s.id in records) Trophy(state.t("newRecord"))
                 }
             }
+        }
         }
     }
     if (shown < list.size) {
@@ -113,7 +132,7 @@ private fun bestText(state: AppState, field: BestField, v: Double): String {
 fun RecordsTab(state: AppState, ex: Exercise) {
     val progress = rememberProgress(state, ex) ?: return
     val st = state.settings
-    val lang = state.i18n.lang
+    val dates = rememberDateFmt(state)
     if (progress.bests.isEmpty()) {
         Txt(state.t("noRecords"), Modifier.fillMaxWidth().padding(vertical = 12.dp), muted = true, align = TextAlign.Center)
         return
@@ -125,7 +144,7 @@ fun RecordsTab(state: AppState, ex: Exercise) {
             Txt(state.t("est1rm"), muted = true, small = true, bold = true)
             Txt("${state.i18n.dnum(wToUser(orm.value, st.unit), 1)} ${unitLabel(st.unit)}", Modifier.padding(vertical = 4.dp), bold = true, size = 32.sp)
             Txt(
-                "${state.i18n.setText(orm.set, ex.kind, st)} · ${dateText(orm.set.date, lang, false)}",
+                "${state.i18n.setText(orm.set, ex.kind, st)} · ${dates.text(orm.set.date, false)}",
                 muted = true, small = true,
             )
         }
@@ -148,7 +167,7 @@ fun RecordsTab(state: AppState, ex: Exercise) {
                         Txt(state.i18n.weight(set.weight ?: 0.0, st))
                         if ((set.reps ?: 0.0) > reps) Txt(" × ${num(set.reps ?: 0.0)}", muted = true)
                     }
-                    Txt(dateText(set.date, lang, false), Modifier.weight(1.2f), size = 15.sp)
+                    Txt(dates.text(set.date, false), Modifier.weight(1.2f), size = 15.sp)
                 }
             }
         }
@@ -164,7 +183,7 @@ fun RecordsTab(state: AppState, ex: Exercise) {
                 Txt(state.t("b_${b.field.name.lowercase()}"), Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.End) {
                     Txt(bestText(state, b.field, b.value), bold = true)
-                    Txt(dateText(b.set.date, lang, false), muted = true, small = true)
+                    Txt(dates.text(b.set.date, false), muted = true, small = true)
                 }
             }
         }

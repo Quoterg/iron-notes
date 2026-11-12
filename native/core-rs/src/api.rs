@@ -134,11 +134,24 @@ pub struct IronCore {
     /// The last deleted workout's set ids and day comment, so `put_sets` of exactly those sets (the undo)
     /// brings the comment back too.
     deleted: Mutex<Option<(Vec<String>, DayComment)>>,
+    /// Done sets of an exercise by the real load (the graph and the progress tabs), kept like `records`.
+    loaded: Mutex<HashMap<String, std::sync::Arc<Vec<load::LoadedSet>>>>,
 }
 
 impl IronCore {
     fn new(store: Store) -> Self {
-        Self { store: Mutex::new(store), records: Mutex::new(HashMap::new()), deleted: Mutex::new(None) }
+        Self { store: Mutex::new(store), records: Mutex::new(HashMap::new()), deleted: Mutex::new(None), loaded: Mutex::new(HashMap::new()) }
+    }
+
+    /// The exercise's done sets by the real load, from the cache or read once.
+    fn loaded_cached(&self, s: &Store, ex: &Exercise) -> Result<std::sync::Arc<Vec<load::LoadedSet>>, StoreError> {
+        if let Some(l) = self.loaded.lock().unwrap_or_else(|p| p.into_inner()).get(&ex.id) {
+            return Ok(l.clone());
+        }
+        let counted: Vec<WorkoutSet> = s.sets_of(&ex.id)?.into_iter().filter(|x| !x.is_planned()).collect();
+        let l = std::sync::Arc::new(real_load(s, ex, &counted)?);
+        self.loaded.lock().unwrap_or_else(|p| p.into_inner()).insert(ex.id.clone(), l.clone());
+        Ok(l)
     }
 
     fn with<T>(&self, f: impl FnOnce(&Store) -> Result<T, StoreError>) -> R<T> {
@@ -162,13 +175,16 @@ impl IronCore {
 
     fn forget(&self, exercise_ids: impl IntoIterator<Item = String>) {
         let mut c = self.cache();
+        let mut l = self.loaded.lock().unwrap_or_else(|p| p.into_inner());
         for id in exercise_ids {
             c.remove(&id);
+            l.remove(&id);
         }
     }
 
     fn forget_all(&self) {
         self.cache().clear();
+        self.loaded.lock().unwrap_or_else(|p| p.into_inner()).clear();
     }
 
     /// workout.ts `rewriteDay`: writes the day's sets in a new exercise order (and group ids), keeping each
@@ -309,14 +325,16 @@ impl IronCore {
     pub fn sets_of(&self, exercise_id: String) -> R<Vec<WorkoutSet>> {
         self.with(|s| s.sets_of(&exercise_id))
     }
-    /// History and Records tabs of an exercise.
+    /// History and Records tabs of an exercise. An unknown id (e.g. deleted while its screen was open)
+    /// gives empty tabs rather than an error: the screen just closes or shows nothing.
     pub fn exercise_progress(&self, exercise_id: String) -> R<ExerciseProgress> {
         self.with(|s| {
-            let Some(ex) = s.exercises()?.into_iter().find(|e| e.id == exercise_id) else {
+            let Some(ex) = s.exercise(&exercise_id)? else {
                 return Ok(ExerciseProgress { workouts: vec![], records: vec![], rep_maxes: vec![], best_orm: None, bests: vec![], metrics: vec![] });
             };
+            let loaded = self.loaded_cached(s, &ex)?;
             let counted: Vec<WorkoutSet> = s.sets_of(&ex.id)?.into_iter().filter(|x| !x.is_planned()).collect();
-            let real: Vec<WorkoutSet> = real_load(s, &ex, &counted)?.into_iter().map(|l| l.set).collect();
+            let real: Vec<WorkoutSet> = loaded.iter().map(|l| l.set.clone()).collect();
             let strength = ex.kind == crate::model::ExerciseType::WeightReps;
             let settings = s.settings()?;
             Ok(ExerciseProgress {
@@ -333,9 +351,8 @@ impl IronCore {
     /// Values in stored units (kg, km, s; pace s/km) — the app converts for display.
     pub fn exercise_series(&self, exercise_id: String, metric: progress::Metric, range: progress::Range, today: String) -> R<Vec<progress::Point>> {
         self.with(|s| {
-            let Some(ex) = s.exercises()?.into_iter().find(|e| e.id == exercise_id) else { return Ok(vec![]) };
-            let counted: Vec<WorkoutSet> = s.sets_of(&ex.id)?.into_iter().filter(|x| !x.is_planned()).collect();
-            let real = real_load(s, &ex, &counted)?;
+            let Some(ex) = s.exercise(&exercise_id)? else { return Ok(vec![]) };
+            let real = self.loaded_cached(s, &ex)?;
             Ok(progress::daily_series(&real, metric, s.settings()?.formula, &progress::range_start(range, &today)))
         })
     }
@@ -625,6 +642,12 @@ impl IronCore {
     }
 }
 
+/// The graph's metrics for an exercise type (progress.ts `metricsFor`): cheap, no history read.
+#[uniffi::export]
+pub fn metrics_for(kind: crate::model::ExerciseType) -> Vec<progress::Metric> {
+    progress::metrics_for(kind)
+}
+
 /// A new id (like the web app's `uid()`).
 #[uniffi::export]
 pub fn new_id() -> String {
@@ -884,6 +907,27 @@ mod tests {
         assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["a"]);
         core.put_set(set("a", 90.0)).unwrap(); // edited in place: still the only set, still a record
         assert_eq!(core.exercise_log(ex.clone(), "2026-11-12".into()).unwrap().records, ["a"]);
+    }
+
+    #[test]
+    fn graph_cache_follows_edits() {
+        use crate::progress::{Metric, Range};
+        let core = IronCore::in_memory().unwrap();
+        let lib = core.library().unwrap().exercises;
+        let pull = lib.iter().find(|e| e.name == "Pull Up").unwrap().id.clone();
+        let w = core.metrics().unwrap().into_iter().find(|m| m.kind == crate::model::BodyKind::Weight).unwrap();
+        core.put_entry(BodyMetricEntry { id: "w1".into(), metric_id: w.id.clone(), date: "2026-11-01".into(), value: 80.0, at: 1.0 }).unwrap();
+        let set = |id: &str, date: &str| WorkoutSet { id: id.into(), date: date.into(), exercise_id: pull.clone(), order: next_order(), weight: Some(0.0), reps: Some(10.0), ..Default::default() };
+        core.put_set(set("a", "2026-11-10")).unwrap();
+        let series = |c: &IronCore| c.exercise_series(pull.clone(), Metric::MaxWeight, Range::All, "2026-11-12".into()).unwrap();
+        assert_eq!(series(&core).iter().map(|p| p.value).collect::<Vec<_>>(), [80.0]); // body weight counts
+        core.put_set(set("b", "2026-11-12")).unwrap();
+        assert_eq!(series(&core).len(), 2); // a new day appears
+        core.put_entry(BodyMetricEntry { id: "w2".into(), metric_id: w.id, date: "2026-11-11".into(), value: 82.0, at: 2.0 }).unwrap();
+        assert_eq!(series(&core).iter().map(|p| p.value).collect::<Vec<_>>(), [80.0, 82.0]); // new body weight used
+        core.delete_set("b".into()).unwrap();
+        assert_eq!(series(&core).len(), 1);
+        assert_eq!(metrics_for(crate::model::ExerciseType::WeightReps).len(), 5);
     }
 
     #[test]
