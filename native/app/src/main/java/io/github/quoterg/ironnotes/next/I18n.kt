@@ -11,7 +11,7 @@ import java.util.Locale
  * placeholders replaced. Exercise, category and measure names are the user's data: only the starter
  * library's English names get a Swedish name (unless "gym English" is on), as on the web.
  */
-class I18n private constructor(
+class I18n internal constructor(
     private val en: Map<String, String>,
     private val sv: Map<String, String>,
     private val enTypes: Map<String, String>,

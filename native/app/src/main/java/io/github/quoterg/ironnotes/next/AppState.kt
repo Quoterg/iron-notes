@@ -1,6 +1,7 @@
 package io.github.quoterg.ironnotes.next
 
 import android.content.Context
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,8 +46,10 @@ class AppState(context: Context, val scope: CoroutineScope) {
     var settings by mutableStateOf(defaultSettings()); private set
     var categories by mutableStateOf<List<Category>>(emptyList()); private set
     var exercises by mutableStateOf<List<Exercise>>(emptyList()); private set
-    val exById: Map<String, Exercise> get() = exercises.associateBy { it.id }
-    val catById: Map<String, Category> get() = categories.associateBy { it.id }
+
+    // Lookups rebuilt only when the lists change (they are read for every row on every recomposition).
+    val exById: Map<String, Exercise> by derivedStateOf { exercises.associateBy { it.id } }
+    val catById: Map<String, Category> by derivedStateOf { categories.associateBy { it.id } }
 
     var tab by mutableStateOf(Tab.LOG)
     var date by mutableStateOf(today()); private set
@@ -94,11 +97,12 @@ class AppState(context: Context, val scope: CoroutineScope) {
     }
 
     /** A write (or read) on the core, off the main thread; then `after` on the main thread. Errors → toast. */
-    fun <T> run(work: (IronCore) -> T, after: (T) -> Unit = {}) = scope.launch {
+    fun <T> run(work: (IronCore) -> T, onError: () -> Unit = {}, after: (T) -> Unit = {}) = scope.launch {
         try {
             val r = withContext(Dispatchers.IO) { work(core()) }
             after(r)
         } catch (e: Exception) {
+            onError()
             showToast(e.message ?: e.toString())
         }
     }

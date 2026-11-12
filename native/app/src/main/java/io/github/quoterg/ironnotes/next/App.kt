@@ -20,6 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,14 +55,30 @@ fun App(state: AppState) {
                 }
             }
             TabBar(state, Modifier.align(Alignment.BottomCenter))
-            // Every stacked screen stays composed (only the top is shown) so going back restores it.
-            state.stack.forEachIndexed { i, screen ->
-                if (i == state.stack.lastIndex) Box(Modifier.fillMaxSize()) { ScreenView(state, screen) }
-            }
+            // Only the top screen is composed. The ones under it are not kept alive (cheap on a slow phone);
+            // their remembered-saveable state (the picker's search and category) is held per stack position
+            // and restored when going back, and dropped once the screen is popped.
+            StackTop(state)
             // Above the sheets, under the toast; draws nothing without a running timer.
             RestTimerBar(state, RestTimer.get(LocalContext.current), Modifier.align(Alignment.BottomCenter))
         }
         state.toast?.let { ToastView(state, it, Modifier.align(Alignment.BottomCenter)) }
+    }
+}
+
+/** The top stacked screen, with its saveable state kept while other screens are opened over it. */
+@Composable
+private fun StackTop(state: AppState) {
+    val holder = rememberSaveableStateHolder()
+    val keys = state.stack.mapIndexed { i, screen -> "$i:$screen" }
+    val known = remember { HashSet<String>() }
+    SideEffect {
+        known.filter { it !in keys }.forEach { holder.removeState(it); known.remove(it) }
+        known.addAll(keys)
+    }
+    val top = state.stack.lastOrNull() ?: return
+    holder.SaveableStateProvider(keys.last()) {
+        Box(Modifier.fillMaxSize()) { ScreenView(state, top) }
     }
 }
 
