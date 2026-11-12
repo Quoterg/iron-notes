@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
 use crate::model::{BodyMetric, BodyMetricEntry, Category, CycleSettings, DayComment, Exercise, LightSettings, ProgramSettings, Routine, Settings, TrainingMode, WorkoutSet};
-use crate::{calendar, cycle, groups, load, lyle, programs, progress, records, routines, seed, targets, tools, units};
+use crate::{calc, calendar, cycle, feedback, groups, load, lyle, programs, progress, records, routines, seed, targets, tools, units};
 use crate::store::{Store, StoreError};
 
 #[derive(Debug, uniffi::Error)]
@@ -479,30 +479,178 @@ impl IronCore {
 
     /// Targets, readiness, too-soon, effort and plates for logging `exercise_id` on `date`.
     pub fn exercise_guide(&self, exercise_id: String, date: String) -> R<ExerciseGuide> {
-        let _ = (exercise_id, date);
+        let date = date.as_str();
+        let data = self.with(|s| {
+            let Some(ex) = s.exercise(&exercise_id)? else { return Ok(None) };
+            let history = s.sets_of(&ex.id)?;
+            let real = self.loaded_cached(s, &ex)?;
+            let on_date = s.sets_on(date)?;
+            let near = s.sets_between(&calc::add_days(date.to_string(), -4), &calc::add_days(date.to_string(), -1))?;
+            Ok(Some((s.settings()?, ex, history, real, on_date, near, s.routines()?, s.exercises()?)))
+        })?;
+        let Some((st, ex, history, real, on_date, near, routines, exercises)) = data else {
+            return Ok(ExerciseGuide {
+                dorian_targets: vec![],
+                lyle_target: None,
+                light: false,
+                gap_days: 0.0,
+                long_gap: false,
+                ask_readiness: false,
+                too_soon: vec![],
+                swap_day: None,
+                effort: vec![],
+                effective_today: 0.0,
+                shows_plates: false,
+            });
+        };
+        let has_reps = ex.kind.fields().contains(&crate::model::Field::Reps);
+        let round_plates = st.round_plates.unwrap_or(false);
+        let plates = plates_setting(&st);
+        let snap = tools::snapper_for(Some(&ex), st.unit, plates.as_ref(), round_plates);
+        let step_kg = units::w_from_user(ex.increment.unwrap_or_else(|| units::default_increment(st.unit)), st.unit);
+        let counted: Vec<WorkoutSet> = history.iter().filter(|x| !x.is_planned()).cloned().collect();
+        let progress: Vec<WorkoutSet> = counted.iter().filter(|x| cycle::progressing(x)).cloned().collect();
+        let base = records::previous_workout(&progress, date);
+        // Days since this exercise's last normal session: after a long gap, targets start a step lower.
+        let gap = base.first().map_or(0.0, |b| targets::days_between(&b.date, date));
+        let long_gap = gap > feedback::GAP_DAYS;
+
+        // Dorian HIT: each working set against the same set last time.
+        let dorian = st.mode == TrainingMode::Dorian && has_reps;
+        let light = dorian && cycle::in_light(st.light.as_ref().map(light_of).as_ref(), date);
+        let mut dorian_targets = Vec::new();
+        if dorian {
+            let top = ex.rep_top.unwrap_or(targets::DORIAN_TOP);
+            let list = if light { cycle::light_targets(&base, step_kg) } else { targets::dorian_targets(&base, step_kg, top) };
+            for mut tg in list {
+                if tg.why != targets::TargetWhy::Light {
+                    if long_gap {
+                        tg = targets::Target { weight: tg.prev.weight.unwrap_or(tg.weight), reps: None, why: targets::TargetWhy::Gap, ..tg };
+                    } else if ex.joint == Some(true) && tg.why == targets::TargetWhy::Up {
+                        tg = targets::Target { weight: tg.prev.weight.unwrap_or(tg.weight), reps: None, why: targets::TargetWhy::Joint, ..tg };
+                    }
+                }
+                // A weight increase rounds up (never back to the same weight); everything else to the nearest.
+                let weight = snap.snap(tg.weight, tg.why == targets::TargetWhy::Up);
+                dorian_targets.push(GuideTarget { weight, reps: tg.reps, why: serde_name(&tg.why), prev: Some(tg.prev), week: 0.0 });
+            }
+        }
+
+        // Lyle: one target for the exercise, from the cycle week and its first set last time.
+        let lyle_on = st.mode == TrainingMode::Lyle && has_reps;
+        let week = if lyle_on { st.cycle.as_ref().map_or(0.0, |c| lyle::cycle_week(&c.start, date)) } else { 0.0 };
+        let mut lyle_target = None;
+        if lyle_on {
+            let range = lyle::rep_range(ex.rep_top, ex.rep_bottom);
+            let run_up = week >= 1.0 && week <= lyle::RUN_UP.len() as f64;
+            let first = lyle::last_first_set(&counted, date);
+            let mut tg = None;
+            // Back after a long gap: a run-up week 2 session (~92.5 % of the best) instead of pushing on.
+            if long_gap && !run_up {
+                tg = lyle::lyle_target(2.0, lyle::best_for_range(&counted, range.bottom, date), first, step_kg, range)
+                    .map(|t| lyle::LyleTarget { weight: snap.snap(t.weight, false), why: lyle::LyleWhy::Gap, ..t });
+            }
+            if tg.is_none() {
+                let start = st.cycle.as_ref().map_or("", |c| c.start.as_str());
+                let best = if run_up { lyle::best_for_range(&counted, range.bottom, start) } else { 0.0 };
+                tg = lyle::lyle_target(if run_up { week } else { 0.0 }, best, first, step_kg, range).map(|t| {
+                    if ex.joint == Some(true) && t.why == lyle::LyleWhy::Up {
+                        let weight = t.prev.as_ref().and_then(|p| p.weight).unwrap_or(t.weight);
+                        lyle::LyleTarget { weight, reps: range.top, why: lyle::LyleWhy::Joint, ..t }
+                    } else {
+                        let up = t.why == lyle::LyleWhy::Up;
+                        lyle::LyleTarget { weight: snap.snap(t.weight, up), ..t }
+                    }
+                });
+            }
+            lyle_target = tg.map(|t| GuideTarget { weight: t.weight, reps: Some(t.reps), why: serde_name(&t.why), prev: t.prev, week });
+        }
+
+        // Readiness, asked before a muscle's first set of the day (Dorian HIT / Lyle).
+        let primary: Vec<crate::model::MuscleId> = ex.muscles.as_ref().map(|m| m.primary.clone()).unwrap_or_default();
+        let muscles_of: HashMap<&str, &crate::model::Muscles> = exercises.iter().filter_map(|e| e.muscles.as_ref().map(|m| (e.id.as_str(), m))).collect();
+        let trains_same = |id: &str| muscles_of.get(id).is_some_and(|m| m.primary.iter().any(|p| primary.contains(p)));
+        let done_today = on_date.iter().any(|x| x.exercise_id == ex.id && !x.is_planned());
+        let ask_readiness = st.mode != TrainingMode::Standard
+            && !primary.is_empty()
+            && has_reps
+            && !done_today
+            && !on_date.iter().any(|x| x.exercise_id != ex.id && !x.is_planned() && trains_same(&x.exercise_id));
+
+        // Still sore in Dorian HIT with a program: the next workout that doesn't train these muscles.
+        let mut swap_day = None;
+        if let (true, Some(program)) = (dorian && !primary.is_empty(), st.program.as_ref()) {
+            let routine = routines.iter().find(|r| r.id == program.routine_id);
+            if let (Some(r), Some(next)) = (routine, cycle::next_program_day(routine, program.last_day_id.as_deref())) {
+                let start = r.days.iter().position(|d| d.id == next.id).unwrap_or(0);
+                swap_day = r.days[start..].iter().chain(r.days[..start].iter()).find(|d| d.items.iter().all(|i| !trains_same(&i.exercise_id))).cloned();
+            }
+        }
+
+        // Muscles trained in a main session less than ~5 days ago (Dorian HIT).
+        let too_soon = if dorian && !primary.is_empty() {
+            targets::too_soon(
+                date,
+                ex.muscles.as_ref(),
+                &near,
+                |id| muscles_of.get(id).map(|m| (*m).clone()),
+                |x| crate::effective::set_effective(x, 0.0, st.formula).n,
+                targets::DORIAN_REST_DAYS,
+                targets::DORIAN_GOAL,
+            )
+            .into_iter()
+            .map(|t| TooSoonMuscle { muscle: t.muscle, days: t.days })
+            .collect()
+        } else {
+            vec![]
+        };
+
+        // Effective reps of the day's sets; the best e1RM of the working sets estimates sets logged without an RIR.
+        let best = real
+            .iter()
+            .filter(|x| !x.set.is_warmup())
+            .fold(0.0, |b, x| calc::js_max(b, calc::one_rm(x.set.weight.unwrap_or(0.0), x.set.reps.unwrap_or(0.0), st.formula)));
+        let effort: Vec<SetEffort> = real
+            .iter()
+            .filter(|x| x.set.date == date)
+            .map(|x| {
+                let e = crate::effective::set_effective(&x.set, best, st.formula);
+                SetEffort { set_id: x.set.id.clone(), n: e.n, est: e.est }
+            })
+            .collect();
+        let effective_today = if has_reps { effort.iter().map(|e| e.n).sum() } else { 0.0 };
+
         Ok(ExerciseGuide {
-            dorian_targets: vec![],
-            lyle_target: None,
-            light: false,
-            gap_days: 0.0,
-            long_gap: false,
-            ask_readiness: false,
-            too_soon: vec![],
-            swap_day: None,
-            effort: vec![],
-            effective_today: 0.0,
-            shows_plates: false,
+            dorian_targets,
+            lyle_target,
+            light,
+            gap_days: gap,
+            long_gap,
+            ask_readiness,
+            too_soon,
+            swap_day,
+            effort,
+            effective_today,
+            shows_plates: tools::rounds_to_plates(Some(&ex), round_plates),
         })
     }
     /// Warm-up sets before a working weight (targets.ts `warmups`), snapped to plates as the web does.
     pub fn warmups_for(&self, exercise_id: String, work_kg: f64) -> R<Vec<WarmupHint>> {
-        let _ = (exercise_id, work_kg);
-        Ok(vec![])
+        let (st, ex) = self.with(|s| Ok((s.settings()?, s.exercise(&exercise_id)?)))?;
+        let Some(ex) = ex else { return Ok(vec![]) };
+        let step_kg = units::w_from_user(ex.increment.unwrap_or_else(|| units::default_increment(st.unit)), st.unit);
+        let snap = tools::snapper_for(Some(&ex), st.unit, plates_setting(&st).as_ref(), st.round_plates.unwrap_or(false));
+        Ok(targets::warmups(work_kg, step_kg).into_iter().map(|w| WarmupHint { weight: snap.snap(w.weight, false), reps: w.reps }).collect())
     }
     /// Plates per side for a weight in kg on this exercise's bar (None when plates aren't used/shown).
     pub fn plates_for(&self, exercise_id: String, kg: f64) -> R<Option<PlatesHint>> {
-        let _ = (exercise_id, kg);
-        Ok(None)
+        let (st, ex) = self.with(|s| Ok((s.settings()?, s.exercise(&exercise_id)?)))?;
+        if !tools::rounds_to_plates(ex.as_ref(), st.round_plates.unwrap_or(false)) {
+            return Ok(None);
+        }
+        let cfg = tools::plate_config(st.unit, plates_setting(&st).as_ref());
+        let side = tools::plates_per_side(units::w_to_user(kg, st.unit), cfg.bar, &cfg.sizes);
+        Ok(Some(PlatesHint { bar: cfg.bar, per_side: side.plates, exact: side.rest < 1e-6 }))
     }
 
     // ---- Day tools, calendar, routines, programs (N5; workout.ts / calendar.ts / routines.ts / programs.ts) ----
@@ -767,6 +915,15 @@ pub fn next_order() -> f64 {
     let mut last = LAST_ORDER.lock().unwrap_or_else(|p| p.into_inner());
     *last = (*last + 1.0).max(now);
     *last
+}
+
+/// A `why` as the web's string (its serde name).
+fn serde_name<T: serde::Serialize>(v: &T) -> String {
+    serde_json::to_value(v).ok().and_then(|x| x.as_str().map(String::from)).unwrap_or_default()
+}
+
+fn plates_setting(st: &Settings) -> Option<tools::PlatesSetting> {
+    st.plates.as_ref().map(|p| tools::PlatesSetting { unit: p.unit, bar: p.bar, sizes: p.sizes.clone() })
 }
 
 fn light_of(l: &LightSettings) -> cycle::Light {
@@ -1434,5 +1591,251 @@ mod tests {
         assert_eq!((st.mode, st.cycle.unwrap().start), (TrainingMode::Dorian, "2026-11-12".to_string()));
         assert!(core.start_program_on("nope", "x", "2026-11-12").is_err());
         assert_eq!(core.start_program("dorian4".into(), "Today".into(), "2026-11-12".into()).unwrap().routine.order, 5.0);
+    }
+
+    // ---- N6: the exercise guide ----
+
+    fn guide(core: &IronCore, ex: &Exercise, date: &str) -> ExerciseGuide {
+        core.exercise_guide(ex.id.clone(), date.into()).unwrap()
+    }
+    fn rir(mut s: WorkoutSet, rir: f64) -> WorkoutSet {
+        s.rir = Some(rir);
+        s
+    }
+    fn tg(g: &GuideTarget) -> (f64, Option<f64>, &str) {
+        (g.weight, g.reps, g.why.as_str())
+    }
+
+    #[test]
+    fn dorian_targets_progress_hold_and_adjust() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        let curl = exercise(&core, "Dumbbell Curl");
+        core.put_sets(vec![logged(&curl, "2026-11-09", 20.0, 10.0), logged(&curl, "2026-11-09", 20.0, 12.0)]).unwrap();
+        // Progression: one more rep; the top reached goes up a step with no rep target.
+        let g = guide(&core, &curl, "2026-11-12");
+        assert_eq!(g.dorian_targets.iter().map(tg).collect::<Vec<_>>(), [(20.0, Some(11.0), "beat"), (22.5, None, "up")]);
+        assert_eq!(g.dorian_targets[1].prev.as_ref().unwrap().reps, Some(12.0));
+        assert_eq!((g.gap_days, g.long_gap, g.light), (3.0, false, false));
+        assert!(g.lyle_target.is_none());
+        // A lighter week: ~10 % less for the same reps, from the last normal session.
+        mode(&core, |st| st.light = Some(LightSettings { start: "2026-11-10".into() }));
+        let g = guide(&core, &curl, "2026-11-12");
+        assert!(g.light);
+        assert!(g.dorian_targets.iter().all(|t| t.why == "light" && t.weight < 20.0));
+        assert_eq!(g.dorian_targets[0].reps, Some(10.0));
+        assert!(!guide(&core, &curl, "2026-11-20").light);
+        mode(&core, |st| st.light = None);
+        // Joint pain: no weight increase.
+        let mut sore = curl.clone();
+        sore.joint = Some(true);
+        core.put_exercise(sore).unwrap();
+        let g = guide(&core, &curl, "2026-11-12");
+        assert_eq!(g.dorian_targets.iter().map(tg).collect::<Vec<_>>(), [(20.0, Some(11.0), "beat"), (20.0, None, "joint")]);
+        // After a long gap: the last weight, no rep target.
+        let g = guide(&core, &curl, "2026-11-25");
+        assert_eq!((g.gap_days, g.long_gap), (16.0, true));
+        assert_eq!(g.dorian_targets.iter().map(tg).collect::<Vec<_>>(), [(20.0, None, "gap"), (20.0, None, "gap")]);
+        // Other modes get none; an unknown exercise an empty guide.
+        mode(&core, |st| st.mode = TrainingMode::Standard);
+        assert!(guide(&core, &curl, "2026-11-12").dorian_targets.is_empty());
+        assert!(core.exercise_guide("nope".into(), "2026-11-12".into()).unwrap().dorian_targets.is_empty());
+    }
+
+    #[test]
+    fn dorian_targets_round_to_plates_and_up_never_back() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| {
+            st.mode = TrainingMode::Dorian;
+            st.round_plates = Some(true);
+        });
+        let mut bench = exercise(&core, "Flat Barbell Bench Press");
+        bench.increment = Some(1.0);
+        core.put_exercise(bench.clone()).unwrap();
+        core.put_sets(vec![logged(&bench, "2026-11-09", 100.0, 12.0), logged(&bench, "2026-11-09", 100.0, 8.0)]).unwrap();
+        let g = guide(&core, &bench, "2026-11-12");
+        assert!(g.shows_plates);
+        // 101 kg rounds up to the next loadable weight (102.5), not back to 100.
+        assert_eq!(g.dorian_targets.iter().map(tg).collect::<Vec<_>>(), [(102.5, None, "up"), (100.0, Some(9.0), "beat")]);
+    }
+
+    #[test]
+    fn lyle_target_run_up_push_gap_and_joint() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        let curl = exercise(&core, "Dumbbell Curl"); // range 8-12
+        // Run-up week 1: ~82.5 % of the best before the cycle, rounded down to the step.
+        core.put_sets(vec![logged(&curl, "2026-10-26", 40.0, 10.0), logged(&curl, "2026-11-05", 33.0, 12.0)]).unwrap();
+        mode(&core, |st| st.cycle = Some(CycleSettings { start: "2026-11-09".into(), weeks: 6.0 }));
+        let g = guide(&core, &curl, "2026-11-12");
+        let t = g.lyle_target.unwrap();
+        assert_eq!((tg(&t), t.week), ((32.5, Some(12.0), "runup"), 1.0));
+        assert!(g.dorian_targets.is_empty());
+        // Week 2: ~92.5 %.
+        mode(&core, |st| st.cycle = Some(CycleSettings { start: "2026-11-02".into(), weeks: 6.0 }));
+        let t = guide(&core, &curl, "2026-11-12").lyle_target.unwrap();
+        assert_eq!((tg(&t), t.week), ((35.0, Some(12.0), "runup"), 2.0));
+        // Push (no cycle): the first set last time decides.
+        mode(&core, |st| st.cycle = None);
+        let first = |reps: f64, r: Option<f64>| WorkoutSet { rir: r, ..logged(&curl, "2026-11-09", 30.0, reps) };
+        core.delete_sets(core.sets_of(curl.id.clone()).unwrap().into_iter().map(|s| s.id).collect()).unwrap();
+        core.put_sets(vec![first(10.0, Some(1.0))]).unwrap();
+        let t = guide(&core, &curl, "2026-11-12").lyle_target.unwrap();
+        assert_eq!((tg(&t), t.week, t.prev.is_some()), ((30.0, Some(11.0), "reps"), 0.0, true));
+        core.delete_sets(core.sets_of(curl.id.clone()).unwrap().into_iter().map(|s| s.id).collect()).unwrap();
+        core.put_sets(vec![first(12.0, Some(2.0))]).unwrap();
+        assert_eq!(tg(&guide(&core, &curl, "2026-11-12").lyle_target.unwrap()), (32.5, Some(8.0), "up"));
+        // Joint pain: hold the weight at the top of the range.
+        let mut sore = curl.clone();
+        sore.joint = Some(true);
+        core.put_exercise(sore).unwrap();
+        assert_eq!(tg(&guide(&core, &curl, "2026-11-12").lyle_target.unwrap()), (30.0, Some(12.0), "joint"));
+        // A long gap outside the run-up: a week-2 session (92.5 % of the best, 27.75 -> 27.5).
+        assert_eq!(tg(&guide(&core, &curl, "2026-11-25").lyle_target.unwrap()), (27.5, Some(12.0), "gap"));
+        // No history: no target.
+        let row = exercise(&core, "Barbell Row");
+        assert!(guide(&core, &row, "2026-11-12").lyle_target.is_none());
+    }
+
+    #[test]
+    fn readiness_is_asked_before_a_muscles_first_set() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let incline = exercise(&core, "Incline Barbell Bench Press");
+        let curl = exercise(&core, "Dumbbell Curl");
+        assert!(!guide(&core, &bench, "2026-11-12").ask_readiness); // Standard mode
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        assert!(guide(&core, &bench, "2026-11-12").ask_readiness);
+        // Another muscle's set doesn't matter; a planned one doesn't count.
+        core.put_set(logged(&curl, "2026-11-12", 20.0, 10.0)).unwrap();
+        core.put_set(WorkoutSet { planned: Some(true), ..logged(&incline, "2026-11-12", 60.0, 10.0) }).unwrap();
+        assert!(guide(&core, &bench, "2026-11-12").ask_readiness);
+        // Another chest exercise done today: already asked; so is the exercise's own set.
+        core.put_set(logged(&incline, "2026-11-12", 60.0, 10.0)).unwrap();
+        assert!(!guide(&core, &bench, "2026-11-12").ask_readiness);
+        assert!(!guide(&core, &incline, "2026-11-12").ask_readiness);
+        assert!(guide(&core, &bench, "2026-11-13").ask_readiness);
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        assert!(guide(&core, &bench, "2026-11-13").ask_readiness);
+    }
+
+    #[test]
+    fn too_soon_after_a_main_session() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let incline = exercise(&core, "Incline Barbell Bench Press");
+        let curl = exercise(&core, "Dumbbell Curl");
+        // Two sets to failure of 8 = 16 effective reps (a main session is >= 10).
+        core.put_sets(vec![rir(logged(&bench, "2026-11-10", 80.0, 8.0), 0.0), rir(logged(&bench, "2026-11-10", 80.0, 8.0), 0.0)]).unwrap();
+        // A light day (3 effective reps) doesn't count.
+        core.put_set(rir(logged(&curl, "2026-11-08", 15.0, 3.0), 0.0)).unwrap();
+        let soon = |g: &ExerciseGuide| g.too_soon.iter().map(|t| (t.muscle, t.days)).collect::<Vec<_>>();
+        assert_eq!(soon(&guide(&core, &incline, "2026-11-12")), [(crate::model::MuscleId::Chest, 2.0)]);
+        assert!(soon(&guide(&core, &curl, "2026-11-12")).is_empty());
+        assert!(soon(&guide(&core, &incline, "2026-11-15")).is_empty()); // 5 days: rested
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        assert!(soon(&guide(&core, &incline, "2026-11-12")).is_empty()); // Dorian only
+    }
+
+    #[test]
+    fn swap_day_is_the_next_workout_without_these_muscles() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let incline = exercise(&core, "Incline Barbell Bench Press");
+        let curl = exercise(&core, "Dumbbell Curl");
+        let squat = exercise(&core, "Barbell Squat");
+        let day = |id: &str, items: Vec<RoutineItem>| crate::model::RoutineDay { id: id.into(), name: id.into(), items };
+        core.put_routine(Routine {
+            id: "r".into(),
+            name: "R".into(),
+            order: 1.0,
+            days: vec![day("push", vec![item(&bench, 3)]), day("chest2", vec![item(&incline, 3), item(&curl, 3)]), day("arms", vec![item(&curl, 3)]), day("legs", vec![item(&squat, 3)])],
+        })
+        .unwrap();
+        mode(&core, |st| {
+            st.mode = TrainingMode::Dorian;
+            st.program = Some(ProgramSettings { routine_id: "r".into(), last_day_id: None, weekdays: None });
+        });
+        let swap = |c: &IronCore| guide(c, &bench, "2026-11-12").swap_day.map(|d| d.id);
+        assert_eq!(swap(&core).as_deref(), Some("arms")); // push (next) and chest2 train chest
+        mode(&core, |st| st.program.as_mut().unwrap().last_day_id = Some("push".into()));
+        assert_eq!(swap(&core).as_deref(), Some("arms")); // starts at chest2, skips it
+        mode(&core, |st| st.program.as_mut().unwrap().last_day_id = Some("arms".into()));
+        assert_eq!(swap(&core).as_deref(), Some("legs"));
+        mode(&core, |st| st.program.as_mut().unwrap().last_day_id = Some("legs".into()));
+        assert_eq!(swap(&core).as_deref(), Some("arms")); // wraps: push, chest2 skipped
+        mode(&core, |st| st.program.as_mut().unwrap().routine_id = "gone".into());
+        assert_eq!(swap(&core), None);
+        mode(&core, |st| st.program = None);
+        assert_eq!(swap(&core), None);
+        mode(&core, |st| {
+            st.program = Some(ProgramSettings { routine_id: "r".into(), last_day_id: None, weekdays: None });
+            st.mode = TrainingMode::Lyle;
+        });
+        assert_eq!(swap(&core), None); // Dorian only
+    }
+
+    #[test]
+    fn effort_of_todays_sets() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let a = rir(logged(&bench, "2026-11-12", 100.0, 8.0), 0.0);
+        let b = logged(&bench, "2026-11-12", 95.0, 8.0); // no RIR: estimated from the best set
+        let warm = WorkoutSet { warmup: Some(true), ..logged(&bench, "2026-11-12", 200.0, 1.0) }; // doesn't set the best
+        let old = logged(&bench, "2026-11-05", 90.0, 8.0);
+        core.put_sets(vec![old.clone(), warm.clone(), a.clone(), b.clone()]).unwrap();
+        let g = guide(&core, &bench, "2026-11-12");
+        let best = calc::one_rm(100.0, 8.0, calc::Formula::Epley);
+        let want = crate::effective::set_effective(&b, best, calc::Formula::Epley);
+        assert!(want.est && want.n > 0.0);
+        let by_id = |id: &str| g.effort.iter().find(|e| e.set_id == id).map(|e| (e.n, e.est));
+        assert_eq!(by_id(&a.id), Some((8.0, false)));
+        assert_eq!(by_id(&b.id), Some((want.n, true)));
+        assert_eq!(by_id(&warm.id), Some((0.0, false)));
+        assert_eq!(by_id(&old.id), None);
+        assert_eq!(g.effective_today, 8.0 + want.n);
+        // Planned sets are no history.
+        core.put_set(WorkoutSet { planned: Some(true), ..logged(&bench, "2026-11-12", 100.0, 8.0) }).unwrap();
+        assert_eq!(guide(&core, &bench, "2026-11-12").effort.len(), 3);
+    }
+
+    #[test]
+    fn warmups_snap_to_plates() {
+        let core = IronCore::in_memory().unwrap();
+        let mut bench = exercise(&core, "Flat Barbell Bench Press");
+        bench.increment = Some(1.0);
+        core.put_exercise(bench.clone()).unwrap();
+        let w = |c: &IronCore, kg: f64| c.warmups_for(bench.id.clone(), kg).unwrap().into_iter().map(|h| (h.weight, h.reps)).collect::<Vec<_>>();
+        assert_eq!(w(&core, 107.5), [(53.0, 10.0), (80.0, 6.0)]); // rounded down to the 1 kg step only
+        mode(&core, |st| st.round_plates = Some(true));
+        assert_eq!(w(&core, 107.5), [(52.5, 10.0), (80.0, 6.0)]); // 53 -> the nearest loadable weight
+        assert!(w(&core, 0.0).is_empty());
+        assert!(core.warmups_for("nope".into(), 100.0).unwrap().is_empty());
+    }
+
+    #[test]
+    fn plates_hint_in_kg_and_lb() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let curl = exercise(&core, "Dumbbell Curl");
+        assert!(core.plates_for(bench.id.clone(), 100.0).unwrap().is_none()); // rounding off
+        mode(&core, |st| st.round_plates = Some(true));
+        let h = core.plates_for(bench.id.clone(), 100.0).unwrap().unwrap();
+        assert_eq!((h.bar, h.per_side, h.exact), (20.0, vec![25.0, 15.0], true));
+        let h = core.plates_for(bench.id.clone(), 101.0).unwrap().unwrap();
+        assert_eq!((h.per_side, h.exact), (vec![25.0, 15.0], false));
+        let h = core.plates_for(bench.id.clone(), 20.0).unwrap().unwrap();
+        assert_eq!((h.per_side.is_empty(), h.exact), (true, true)); // the bar only
+        assert!(core.plates_for(curl.id.clone(), 20.0).unwrap().is_none()); // not a bar lift
+        // Pounds: the lb defaults (45 lb bar); the weight comes in kg.
+        mode(&core, |st| st.unit = crate::units::WeightUnit::Lb);
+        let h = core.plates_for(bench.id.clone(), units::w_from_user(100.0, crate::units::WeightUnit::Lb)).unwrap().unwrap();
+        assert_eq!((h.bar, h.per_side, h.exact), (45.0, vec![25.0, 2.5], true));
+        // The user's own plates, valid for their unit.
+        mode(&core, |st| st.plates = Some(crate::model::PlatesSettings { unit: crate::units::WeightUnit::Lb, bar: 35.0, sizes: vec![45.0, 10.0] }));
+        let h = core.plates_for(bench.id.clone(), units::w_from_user(125.0, crate::units::WeightUnit::Lb)).unwrap().unwrap();
+        assert_eq!((h.bar, h.per_side, h.exact), (35.0, vec![45.0], true));
     }
 }
