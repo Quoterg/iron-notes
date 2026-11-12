@@ -1,6 +1,7 @@
 //! What the apps call (UniFFI): one `IronCore` object per open database. Coarse calls — a screen
 //! makes one or two, not one per set. Kotlin/Swift get the model types as plain records.
 
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
 use crate::model::{BodyMetric, BodyMetricEntry, Category, Exercise, Routine, Settings, WorkoutSet};
@@ -72,12 +73,44 @@ pub struct ExerciseLibrary {
 #[derive(uniffi::Object)]
 pub struct IronCore {
     store: Mutex<Store>,
+    /// Record set ids per exercise (the web's `records` store): computing them reads the exercise's whole
+    /// history, so they're kept until that exercise's sets change (all of them on body-weight changes).
+    records: Mutex<HashMap<String, Vec<String>>>,
 }
 
 impl IronCore {
+    fn new(store: Store) -> Self {
+        Self { store: Mutex::new(store), records: Mutex::new(HashMap::new()) }
+    }
+
     fn with<T>(&self, f: impl FnOnce(&Store) -> Result<T, StoreError>) -> R<T> {
         let s = self.store.lock().unwrap_or_else(|p| p.into_inner());
         Ok(f(&s)?)
+    }
+
+    fn cache(&self) -> std::sync::MutexGuard<'_, HashMap<String, Vec<String>>> {
+        self.records.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// An exercise's record ids, from the cache or computed (`sets`: its history if already read).
+    fn records_cached(&self, s: &Store, ex: &Exercise, sets: Option<&[WorkoutSet]>, bw: &mut Option<load::BodyWeights>) -> Result<Vec<String>, StoreError> {
+        if let Some(ids) = self.cache().get(&ex.id) {
+            return Ok(ids.clone());
+        }
+        let ids = records_of(s, ex, sets, bw)?;
+        self.cache().insert(ex.id.clone(), ids.clone());
+        Ok(ids)
+    }
+
+    fn forget(&self, exercise_ids: impl IntoIterator<Item = String>) {
+        let mut c = self.cache();
+        for id in exercise_ids {
+            c.remove(&id);
+        }
+    }
+
+    fn forget_all(&self) {
+        self.cache().clear();
     }
 }
 
@@ -89,7 +122,7 @@ impl IronCore {
     pub fn open(path: String) -> R<std::sync::Arc<Self>> {
         let store = Store::open(&path)?;
         seed_if_new(&store)?;
-        Ok(std::sync::Arc::new(Self { store: Mutex::new(store) }))
+        Ok(std::sync::Arc::new(Self::new(store)))
     }
 
     /// An in-memory database (tests, previews).
@@ -97,7 +130,7 @@ impl IronCore {
     pub fn in_memory() -> R<std::sync::Arc<Self>> {
         let store = Store::open_in_memory()?;
         seed_if_new(&store)?;
-        Ok(std::sync::Arc::new(Self { store: Mutex::new(store) }))
+        Ok(std::sync::Arc::new(Self::new(store)))
     }
 
     // ---- Settings ----
@@ -119,10 +152,12 @@ impl IronCore {
         self.with(|s| s.delete_category(&id))
     }
     pub fn put_exercise(&self, e: Exercise) -> R<()> {
+        self.forget([e.id.clone()]); // its type or load may have changed
         self.with(|s| s.put_exercise(&e))
     }
     /// Deletes the exercise and every set logged for it.
     pub fn delete_exercise(&self, id: String) -> R<()> {
+        self.forget([id.clone()]);
         self.with(|s| s.delete_exercise(&id))
     }
 
@@ -130,23 +165,21 @@ impl IronCore {
     pub fn day(&self, date: String) -> R<DayData> {
         self.with(|s| {
             let sets = s.sets_on(&date)?;
+            let exercises: HashMap<String, Exercise> = s.exercises()?.into_iter().map(|e| (e.id.clone(), e)).collect();
             let mut records = Vec::new();
-            let mut seen: Vec<&str> = Vec::new();
-            let exercises = s.exercises()?;
+            let mut seen: HashSet<&str> = HashSet::new();
+            let mut bw = None; // body weights, read once if a body-weight exercise needs them
             for set in &sets {
-                if seen.contains(&set.exercise_id.as_str()) {
+                if !seen.insert(set.exercise_id.as_str()) {
                     continue;
                 }
-                seen.push(&set.exercise_id);
-                if let Some(ex) = exercises.iter().find(|e| e.id == set.exercise_id) {
-                    let ids = records_of(s, ex)?;
+                if let Some(ex) = exercises.get(&set.exercise_id) {
+                    let ids: HashSet<String> = self.records_cached(s, ex, None, &mut bw)?.into_iter().collect();
                     records.extend(sets.iter().filter(|x| x.exercise_id == ex.id && ids.contains(&x.id)).map(|x| x.id.clone()));
                 }
             }
-            let known: Vec<WorkoutSet> = sets.iter().filter(|x| exercises.iter().any(|e| e.id == x.exercise_id)).cloned().collect();
-            let totals = records::day_totals(&known, |x| {
-                load::volume_weight(x.weight, load::load_of(exercises.iter().find(|e| e.id == x.exercise_id)))
-            });
+            let known: Vec<WorkoutSet> = sets.iter().filter(|x| exercises.contains_key(&x.exercise_id)).cloned().collect();
+            let totals = records::day_totals(&known, |x| load::volume_weight(x.weight, load::load_of(exercises.get(&x.exercise_id))));
             Ok(DayData { comment: s.comment(&date)?, sets, records, set_count: totals.sets as u32, volume: totals.volume, date })
         })
     }
@@ -155,7 +188,7 @@ impl IronCore {
         self.with(|s| {
             let all = s.sets_of(&exercise_id)?;
             let records = match s.exercises()?.into_iter().find(|e| e.id == exercise_id) {
-                Some(ex) => records_of(s, &ex)?,
+                Some(ex) => self.records_cached(s, &ex, Some(&all), &mut None)?,
                 None => Vec::new(),
             };
             let done: Vec<WorkoutSet> = all.iter().filter(|x| !x.is_planned()).cloned().collect();
@@ -176,15 +209,24 @@ impl IronCore {
         self.with(|s| s.sets_between(&from, &to))
     }
     pub fn put_set(&self, set: WorkoutSet) -> R<()> {
+        // An edited set may have moved from another exercise: forget both.
+        let old = self.with(|s| Ok(s.set(&set.id)?.map(|o| o.exercise_id)))?;
+        self.forget(old.into_iter().chain([set.exercise_id.clone()]));
         self.with(|s| s.put_set(&set))
     }
     pub fn put_sets(&self, sets: Vec<WorkoutSet>) -> R<()> {
+        let old: Vec<String> = self.with(|s| Ok(sets.iter().filter_map(|x| s.set(&x.id).ok().flatten()).map(|o| o.exercise_id).collect()))?;
+        self.forget(old.into_iter().chain(sets.iter().map(|x| x.exercise_id.clone())));
         self.with(|s| s.put_sets(&sets))
     }
     pub fn delete_set(&self, id: String) -> R<()> {
+        let old = self.with(|s| Ok(s.set(&id)?.map(|o| o.exercise_id)))?;
+        self.forget(old);
         self.with(|s| s.delete_set(&id))
     }
     pub fn delete_sets(&self, ids: Vec<String>) -> R<()> {
+        let old: Vec<String> = self.with(|s| Ok(ids.iter().filter_map(|i| s.set(i).ok().flatten()).map(|o| o.exercise_id).collect()))?;
+        self.forget(old);
         self.with(|s| s.delete_sets(&ids))
     }
     /// Dates with logged sets in [from, to] (the calendar).
@@ -209,18 +251,23 @@ impl IronCore {
         self.with(|s| s.metrics())
     }
     pub fn put_metrics(&self, list: Vec<BodyMetric>) -> R<()> {
+        self.forget_all(); // which measure is "body weight" may change
         self.with(|s| s.put_metrics(&list))
     }
     pub fn delete_metric(&self, id: String) -> R<()> {
+        self.forget_all();
         self.with(|s| s.delete_metric(&id))
     }
     pub fn body_of(&self, metric_id: String) -> R<Vec<BodyMetricEntry>> {
         self.with(|s| s.body_of(&metric_id))
     }
+    /// A body entry: body-weight exercises' records depend on it (state.ts `bodyWeightsChanged`).
     pub fn put_entry(&self, e: BodyMetricEntry) -> R<()> {
+        self.forget_all();
         self.with(|s| s.put_entry(&e))
     }
     pub fn delete_entry(&self, id: String) -> R<()> {
+        self.forget_all();
         self.with(|s| s.delete_entry(&id))
     }
 
@@ -231,6 +278,7 @@ impl IronCore {
     }
     /// Replaces everything with a backup file. A file that isn't valid changes nothing.
     pub fn import_backup_json(&self, json: String) -> R<()> {
+        self.forget_all();
         self.with(|s| s.import_backup_json(&json))
     }
 }
@@ -254,20 +302,35 @@ pub fn next_order() -> f64 {
 
 /// An exercise's record set ids over its whole history, by the real load (state.ts `refreshRecords` with
 /// `loadedSetsOf`: body-weight exercises count the body weight of the day — the first weight measure).
-fn records_of(s: &Store, ex: &Exercise) -> Result<Vec<String>, StoreError> {
-    let sets = s.sets_of(&ex.id)?;
+fn records_of(s: &Store, ex: &Exercise, sets: Option<&[WorkoutSet]>, bw: &mut Option<load::BodyWeights>) -> Result<Vec<String>, StoreError> {
+    let owned;
+    let sets = match sets {
+        Some(x) => x,
+        None => {
+            owned = s.sets_of(&ex.id)?;
+            &owned
+        }
+    };
     let t = load::load_of(Some(ex));
     if t == crate::model::LoadType::Total {
-        return Ok(records::record_ids(&sets, ex.kind, true));
+        return Ok(records::record_ids(sets, ex.kind, true));
     }
+    if bw.is_none() {
+        *bw = Some(body_weights(s)?);
+    }
+    let bw = bw.as_ref().unwrap();
+    Ok(records::record_ids_loaded(&load::with_real_load(sets, t, |d| bw.at(d)), ex.kind, true))
+}
+
+/// Body weight by date: the first weight measure's entries (state.ts `bodyWeights`).
+fn body_weights(s: &Store) -> Result<load::BodyWeights, StoreError> {
     let mut weights: Vec<BodyMetric> = s.metrics()?.into_iter().filter(|m| m.kind == crate::model::BodyKind::Weight).collect();
     weights.sort_by(|a, b| a.order.partial_cmp(&b.order).unwrap_or(std::cmp::Ordering::Equal));
     let entries = match weights.first() {
         Some(m) => s.body_of(&m.id)?,
         None => Vec::new(),
     };
-    let bw = load::body_weight_at(&entries);
-    Ok(records::record_ids_loaded(&load::with_real_load(&sets, t, |d| bw.at(d)), ex.kind, true))
+    Ok(load::body_weight_at(&entries))
 }
 
 fn seed_if_new(store: &Store) -> Result<(), StoreError> {
@@ -341,6 +404,21 @@ mod tests {
         assert!(log.records.contains(&"a".to_string()) && !log.records.contains(&"b".to_string()));
         let (a, b) = (next_order(), next_order());
         assert!(b > a);
+    }
+
+    #[test]
+    fn record_cache_follows_edits() {
+        let core = IronCore::in_memory().unwrap();
+        let ex = core.library().unwrap().exercises.into_iter().find(|e| e.name == "Flat Barbell Bench Press").unwrap().id;
+        let set = |id: &str, w: f64| WorkoutSet { id: id.into(), date: "2026-11-12".into(), exercise_id: ex.clone(), order: next_order(), weight: Some(w), reps: Some(5.0), ..Default::default() };
+        core.put_set(set("a", 100.0)).unwrap();
+        assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["a"]);
+        core.put_set(set("b", 110.0)).unwrap(); // beats a
+        assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["b"]);
+        core.delete_set("b".into()).unwrap(); // a is the record again
+        assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["a"]);
+        core.put_set(set("a", 90.0)).unwrap(); // edited in place: still the only set, still a record
+        assert_eq!(core.exercise_log(ex.clone(), "2026-11-12".into()).unwrap().records, ["a"]);
     }
 
     #[test]
