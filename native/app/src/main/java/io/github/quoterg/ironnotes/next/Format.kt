@@ -106,3 +106,22 @@ fun I18n.dayLabel(d: String): String {
         else -> SimpleDateFormat("EEE d MMM", if (lang == "sv") Locale("sv", "SE") else Locale.getDefault()).format(parseIso(d).time)
     }
 }
+
+/** Days since 1970-01-01 of a civil date (H. Hinnant's algorithm; java.time needs Android 8). */
+fun epochDay(year: Int, m: Int, d: Int): Long {
+    val y = (if (m <= 2) year - 1 else year).toLong()
+    val era = Math.floorDiv(y, 400L)
+    val yoe = y - era * 400
+    val doy = (153 * ((m + 9) % 12) + 2) / 5 + d - 1
+    val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+    return era * 146_097 + doe - 719_468
+}
+
+/** Epoch day of "YYYY-MM-DD". */
+fun epochDay(date: String): Long = epochDay(date.substring(0, 4).toInt(), date.substring(5, 7).toInt(), date.substring(8, 10).toInt())
+
+/** Whole days from `a` to `b` (negative when b is earlier). */
+fun daysBetween(a: String, b: String): Long = epochDay(b) - epochDay(a)
+
+/** Weekday of a date: 0 Sunday … 6 Saturday (as JS `getDay`). 1970-01-01 was a Thursday. */
+fun weekdayOf(date: String): Int = Math.floorMod(epochDay(date) + 4, 7L).toInt()

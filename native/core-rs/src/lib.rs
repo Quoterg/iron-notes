@@ -29,6 +29,12 @@ pub mod backup;
 pub mod seed;
 pub mod store;
 
+// Calendar, supersets, routines and programs (N5): calendar.ts, groups.ts, routines.ts, programs.ts
+pub mod calendar;
+pub mod groups;
+pub mod programs;
+pub mod routines;
+
 // What the apps call (UniFFI)
 pub mod api;
 

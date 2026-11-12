@@ -135,7 +135,9 @@ private fun TabContent(state: AppState) {
                 DayLog(state)
             }
         }
-        // Later milestones (N5 calendar & routines, N7/N8 body & settings).
+        Tab.CALENDAR -> CalendarTab(state)
+        Tab.ROUTINES -> RoutinesTab(state)
+        // Later milestones (N7/N8 body & settings).
         else -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Txt("—", muted = true)
         }
@@ -184,6 +186,11 @@ private fun ScreenView(state: AppState, screen: Screen) {
         is Screen.Pick -> PickerScreen(state, screen.date)
         is Screen.Exercise -> ExerciseScreen(state, screen.id, screen.date)
         is Screen.Comment -> CommentScreen(state, screen.date)
+        is Screen.Copy -> CopyScreen(state, screen.date)
+        is Screen.SaveWorkout -> SaveWorkoutScreen(state, screen.date)
+        is Screen.Routine -> RoutineScreen(state, screen.id)
+        is Screen.RoutineDay -> RoutineDayScreen(state, screen.routineId, screen.dayId)
+        Screen.Programs -> ProgramsScreen(state)
     }
 }
 

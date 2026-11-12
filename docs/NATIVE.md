@@ -49,7 +49,8 @@ measurement (N0) before and after.
 - **Bindings: UniFFI** generates the Kotlin (and later Swift) API from the Rust code. The API is
   coarse — "today's log with targets", "save this set" — so a screen makes one or two calls, not one
   per set.
-- **One native library per CPU type** (arm64, 32-bit ARM for old phones, x86_64 for the emulator),
+- **One native library per CPU type** (arm64, 32-bit ARM for old phones; x86_64 for the emulator only with
+  `-PrustAbis=x86_64`),
   built with `cargo-ndk` from Gradle. Release builds use `opt-level = "z"`, LTO, one codegen unit,
   stripped; panics unwind, so a bug in the core becomes a Kotlin exception rather than a crash.
   GitHub releases get **one APK per CPU type** (and a universal one), so each phone downloads only its
@@ -143,7 +144,7 @@ PR that touches `native/`.
   steppers, records toast, comments; rest timer as an exact alarm + notification. (Day tools, targets and
   routines' planned sets come with N5/N6.)
 - [x] **N4 Exercise screen** — history, graph (Canvas), records (targets and readiness move to N6).
-- [ ] **N5 Calendar, routines, saved workouts, programs.**
+- [x] **N5 Calendar, routines, saved workouts, programs** (+ day tools: copy, reorder, supersets, share, delete).
 - [ ] **N6 Training modes** — Dorian, Lyle cycles, lighter week, feedback, day plan.
 - [ ] **N7 Muscles, body map, statistics, review.**
 - [ ] **N8 Settings & the rest** — themes, language (strings generated), units, plates, load types,

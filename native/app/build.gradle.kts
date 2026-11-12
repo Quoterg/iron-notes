@@ -5,11 +5,12 @@ plugins {
 }
 
 /**
- * The CPU types the Rust core is built for: phones (64- and 32-bit ARM) and the emulator. For a faster
- * local loop build only the one you install: `./gradlew :app:assembleDebug -PrustAbis=x86_64`.
+ * The CPU types the Rust core is built for: phones (64- and 32-bit ARM) by default. The emulator (x86_64)
+ * only when asked — `./gradlew :app:assembleDebug -PrustAbis=x86_64` — so the universal APK carries phone
+ * libraries only (each copy of the core is ~1 MB compressed).
  */
 val abis = providers.gradleProperty("rustAbis").orNull?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
-    ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+    ?: listOf("arm64-v8a", "armeabi-v7a")
 
 android {
     // Side by side with the TWA (io.github.quoterg.ironnotes) until the cut-over (docs/NATIVE.md).
@@ -88,7 +89,12 @@ val cargoNdk by tasks.registering(Exec::class) {
     inputs.files(rustDir.resolve("Cargo.toml"), rustDir.resolve("Cargo.lock"))
     outputs.dir(jniOut)
     workingDir(rustDir)
-    doFirst { environment("ANDROID_NDK_HOME", ndkDir.get().asFile.path) }
+    // Only the requested CPU types end up in the APK: libraries of an earlier build with other types go.
+    inputs.property("abis", abis)
+    doFirst {
+        delete(jniOut)
+        environment("ANDROID_NDK_HOME", ndkDir.get().asFile.path)
+    }
     commandLine(
         listOf(cargo, "ndk") + abis.flatMap { listOf("-t", it) } +
             listOf("--platform", "24", "-o", jniOut.get().asFile.path, "build", "--release", "--lib"),

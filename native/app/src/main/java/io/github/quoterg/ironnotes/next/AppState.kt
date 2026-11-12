@@ -29,6 +29,16 @@ sealed interface Screen {
     data class Exercise(val id: String, val date: String) : Screen
     /** The day's workout comment. */
     data class Comment(val date: String) : Screen
+    /** Copy a previous workout into `date`. */
+    data class Copy(val date: String) : Screen
+    /** Save `date`'s workout as a routine day. */
+    data class SaveWorkout(val date: String) : Screen
+    /** A routine (null = new). */
+    data class Routine(val id: String?) : Screen
+    /** One day of a routine (dayId null = new). */
+    data class RoutineDay(val routineId: String, val dayId: String?) : Screen
+    /** Training programs. */
+    data object Programs : Screen
 }
 
 class Toast(val text: String, val actionLabel: String? = null, val action: (() -> Unit)? = null)

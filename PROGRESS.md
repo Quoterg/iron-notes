@@ -12,8 +12,9 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
-  N1a #45, N1b #46 merged; N2 = #47 (review fixes pushed), N3 = #48 (on #47), N4 exercise progress = stacked PR on
-  #48. Next: **N5 calendar, routines, saved workouts, programs** (+ the day tools left from N3).
+  N1a #45, N1b #46 merged; N2 = #47, N3 = #48 (both: review fixes pushed), N4 = #49 (on #48), N5 = stacked PR on #49.
+  Next: **N6 training modes** (Dorian/Lyle targets, RIR, readiness, warm-ups, plates and load hints on the
+  logging screen, feedback card, effective-reps badges).
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
@@ -37,6 +38,24 @@
   function. Picker list padded above the navigation bar.
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
+
+## 2026-11-12 — N5 Calendar, routines, saved workouts, programs, day tools (native)
+
+- Core (Sonnet agent): calendar.rs, groups.rs, routines.rs, programs.rs ported with 754 golden cases
+  (src/lib/golden-plan.test.ts); IronCore: calendar_month, copy_sets, move_exercise, group/ungroup, delete_workout
+  (+ undo via put_sets, comment restored), log_routine_day (full logRoutineDay: last time, Dorian progression and
+  lighter week, Lyle run-up/push, plate snapping, supersets, program moves on), save_workout (new folder name
+  from the app: t("myWorkouts")), program_templates / start_program (today from the app, Lyle cycle) /
+  next_program_day. Record cache kept right through every write.
+- App (two Sonnet agents): Calendar tab (dots per category, week start, month nav, tap → day), Copy sheet, day
+  tools (save as workout, copy, reorder, superset/ungroup, share via ACTION_SEND, delete + undo), Routines tab,
+  routine and routine-day editors (planned sets in user units, autosave), Save workout, Programs, DayPlan (cycle
+  phase, the program's next day). Fixed: java.time in DayPlan/Programs (Android 8+) → Format.kt epochDay,
+  daysBetween, weekdayOf (DatesTest).
+- Default build = phone CPUs only (arm64, 32-bit ARM); x86_64 with -PrustAbis=x86_64; the Rust build clears old
+  libraries first. Universal APK 8.7 → 6.3 MB; per-CPU 3.2–3.7 MB.
+- Verified on the Android 7.0 emulator (release): log bench + squat → calendar dots; save as workout → "My
+  workouts" / PushLegs; log it into tomorrow → planned 100 × 8, 140 × 5; delete workout → undo restores it.
 
 ## 2026-11-12 — #48 review fixes (N3)
 

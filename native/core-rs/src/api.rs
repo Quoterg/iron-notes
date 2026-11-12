@@ -4,8 +4,8 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 
-use crate::model::{BodyMetric, BodyMetricEntry, Category, Exercise, Routine, Settings, WorkoutSet};
-use crate::{load, progress, records, seed};
+use crate::model::{BodyMetric, BodyMetricEntry, Category, CycleSettings, DayComment, Exercise, LightSettings, ProgramSettings, Routine, Settings, TrainingMode, WorkoutSet};
+use crate::{calendar, cycle, groups, load, lyle, programs, progress, records, routines, seed, targets, tools, units};
 use crate::store::{Store, StoreError};
 
 #[derive(Debug, uniffi::Error)]
@@ -87,19 +87,60 @@ pub struct ExerciseProgress {
     pub metrics: Vec<progress::Metric>,
 }
 
+/// One month of the calendar (Calendar.tsx): the grid and which categories were trained each day.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct CalendarMonth {
+    /// "YYYY-MM".
+    pub month: String,
+    /// The grid's days, weeks starting on `week_start` (calendar.ts `monthGrid`: "" for blanks).
+    pub grid: Vec<String>,
+    /// Days with done sets: their categories' ids in first-logged order.
+    pub days: Vec<CalendarDay>,
+    /// Workouts (days with done sets) in the month.
+    pub workouts: u32,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct CalendarDay {
+    pub date: String,
+    pub category_ids: Vec<String>,
+}
+
+/// A ready-made program (programs.ts `TEMPLATES`).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct ProgramTemplate {
+    /// "dorian4" | "lyleGbr".
+    pub id: String,
+    pub mode: crate::model::TrainingMode,
+    pub weekdays: Vec<u8>,
+    /// Day names (keys into the web's strings or plain names, as programs.ts).
+    pub day_names: Vec<String>,
+}
+
+/// What building a program made (programs.ts `buildProgram`): the routine, and exercise names that
+/// weren't in the library (left out).
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BuiltProgram {
+    pub routine: Routine,
+    pub missing: Vec<String>,
+}
+
 #[derive(uniffi::Object)]
 pub struct IronCore {
     store: Mutex<Store>,
     /// Record set ids per exercise (the web's `records` store): computing them reads the exercise's whole
     /// history, so they're kept until that exercise's sets change (all of them on body-weight changes).
     records: Mutex<HashMap<String, Vec<String>>>,
+    /// The last deleted workout's set ids and day comment, so `put_sets` of exactly those sets (the undo)
+    /// brings the comment back too.
+    deleted: Mutex<Option<(Vec<String>, DayComment)>>,
     /// Done sets of an exercise by the real load (the graph and the progress tabs), kept like `records`.
     loaded: Mutex<HashMap<String, std::sync::Arc<Vec<load::LoadedSet>>>>,
 }
 
 impl IronCore {
     fn new(store: Store) -> Self {
-        Self { store: Mutex::new(store), records: Mutex::new(HashMap::new()), loaded: Mutex::new(HashMap::new()) }
+        Self { store: Mutex::new(store), records: Mutex::new(HashMap::new()), deleted: Mutex::new(None), loaded: Mutex::new(HashMap::new()) }
     }
 
     /// The exercise's done sets by the real load, from the cache or read once.
@@ -144,6 +185,52 @@ impl IronCore {
     fn forget_all(&self) {
         self.cache().clear();
         self.loaded.lock().unwrap_or_else(|p| p.into_inner()).clear();
+    }
+
+    /// workout.ts `rewriteDay`: writes the day's sets in a new exercise order (and group ids), keeping each
+    /// exercise's set order. Only sets whose order or group changed are written.
+    fn rewrite_day(&self, sets: &[WorkoutSet], order: &[String], group_of: &HashMap<String, Option<String>>) -> R<()> {
+        let Some(first) = sets.first() else { return Ok(()) };
+        let base = first.order; // the day's own key range: other days are unaffected
+        let mut by_exercise: HashMap<&str, Vec<&WorkoutSet>> = HashMap::new();
+        for s in sets {
+            by_exercise.entry(s.exercise_id.as_str()).or_default().push(s);
+        }
+        let before: HashMap<&str, &WorkoutSet> = sets.iter().map(|s| (s.id.as_str(), s)).collect();
+        let changed: Vec<WorkoutSet> = order
+            .iter()
+            .flat_map(|id| by_exercise.get(id.as_str()).cloned().unwrap_or_default())
+            .enumerate()
+            .map(|(k, s)| WorkoutSet { order: base + k as f64, group: group_of.get(&s.exercise_id).cloned().flatten(), ..s.clone() })
+            .filter(|s| before[s.id.as_str()].order != s.order || before[s.id.as_str()].group != s.group)
+            .collect();
+        if changed.is_empty() {
+            return Ok(());
+        }
+        self.put_sets(changed)
+    }
+
+    /// The program screen's start (`start_program`), with today's date given.
+    fn start_program_on(&self, template_id: &str, name: &str, today: &str) -> R<BuiltProgram> {
+        let tpl = programs::template(template_id).ok_or_else(|| CoreError::Storage { msg: format!("unknown program template {template_id}") })?;
+        let (library, count) = self.with(|s| Ok((s.exercises()?, s.routines()?.len())))?;
+        let built = programs::build_program(tpl, name, &library, count as f64, &mut seed::uid);
+        self.put_routine(built.routine.clone())?;
+        for e in built.ranges {
+            self.put_exercise(e)?;
+        }
+        self.with(|s| {
+            let mut st = s.settings()?;
+            // Lyle: a cycle starts with the program unless one is running.
+            let running = st.cycle.as_ref().is_some_and(|c| lyle::cycle_week(&c.start, today) <= c.weeks);
+            if tpl.mode == TrainingMode::Lyle && !running {
+                st.cycle = Some(CycleSettings { start: today.to_string(), weeks: st.cycle.as_ref().map_or(6.0, |c| c.weeks) });
+            }
+            st.mode = tpl.mode;
+            st.program = Some(ProgramSettings { routine_id: built.routine.id.clone(), last_day_id: None, weekdays: Some(tpl.weekdays.to_vec()) });
+            s.put_settings(&st)
+        })?;
+        Ok(BuiltProgram { routine: built.routine, missing: built.missing })
     }
 }
 
@@ -281,7 +368,20 @@ impl IronCore {
     pub fn put_sets(&self, sets: Vec<WorkoutSet>) -> R<()> {
         let old: Vec<String> = self.with(|s| Ok(sets.iter().filter_map(|x| s.set(&x.id).ok().flatten()).map(|o| o.exercise_id).collect()))?;
         self.forget(old.into_iter().chain(sets.iter().map(|x| x.exercise_id.clone())));
-        self.with(|s| s.put_sets(&sets))
+        self.with(|s| s.put_sets(&sets))?;
+        // The undo of `delete_workout` (all of its sets back) restores the day's comment too.
+        let comment = {
+            let mut d = self.deleted.lock().unwrap_or_else(|p| p.into_inner());
+            if d.as_ref().is_some_and(|(ids, _)| ids.iter().all(|id| sets.iter().any(|x| &x.id == id))) {
+                d.take().map(|(_, c)| c)
+            } else {
+                None
+            }
+        };
+        match comment {
+            Some(c) => self.with(|s| s.put_comment(&c.date, &c.text)),
+            None => Ok(()),
+        }
     }
     pub fn delete_set(&self, id: String) -> R<()> {
         let old = self.with(|s| Ok(s.set(&id)?.map(|o| o.exercise_id)))?;
@@ -299,6 +399,201 @@ impl IronCore {
     }
     pub fn put_comment(&self, date: String, text: String) -> R<()> {
         self.with(|s| s.put_comment(&date, &text))
+    }
+
+    // ---- Day tools, calendar, routines, programs (N5; workout.ts / calendar.ts / routines.ts / programs.ts) ----
+
+    /// The calendar month `month` ("YYYY-MM"), weeks starting on `week_start` (0 Sunday, 1 Monday).
+    pub fn calendar_month(&self, month: String, week_start: u8) -> R<CalendarMonth> {
+        let (first, last) = calendar::month_bounds(&month);
+        let (sets, exercises) = self.with(|s| Ok((s.sets_between(&first, &last)?, s.exercises()?)))?;
+        let category: HashMap<&str, &str> = exercises.iter().map(|e| (e.id.as_str(), e.category_id.as_str())).collect();
+        // Category ids per day in first-logged order; a routine day logged but not done isn't a workout.
+        let mut days: Vec<CalendarDay> = Vec::new();
+        let mut at: HashMap<String, usize> = HashMap::new();
+        for s in sets.iter().filter(|s| !s.is_planned()) {
+            let Some(cat) = category.get(s.exercise_id.as_str()).filter(|c| !c.is_empty()) else { continue };
+            match at.get(&s.date) {
+                Some(&i) => {
+                    if !days[i].category_ids.iter().any(|c| c == cat) {
+                        days[i].category_ids.push(cat.to_string());
+                    }
+                }
+                None => {
+                    at.insert(s.date.clone(), days.len());
+                    days.push(CalendarDay { date: s.date.clone(), category_ids: vec![cat.to_string()] });
+                }
+            }
+        }
+        let grid = calendar::month_grid(&month, week_start);
+        Ok(CalendarMonth { month, grid, workouts: days.len() as u32, days })
+    }
+    /// workout.ts `copySets`: copies these sets (another day's) to `to`, as new sets after the day's own.
+    pub fn copy_sets(&self, set_ids: Vec<String>, to: String) -> R<()> {
+        let (mut sets, settings) = self.with(|s| {
+            let mut found = Vec::new();
+            for id in &set_ids {
+                found.extend(s.set(id)?);
+            }
+            Ok((found, s.settings()?))
+        })?;
+        sets.sort_by(records::by_order);
+        let light = settings.light.as_ref().map(light_of);
+        let copies: Vec<WorkoutSet> = sets
+            .iter()
+            .map(|s| WorkoutSet {
+                id: seed::uid(),
+                order: next_order(),
+                comment: None,
+                done: if settings.mark_done { Some(false) } else { None },
+                at: None,
+                ..cycle::redated(s, &to, light.as_ref())
+            })
+            .collect();
+        self.put_sets(copies)
+    }
+    /// workout.ts `moveExercise`: moves an exercise (with its superset) up (-1) or down (1) in its day.
+    pub fn move_exercise(&self, date: String, exercise_id: String, dir: i32) -> R<()> {
+        let sets = self.with(|s| s.sets_on(&date))?;
+        let current = groups::day_order(&sets);
+        let order = groups::move_unit(&current, &exercise_id, dir.signum());
+        if order.iter().zip(&current).all(|(id, c)| *id == c.exercise_id) {
+            return Ok(());
+        }
+        let group_of: HashMap<String, Option<String>> = current.into_iter().map(|o| (o.exercise_id, o.group)).collect();
+        self.rewrite_day(&sets, &order, &group_of)
+    }
+    /// workout.ts `groupExercises`: makes these exercises of the day a superset.
+    pub fn group_exercises(&self, date: String, exercise_ids: Vec<String>) -> R<()> {
+        if exercise_ids.len() < 2 {
+            return Ok(());
+        }
+        let sets = self.with(|s| s.sets_on(&date))?;
+        let members: HashSet<String> = exercise_ids.into_iter().collect();
+        let current = groups::day_order(&sets);
+        let g = seed::uid();
+        // Joining a group takes an exercise out of its old one; a group left with one member dissolves.
+        let mut left: HashMap<&str, usize> = HashMap::new();
+        for o in &current {
+            if let Some(og) = o.group.as_deref().filter(|_| !members.contains(&o.exercise_id)) {
+                *left.entry(og).or_insert(0) += 1;
+            }
+        }
+        let group_of: HashMap<String, Option<String>> = current
+            .iter()
+            .map(|o| {
+                let group = if members.contains(&o.exercise_id) {
+                    Some(g.clone())
+                } else {
+                    o.group.clone().filter(|og| left.get(og.as_str()).copied().unwrap_or(0) > 1)
+                };
+                (o.exercise_id.clone(), group)
+            })
+            .collect();
+        let order = groups::pull_together(&current.iter().map(|o| o.exercise_id.clone()).collect::<Vec<_>>(), &members);
+        self.rewrite_day(&sets, &order, &group_of)
+    }
+    /// workout.ts `ungroupExercise`: takes an exercise out of its superset that day.
+    pub fn ungroup_exercise(&self, date: String, exercise_id: String) -> R<()> {
+        let sets = self.with(|s| s.sets_on(&date))?;
+        let current = groups::day_order(&sets);
+        let Some(g) = current.iter().find(|o| o.exercise_id == exercise_id).and_then(|o| o.group.clone()) else { return Ok(()) };
+        let remaining = current.iter().filter(|o| o.group.as_deref() == Some(g.as_str()) && o.exercise_id != exercise_id).count();
+        let group_of: HashMap<String, Option<String>> = current
+            .iter()
+            .map(|o| {
+                let dissolved = o.exercise_id == exercise_id || (o.group.as_deref() == Some(g.as_str()) && remaining < 2);
+                (o.exercise_id.clone(), if dissolved { None } else { o.group.clone() })
+            })
+            .collect();
+        let order: Vec<String> = current.into_iter().map(|o| o.exercise_id).collect();
+        self.rewrite_day(&sets, &order, &group_of)
+    }
+    /// workout.ts `deleteWorkout`: deletes the day's sets (and comment); returns them for an undo (`put_sets`,
+    /// which also brings the comment back when it puts all of these sets back).
+    pub fn delete_workout(&self, date: String) -> R<Vec<WorkoutSet>> {
+        let (sets, comment) = self.with(|s| Ok((s.sets_on(&date)?, s.comment(&date)?)))?;
+        self.delete_sets(sets.iter().map(|s| s.id.clone()).collect())?;
+        let ids: Vec<String> = sets.iter().map(|s| s.id.clone()).collect();
+        *self.deleted.lock().unwrap_or_else(|p| p.into_inner()) = match comment {
+            Some(text) if !ids.is_empty() => Some((ids, DayComment { date: date.clone(), text })),
+            _ => None,
+        };
+        self.with(|s| s.put_comment(&date, ""))?;
+        Ok(sets)
+    }
+    /// workout.ts `logRoutineDay`: logs a routine day into `date` as planned sets (weights from last time,
+    /// Dorian/Lyle targets and lighter weeks, rounded to plates as the setting says), joins the day's
+    /// supersets, and moves the program on when the day belongs to it.
+    pub fn log_routine_day(&self, routine_id: String, day_id: String, date: String) -> R<()> {
+        let sets = self.with(|s| plan_routine_day(s, &routine_id, &day_id, &date))?;
+        if sets.is_empty() {
+            return Ok(());
+        }
+        self.put_sets(sets)?;
+        // A workout of the program: the next one comes after it.
+        self.with(|s| {
+            let mut st = s.settings()?;
+            if let Some(p) = st.program.as_mut() {
+                if s.routines()?.iter().find(|r| r.id == p.routine_id).is_some_and(|r| r.days.iter().any(|d| d.id == day_id)) {
+                    p.last_day_id = Some(day_id.clone());
+                    s.put_settings(&st)?;
+                }
+            }
+            Ok(())
+        })
+    }
+    /// routines.ts `workoutFromDay` saved as a new day of routine `routine_id` (or a new routine named
+    /// `name` when `routine_id` is None): sets × reps, supersets, no weights. Returns the routine.
+    /// Nothing is saved (and the routine comes back unchanged, or empty and unsaved) for a blank name or
+    /// a day without exercises, as the web's Save does nothing then.
+    /// `new_routine_name`: the folder created when `routine_id` is None (the web: t("myWorkouts")).
+    pub fn save_workout(&self, date: String, name: String, routine_id: Option<String>, new_routine_name: String) -> R<Routine> {
+        let name = name.trim().to_string();
+        let (sets, exercises, mut routines) = self.with(|s| Ok((s.sets_on(&date)?, s.exercises()?, s.routines()?)))?;
+        let by_id: HashMap<&str, &Exercise> = exercises.iter().map(|e| (e.id.as_str(), e)).collect();
+        let workout = routines::workout_from_day(&name, &sets, &|id| by_id.get(id).map(|e| (*e).clone()), &mut seed::uid);
+        let existing = routine_id.and_then(|id| routines.iter().position(|r| r.id == id));
+        if name.is_empty() || workout.items.is_empty() {
+            return Ok(existing.map(|i| routines.swap_remove(i)).unwrap_or(Routine { id: String::new(), name, order: 0.0, days: vec![] }));
+        }
+        let routine = match existing {
+            Some(i) => {
+                let mut r = routines.swap_remove(i);
+                r.days.push(workout);
+                r
+            }
+            None => Routine { id: seed::uid(), name: new_routine_name, order: routines.iter().map(|r| r.order).fold(-1.0, f64::max) + 1.0, days: vec![workout] },
+        };
+        self.put_routine(routine.clone())?;
+        Ok(routine)
+    }
+    /// programs.ts `TEMPLATES`.
+    pub fn program_templates(&self) -> Vec<ProgramTemplate> {
+        programs::TEMPLATES
+            .iter()
+            .map(|t| ProgramTemplate {
+                id: t.id.to_string(),
+                mode: t.mode,
+                weekdays: t.weekdays.to_vec(),
+                day_names: t.days.iter().map(|(n, _)| n.to_string()).collect(),
+            })
+            .collect()
+    }
+    /// programs.ts `buildProgram` + saving it: the routine is stored, and settings get the mode, the
+    /// program (routine, weekdays) and Lyle's rep ranges as the web's Programs screen does. A Lyle program
+    /// also starts a cycle on `today` (the app's local date) unless one is running.
+    pub fn start_program(&self, template_id: String, name: String, today: String) -> R<BuiltProgram> {
+        self.start_program_on(&template_id, &name, &today)
+    }
+    /// The program's next workout day for `date` (cycle.ts `nextProgramDay`), or None.
+    pub fn next_program_day(&self, date: String) -> R<Option<crate::model::RoutineDay>> {
+        let _ = date; // the rotation doesn't depend on the day: a missed day moves the rest along
+        self.with(|s| {
+            let Some(p) = s.settings()?.program else { return Ok(None) };
+            let routine = s.routines()?.into_iter().find(|r| r.id == p.routine_id);
+            Ok(cycle::next_program_day(routine.as_ref(), p.last_day_id.as_deref()).cloned())
+        })
     }
 
     // ---- Routines & body ----
@@ -368,6 +663,118 @@ pub fn next_order() -> f64 {
     let mut last = LAST_ORDER.lock().unwrap_or_else(|p| p.into_inner());
     *last = (*last + 1.0).max(now);
     *last
+}
+
+fn light_of(l: &LightSettings) -> cycle::Light {
+    cycle::Light { start: l.start.clone() }
+}
+
+/// db.ts `lastWorkoutSets`: the exercise's sets of its last workout (the day of its latest done set), in
+/// order; empty if none.
+fn last_workout_sets(s: &Store, exercise_id: &str) -> Result<Vec<WorkoutSet>, StoreError> {
+    let all = s.sets_of(exercise_id)?;
+    Ok(match all.iter().rev().find(|x| !x.is_planned()) {
+        Some(last) => {
+            let date = last.date.clone();
+            all.into_iter().filter(|x| x.date == date && !x.is_planned()).collect()
+        }
+        None => Vec::new(),
+    })
+}
+
+/// workout.ts `logRoutineDay`, up to the sets to write: the day's planned sets on `date` with the weights
+/// the plan leaves open filled from last time (or the mode's targets). Empty when routine/day is unknown.
+fn plan_routine_day(s: &Store, routine_id: &str, day_id: &str, date: &str) -> Result<Vec<WorkoutSet>, StoreError> {
+    let Some(day) = s.routines()?.into_iter().find(|r| r.id == routine_id).and_then(|r| r.days.into_iter().find(|d| d.id == day_id)) else {
+        return Ok(Vec::new());
+    };
+    let st = s.settings()?;
+    let exercises: HashMap<String, Exercise> = s.exercises()?.into_iter().map(|e| (e.id.clone(), e)).collect();
+    let items: Vec<_> = day.items.iter().filter(|i| exercises.contains_key(&i.exercise_id)).cloned().collect();
+    // Last workout's sets per exercise: fill in the weights the plan leaves open, set by set.
+    let mut ids: Vec<&str> = Vec::new();
+    for i in &items {
+        if !ids.contains(&i.exercise_id.as_str()) {
+            ids.push(&i.exercise_id);
+        }
+    }
+    let mut last: HashMap<String, Vec<WorkoutSet>> = HashMap::new();
+    for id in &ids {
+        last.insert(id.to_string(), last_workout_sets(s, id)?);
+    }
+    // Rounded to the bar and plates as on the logging screen (setting; barbell lifts): an increase rounds up.
+    let plates = st.plates.as_ref().map(|p| tools::PlatesSetting { unit: p.unit, bar: p.bar, sizes: p.sizes.clone() });
+    let snapper = |id: &str| tools::snapper_for(exercises.get(id), st.unit, plates.as_ref(), st.round_plates.unwrap_or(false));
+    let step_of = |ex: &Exercise| units::w_from_user(ex.increment.unwrap_or_else(|| units::default_increment(st.unit)), st.unit);
+    if st.mode == TrainingMode::Dorian {
+        // Dorian HIT: from the last normal session (never a lighter week's): sets that reached the top of the
+        // range come one weight step up; in a lighter week every working set ~10 % lighter.
+        let lighter = cycle::in_light(st.light.as_ref().map(light_of).as_ref(), date);
+        for id in &ids {
+            let ex = &exercises[*id];
+            let step = step_of(ex);
+            // Last time's sets unless they are a lighter week's or the day's own.
+            let recent = &last[*id];
+            let base: Vec<WorkoutSet> = if !recent.is_empty() && recent[0].date.as_str() < date && recent.iter().all(cycle::progressing) {
+                recent.clone()
+            } else {
+                let all: Vec<WorkoutSet> = s.sets_of(id)?.into_iter().filter(cycle::progressing).collect();
+                records::previous_workout(&all, date)
+            };
+            let next: Vec<WorkoutSet> =
+                if lighter { base.iter().map(|x| cycle::light_set(x, step)).collect() } else { targets::progressed_sets(&base, step, ex.rep_top.unwrap_or(targets::DORIAN_TOP)) };
+            let snap = snapper(id);
+            let snapped = next
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| match x.weight {
+                    Some(w) if !x.is_warmup() => {
+                        let up = w > base.get(i).and_then(|b| b.weight).unwrap_or(f64::INFINITY);
+                        WorkoutSet { weight: Some(snap.snap(w, up)), ..x }
+                    }
+                    _ => x,
+                })
+                .collect();
+            last.insert(id.to_string(), snapped);
+        }
+    }
+    if st.mode == TrainingMode::Lyle {
+        // Lyle: every working set of an exercise starts at its target (run-up week or push rule).
+        let cycle_set = st.cycle.as_ref();
+        let week = cycle_set.map_or(0.0, |c| lyle::cycle_week(&c.start, date));
+        let run_up = week >= 1.0 && week <= lyle::RUN_UP.len() as f64;
+        for id in &ids {
+            let ex = &exercises[*id];
+            let sets = last[*id].clone();
+            let range = lyle::rep_range(ex.rep_top, ex.rep_bottom);
+            // Push weeks need only last time's first set; the full history only for a run-up's best, or
+            // when the last workout is the day itself.
+            let mut first = lyle::last_first_set(&sets, date).cloned();
+            let all: Option<Vec<WorkoutSet>> =
+                if run_up || (first.is_none() && !sets.is_empty()) { Some(s.sets_of(id)?.into_iter().filter(|x| !x.is_planned()).collect()) } else { None };
+            if first.is_none() {
+                if let Some(all) = &all {
+                    first = lyle::last_first_set(all, date).cloned();
+                }
+            }
+            let best = match (run_up, &all, cycle_set) {
+                (true, Some(all), Some(c)) => lyle::best_for_range(all, range.bottom, &c.start),
+                _ => 0.0,
+            };
+            let tg = lyle::lyle_target(if run_up { week } else { 0.0 }, best, first.as_ref(), step_of(ex), range);
+            let w = snapper(id).snap(tg.as_ref().map_or(0.0, |t| t.weight), tg.as_ref().is_some_and(|t| t.why == lyle::LyleWhy::Up));
+            if let Some(tg) = tg {
+                last.insert(id.to_string(), sets.into_iter().filter(|x| !x.is_warmup()).map(|x| WorkoutSet { weight: Some(w), reps: Some(tg.reps), ..x }).collect());
+            }
+        }
+    }
+    let same_day = s.sets_on(date)?;
+    let plan = crate::model::RoutineDay { items, ..day };
+    // Sets of an exercise already in a superset that day join it.
+    Ok(routines::planned_sets(&plan, date, &mut |id| last.get(id).cloned().unwrap_or_default(), &mut next_order, &mut seed::uid, st.mode == TrainingMode::Dorian)
+        .into_iter()
+        .map(|x| WorkoutSet { group: groups::group_of(&same_day, &x.exercise_id).or(x.group.clone()), ..x })
+        .collect())
 }
 
 /// An exercise's record set ids over its whole history, by the real load (state.ts `refreshRecords` with
@@ -532,5 +939,396 @@ mod tests {
             other => panic!("{other:?}"),
         }
         assert_eq!(core.export_backup_json("x".into()).unwrap(), before);
+    }
+
+    // ---- N5: calendar, day tools, routines, programs ----
+
+    use crate::model::{PlannedSet, RoutineItem};
+
+    fn exercise(core: &IronCore, name: &str) -> Exercise {
+        core.library().unwrap().exercises.into_iter().find(|e| e.name == name).unwrap_or_else(|| panic!("no {name}"))
+    }
+    fn logged(ex: &Exercise, date: &str, weight: f64, reps: f64) -> WorkoutSet {
+        WorkoutSet { id: new_id(), date: date.into(), exercise_id: ex.id.clone(), order: next_order(), weight: Some(weight), reps: Some(reps), ..Default::default() }
+    }
+    fn item(ex: &Exercise, sets: usize) -> RoutineItem {
+        RoutineItem { exercise_id: ex.id.clone(), sets: vec![PlannedSet::default(); sets], group: None }
+    }
+    fn routine_of(core: &IronCore, days: Vec<(&str, Vec<RoutineItem>)>) -> Routine {
+        let r = Routine {
+            id: new_id(),
+            name: "Plan".into(),
+            order: 0.0,
+            days: days.into_iter().map(|(n, items)| crate::model::RoutineDay { id: new_id(), name: n.into(), items }).collect(),
+        };
+        core.put_routine(r.clone()).unwrap();
+        r
+    }
+    fn mode(core: &IronCore, f: impl FnOnce(&mut Settings)) {
+        let mut st = core.settings().unwrap();
+        f(&mut st);
+        core.put_settings(st).unwrap();
+    }
+    /// The planned sets logged on a day: (weight, reps) per set of an exercise.
+    fn plan_of(core: &IronCore, date: &str, ex: &Exercise) -> Vec<(Option<f64>, Option<f64>)> {
+        core.day(date.into()).unwrap().sets.iter().filter(|s| s.exercise_id == ex.id).map(|s| (s.weight, s.reps)).collect()
+    }
+    fn exercise_order(core: &IronCore, date: &str) -> Vec<String> {
+        groups::day_order(&core.day(date.into()).unwrap().sets).into_iter().map(|o| o.exercise_id).collect()
+    }
+
+    #[test]
+    fn calendar_month_counts_done_days_and_categories_in_order() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, curl, fly) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Barbell Curl"), exercise(&core, "Dumbbell Fly"));
+        let planned = WorkoutSet { planned: Some(true), done: Some(false), ..logged(&bench, "2026-11-04", 100.0, 8.0) };
+        core.put_sets(vec![
+            logged(&curl, "2026-11-03", 30.0, 10.0),
+            logged(&bench, "2026-11-03", 100.0, 8.0),
+            logged(&fly, "2026-11-03", 20.0, 12.0), // same category as the bench: one dot
+            planned,                                  // not a workout
+            logged(&bench, "2026-10-31", 100.0, 8.0), // another month
+            logged(&bench, "2026-11-30", 100.0, 8.0),
+            WorkoutSet { exercise_id: "gone".into(), ..logged(&bench, "2026-11-20", 1.0, 1.0) }, // deleted exercise
+        ])
+        .unwrap();
+        let m = core.calendar_month("2026-11".into(), 1).unwrap();
+        assert_eq!((m.grid.len(), m.grid[0].as_str(), m.grid[41].as_str()), (42, "2026-10-26", "2026-12-06"));
+        assert_eq!(m.workouts, 2);
+        assert_eq!(m.days.iter().map(|d| d.date.as_str()).collect::<Vec<_>>(), ["2026-11-03", "2026-11-30"]);
+        assert_eq!(m.days[0].category_ids, [curl.category_id.clone(), bench.category_id.clone()]);
+        assert_eq!(core.calendar_month("2026-11".into(), 0).unwrap().grid.len(), 35);
+    }
+
+    #[test]
+    fn copy_sets_goes_after_the_days_own_sets() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let own = logged(&bench, "2026-11-12", 50.0, 5.0);
+        let a = WorkoutSet { comment: Some("heavy".into()), done: Some(true), at: Some(5.0), group: Some("g".into()), ..logged(&bench, "2026-11-05", 100.0, 8.0) };
+        let b = logged(&bench, "2026-11-05", 100.0, 7.0);
+        core.put_sets(vec![own.clone(), b.clone(), a.clone()]).unwrap();
+        core.copy_sets(vec![b.id.clone(), a.id.clone(), "missing".into()], "2026-11-12".into()).unwrap();
+        let day = core.day("2026-11-12".into()).unwrap().sets;
+        assert_eq!(day.len(), 3);
+        assert_eq!(day[0].id, own.id);
+        // In their own order (a was logged before b), new ids, nothing carried but the numbers.
+        assert_eq!(day[1..].iter().map(|s| s.reps).collect::<Vec<_>>(), [Some(8.0), Some(7.0)]);
+        assert!(day[1..].iter().all(|s| s.id != a.id && s.id != b.id && s.comment.is_none() && s.at.is_none() && s.done.is_none() && s.date == "2026-11-12"));
+        assert_eq!(day[1].group.as_deref(), Some("g")); // a superset copies as one
+        assert_eq!(core.day("2026-11-05".into()).unwrap().sets.len(), 2); // the source is untouched
+        // "Mark done" on: copies come back as not done yet.
+        mode(&core, |st| st.mark_done = true);
+        core.copy_sets(vec![a.id.clone()], "2026-11-13".into()).unwrap();
+        assert_eq!(core.day("2026-11-13".into()).unwrap().sets[0].done, Some(false));
+    }
+
+    #[test]
+    fn a_lighter_week_set_stays_one_only_in_a_lighter_week() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let s = WorkoutSet { deload: Some(true), ..logged(&bench, "2026-11-10", 90.0, 8.0) };
+        core.put_set(s.clone()).unwrap();
+        mode(&core, |st| st.light = Some(LightSettings { start: "2026-11-09".into() }));
+        core.copy_sets(vec![s.id.clone()], "2026-11-11".into()).unwrap(); // into the lighter week
+        core.copy_sets(vec![s.id.clone()], "2026-11-20".into()).unwrap(); // out of it
+        assert_eq!(core.day("2026-11-11".into()).unwrap().sets[0].deload, Some(true));
+        assert_eq!(core.day("2026-11-20".into()).unwrap().sets[0].deload, None);
+    }
+
+    #[test]
+    fn supersets_group_move_ungroup() {
+        let core = IronCore::in_memory().unwrap();
+        let names = ["Flat Barbell Bench Press", "Dumbbell Fly", "Barbell Curl", "Cable Pushdown"];
+        let [bench, fly, curl, push] = names.map(|n| exercise(&core, n));
+        let d = "2026-11-12";
+        let sets = vec![logged(&bench, d, 100.0, 8.0), logged(&bench, d, 100.0, 7.0), logged(&fly, d, 20.0, 12.0), logged(&fly, d, 20.0, 11.0), logged(&curl, d, 30.0, 10.0), logged(&push, d, 40.0, 12.0)];
+        let other_day = logged(&bench, "2026-11-13", 90.0, 5.0);
+        core.put_sets([sets.clone(), vec![other_day.clone()]].concat()).unwrap();
+        let ids = |ex: &Exercise| core.day(d.into()).unwrap().sets.into_iter().filter(|s| s.exercise_id == ex.id).map(|s| s.id).collect::<Vec<_>>();
+        let group = |ex: &Exercise| groups::group_of(&core.day(d.into()).unwrap().sets, &ex.id);
+
+        // Bench + curl become a superset, pulled together at the bench.
+        core.group_exercises(d.into(), vec![curl.id.clone(), bench.id.clone()]).unwrap();
+        assert_eq!(exercise_order(&core, d), [&bench, &curl, &fly, &push].map(|e| e.id.clone()));
+        assert!(group(&bench).is_some() && group(&bench) == group(&curl) && group(&fly).is_none());
+        assert_eq!(ids(&bench), [sets[0].id.clone(), sets[1].id.clone()]); // an exercise's sets keep their order
+        assert_eq!(core.day("2026-11-13".into()).unwrap().sets, vec![other_day.clone()]); // other days untouched
+
+        // Fly + pushdown a second one; then the second unit moves up past the first.
+        core.group_exercises(d.into(), vec![fly.id.clone(), push.id.clone()]).unwrap();
+        assert_ne!(group(&fly), group(&bench));
+        core.move_exercise(d.into(), push.id.clone(), -1).unwrap();
+        assert_eq!(exercise_order(&core, d), [&fly, &push, &bench, &curl].map(|e| e.id.clone()));
+        core.move_exercise(d.into(), push.id.clone(), -1).unwrap(); // already first: nothing changes
+        assert_eq!(exercise_order(&core, d), [&fly, &push, &bench, &curl].map(|e| e.id.clone()));
+        core.move_exercise(d.into(), bench.id.clone(), 1).unwrap(); // already last
+        assert_eq!(exercise_order(&core, d)[0], fly.id);
+
+        // Joining another group takes the exercise out of its old one, which dissolves with one member left.
+        core.group_exercises(d.into(), vec![fly.id.clone(), curl.id.clone()]).unwrap();
+        assert!(group(&fly).is_some() && group(&fly) == group(&curl));
+        assert!(group(&push).is_none() && group(&bench).is_none());
+
+        // Taking one of two out dissolves the group; taking an ungrouped one is a no-op.
+        core.ungroup_exercise(d.into(), curl.id.clone()).unwrap();
+        assert!(group(&fly).is_none() && group(&curl).is_none());
+        core.ungroup_exercise(d.into(), curl.id.clone()).unwrap();
+        core.group_exercises(d.into(), vec![bench.id.clone()]).unwrap(); // fewer than 2: nothing
+        assert!(group(&bench).is_none());
+        // Three in a group: one leaves, the other two stay together.
+        core.group_exercises(d.into(), vec![fly.id.clone(), push.id.clone(), bench.id.clone()]).unwrap();
+        core.ungroup_exercise(d.into(), push.id.clone()).unwrap();
+        assert!(group(&push).is_none() && group(&fly).is_some() && group(&fly) == group(&bench));
+        // Records still right after the rewrites (order within each exercise is unchanged).
+        assert_eq!(core.day(d.into()).unwrap().sets.len(), 6);
+    }
+
+    #[test]
+    fn delete_workout_and_undo_keep_records_and_comment() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        let a = logged(&bench, "2026-11-12", 100.0, 5.0);
+        let b = logged(&bench, "2026-11-12", 110.0, 5.0);
+        let keep = logged(&bench, "2026-11-13", 60.0, 5.0);
+        core.put_sets(vec![a.clone(), b.clone(), keep.clone()]).unwrap();
+        core.put_comment("2026-11-12".into(), "Felt good".into()).unwrap();
+        assert_eq!(core.exercise_log(bench.id.clone(), "2026-11-13".into()).unwrap().records, [b.id.clone()]);
+
+        let gone = core.delete_workout("2026-11-12".into()).unwrap();
+        assert_eq!(gone.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), [a.id.as_str(), b.id.as_str()]);
+        let day = core.day("2026-11-12".into()).unwrap();
+        assert!(day.sets.is_empty() && day.comment.is_none());
+        assert_eq!(core.exercise_log(bench.id.clone(), "2026-11-13".into()).unwrap().records, [keep.id.clone()]); // cache followed
+        assert_eq!(core.day("2026-11-13".into()).unwrap().sets.len(), 1);
+
+        core.put_sets(gone).unwrap(); // undo
+        let day = core.day("2026-11-12".into()).unwrap();
+        assert_eq!(day.sets.len(), 2);
+        assert_eq!(day.comment.as_deref(), Some("Felt good"));
+        assert_eq!(core.exercise_log(bench.id.clone(), "2026-11-13".into()).unwrap().records, [b.id.clone()]);
+        assert!(core.delete_workout("2030-01-01".into()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn standard_routine_day_takes_the_open_weights_from_last_time() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, curl, fly) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Barbell Curl"), exercise(&core, "Dumbbell Fly"));
+        core.put_sets(vec![
+            logged(&bench, "2026-11-01", 90.0, 8.0),
+            logged(&bench, "2026-11-05", 100.0, 8.0),
+            logged(&bench, "2026-11-05", 95.0, 7.0),
+            WorkoutSet { planned: Some(true), ..logged(&bench, "2026-11-10", 200.0, 1.0) }, // a planned set isn't "last time"
+        ])
+        .unwrap();
+        let mut bench_item = item(&bench, 3);
+        bench_item.sets[0].reps = Some(10.0);
+        let r = routine_of(&core, vec![("Push", vec![bench_item, item(&fly, 2), item(&curl, 1)])]);
+        core.delete_exercise(curl.id.clone()).unwrap(); // gone from the library: left out
+        core.log_routine_day(r.id.clone(), r.days[0].id.clone(), "2026-11-12".into()).unwrap();
+        // Set by set from last time's sets; the extra set from its last one; the plan's reps win.
+        assert_eq!(plan_of(&core, "2026-11-12", &bench), [(Some(100.0), Some(10.0)), (Some(95.0), Some(7.0)), (Some(95.0), Some(7.0))]);
+        assert_eq!(plan_of(&core, "2026-11-12", &fly), [(None, None), (None, None)]);
+        let day = core.day("2026-11-12".into()).unwrap();
+        assert_eq!(day.sets.len(), 5);
+        assert!(day.sets.iter().all(|s| s.planned == Some(true) && s.done == Some(false) && s.group.is_none()));
+        assert!(day.records.is_empty()); // planned sets are no records
+        // Logging it again adds the sets after the first ones; unknown ids do nothing.
+        core.log_routine_day(r.id.clone(), r.days[0].id.clone(), "2026-11-12".into()).unwrap();
+        assert_eq!(core.day("2026-11-12".into()).unwrap().sets.len(), 10);
+        core.log_routine_day(r.id.clone(), "nope".into(), "2026-11-12".into()).unwrap();
+        core.log_routine_day("nope".into(), r.days[0].id.clone(), "2026-11-12".into()).unwrap();
+        assert_eq!(core.day("2026-11-12".into()).unwrap().sets.len(), 10);
+    }
+
+    #[test]
+    fn routine_day_sets_join_the_days_supersets_and_planned_ones_make_new_groups() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, fly, curl, push) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Dumbbell Fly"), exercise(&core, "Barbell Curl"), exercise(&core, "Cable Pushdown"));
+        let d = "2026-11-12";
+        core.put_sets(vec![WorkoutSet { group: Some("g1".into()), ..logged(&bench, d, 100.0, 8.0) }, WorkoutSet { group: Some("g1".into()), ..logged(&fly, d, 20.0, 12.0) }]).unwrap();
+        let mut curl_item = item(&curl, 2);
+        let mut push_item = item(&push, 2);
+        curl_item.group = Some("a".into());
+        push_item.group = Some("a".into());
+        let r = routine_of(&core, vec![("Arms", vec![item(&bench, 1), item(&fly, 1), curl_item, push_item])]);
+        core.log_routine_day(r.id.clone(), r.days[0].id.clone(), d.into()).unwrap();
+        let sets = core.day(d.into()).unwrap().sets;
+        let group_of = |ex: &Exercise| sets.iter().filter(|s| s.exercise_id == ex.id && s.planned == Some(true)).map(|s| s.group.clone()).collect::<Vec<_>>();
+        assert_eq!(group_of(&bench), [Some("g1".to_string())]);
+        assert_eq!(group_of(&fly), [Some("g1".to_string())]);
+        let new = group_of(&curl);
+        assert!(new[0].is_some() && new[0] != Some("a".to_string()) && new == [new[0].clone(), new[0].clone()] && group_of(&push)[0] == new[0]);
+        core.log_routine_day(r.id.clone(), r.days[0].id.clone(), "2026-11-14".into()).unwrap();
+        let second = core.day("2026-11-14".into()).unwrap().sets;
+        assert_ne!(second.iter().find(|s| s.exercise_id == curl.id).unwrap().group, new[0]); // a second logging, a second superset
+    }
+
+    #[test]
+    fn dorian_routine_day_progresses_from_the_last_normal_session() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| st.mode = TrainingMode::Dorian);
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        core.put_sets(vec![
+            logged(&bench, "2026-11-05", 100.0, 12.0), // reached the top: one step up, reps open
+            logged(&bench, "2026-11-05", 100.0, 10.0), // one more rep to beat
+            WorkoutSet { deload: Some(true), ..logged(&bench, "2026-11-09", 90.0, 10.0) }, // a lighter week's: never a base
+        ])
+        .unwrap();
+        let r = routine_of(&core, vec![("Chest", vec![item(&bench, 2)])]);
+        let day_id = r.days[0].id.clone();
+        core.log_routine_day(r.id.clone(), day_id.clone(), "2026-11-12".into()).unwrap();
+        assert_eq!(plan_of(&core, "2026-11-12", &bench), [(Some(102.5), None), (Some(100.0), Some(11.0))]);
+        // A step of 1 kg, and rounding to plates (barbell lift): 101 rounds up to a loadable weight.
+        let mut ex = bench.clone();
+        ex.increment = Some(1.0);
+        core.put_exercise(ex).unwrap();
+        mode(&core, |st| st.round_plates = Some(true));
+        let snapped = tools::snapper_for(Some(&bench), st_unit(&core), None, true).snap(101.0, true);
+        assert!(snapped > 101.0);
+        core.log_routine_day(r.id.clone(), day_id.clone(), "2026-11-13".into()).unwrap();
+        assert_eq!(plan_of(&core, "2026-11-13", &bench)[0], (Some(snapped), None));
+        // In a lighter week: ~10 % lighter at last time's reps (a base from before: this week's own is never used).
+        mode(&core, |st| st.light = Some(LightSettings { start: "2026-11-16".into() }));
+        core.log_routine_day(r.id.clone(), day_id, "2026-11-17".into()).unwrap();
+        // Last normal session is the 2026-11-13 plan? No: planned sets aren't done; it is still 2026-11-05.
+        let light = plan_of(&core, "2026-11-17", &bench);
+        assert_eq!(light, [(Some(snapped_down(90.0, 1.0, &core)), Some(12.0)), (Some(snapped_down(90.0, 1.0, &core)), Some(10.0))]);
+    }
+
+    fn st_unit(core: &IronCore) -> crate::units::WeightUnit {
+        core.settings().unwrap().unit
+    }
+    /// A lighter-week weight of 100 kg at a step, then rounded to plates like the app does (100 → 90).
+    fn snapped_down(w: f64, _step: f64, core: &IronCore) -> f64 {
+        let bench = exercise(core, "Flat Barbell Bench Press");
+        tools::snapper_for(Some(&bench), st_unit(core), None, true).snap(w, false)
+    }
+
+    #[test]
+    fn lyle_routine_day_pushes_and_runs_up() {
+        let core = IronCore::in_memory().unwrap();
+        mode(&core, |st| st.mode = TrainingMode::Lyle);
+        let bench = exercise(&core, "Flat Barbell Bench Press");
+        core.put_sets(vec![
+            WorkoutSet { warmup: Some(true), ..logged(&bench, "2026-11-05", 40.0, 10.0) },
+            WorkoutSet { rir: Some(2.0), ..logged(&bench, "2026-11-05", 80.0, 12.0) }, // top of 8–12 with reps to spare
+            logged(&bench, "2026-11-05", 80.0, 9.0),
+            logged(&bench, "2026-10-01", 85.0, 8.0),
+        ])
+        .unwrap();
+        let r = routine_of(&core, vec![("Upper", vec![item(&bench, 3)])]);
+        let day_id = r.days[0].id.clone();
+        // No cycle: push rules. Weight up one step, back to the bottom of the range, for every set.
+        core.log_routine_day(r.id.clone(), day_id.clone(), "2026-11-12".into()).unwrap();
+        assert_eq!(plan_of(&core, "2026-11-12", &bench), [(Some(82.5), Some(8.0)); 3]);
+        // Run-up week 1 of a cycle started 2026-11-09: 82.5 % of the best weight for 8+ reps before the
+        // cycle (85), rounded down to the 2.5 step, at the top of the range.
+        mode(&core, |st| st.cycle = Some(CycleSettings { start: "2026-11-09".into(), weeks: 6.0 }));
+        core.log_routine_day(r.id.clone(), day_id.clone(), "2026-11-13".into()).unwrap();
+        assert_eq!(plan_of(&core, "2026-11-13", &bench), [(Some(70.0), Some(12.0)); 3]);
+        // Week 3 is a push week again.
+        core.log_routine_day(r.id.clone(), day_id, "2026-11-24".into()).unwrap();
+        assert_eq!(plan_of(&core, "2026-11-24", &bench)[0], (Some(82.5), Some(8.0)));
+    }
+
+    #[test]
+    fn running_the_programs_day_moves_the_program_on() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, curl) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Barbell Curl"));
+        let r = routine_of(&core, vec![("A", vec![item(&bench, 1)]), ("B", vec![item(&curl, 1)]), ("C", vec![item(&bench, 1)])]);
+        let other = routine_of(&core, vec![("X", vec![item(&curl, 1)])]);
+        assert!(core.next_program_day("2026-11-12".into()).unwrap().is_none()); // no program
+        mode(&core, |st| st.program = Some(ProgramSettings { routine_id: r.id.clone(), last_day_id: None, weekdays: Some(vec![1, 3]) }));
+        assert_eq!(core.next_program_day("2026-11-12".into()).unwrap().unwrap().name, "A");
+        core.log_routine_day(r.id.clone(), r.days[1].id.clone(), "2026-11-12".into()).unwrap();
+        let p = core.settings().unwrap().program.unwrap();
+        assert_eq!((p.last_day_id.as_deref(), p.weekdays), (Some(r.days[1].id.as_str()), Some(vec![1, 3])));
+        assert_eq!(core.next_program_day("2026-11-13".into()).unwrap().unwrap().name, "C");
+        core.log_routine_day(r.id.clone(), r.days[2].id.clone(), "2026-11-13".into()).unwrap();
+        assert_eq!(core.next_program_day("2026-11-14".into()).unwrap().unwrap().name, "A"); // wraps
+        // A day of another routine doesn't move it.
+        core.log_routine_day(other.id.clone(), other.days[0].id.clone(), "2026-11-14".into()).unwrap();
+        assert_eq!(core.settings().unwrap().program.unwrap().last_day_id.as_deref(), Some(r.days[2].id.as_str()));
+    }
+
+    #[test]
+    fn save_workout_makes_a_routine_or_adds_a_day() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, fly, run) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Dumbbell Fly"), exercise(&core, "Running"));
+        let d = "2026-11-12";
+        let grouped = |s: WorkoutSet| WorkoutSet { group: Some("g".into()), ..s };
+        core.put_sets(vec![
+            grouped(logged(&bench, d, 100.0, 8.0)),
+            grouped(logged(&fly, d, 20.0, 12.0)),
+            grouped(logged(&bench, d, 100.0, 7.0)),
+            WorkoutSet { exercise_id: run.id.clone(), weight: None, reps: None, distance: Some(5.0), time: Some(1500.0), ..logged(&bench, d, 0.0, 0.0) },
+        ])
+        .unwrap();
+        // A blank name or an empty day saves nothing.
+        assert!(core.save_workout(d.into(), "  ".into(), None, "My workouts".into()).unwrap().id.is_empty());
+        assert!(core.save_workout("2030-01-01".into(), "Empty".into(), None, "My workouts".into()).unwrap().id.is_empty());
+        assert!(core.routines().unwrap().is_empty());
+
+        let first = core.save_workout(d.into(), " Push ".into(), None, "My workouts".into()).unwrap();
+        assert_eq!((first.name.as_str(), first.order, first.days.len()), ("My workouts", 0.0, 1)); // the new folder
+        let day = &first.days[0];
+        assert_eq!(day.name, "Push");
+        assert_eq!(day.items.iter().map(|i| (i.exercise_id.clone(), i.sets.len(), i.group.is_some())).collect::<Vec<_>>(), [(bench.id.clone(), 2, true), (fly.id.clone(), 1, true), (run.id.clone(), 1, false)]);
+        assert_eq!(day.items[0].sets[0], PlannedSet { reps: Some(8.0), ..Default::default() }); // no weights
+        assert_eq!(day.items[2].sets[0], PlannedSet { distance: Some(5.0), time: Some(1500.0), ..Default::default() });
+        assert_eq!(core.routines().unwrap(), vec![first.clone()]);
+
+        let again = core.save_workout(d.into(), "Push B".into(), Some(first.id.clone()), "unused".into()).unwrap();
+        assert_eq!((again.id.as_str(), again.days.len(), again.days[1].name.as_str()), (first.id.as_str(), 2, "Push B"));
+        assert_eq!(core.routines().unwrap().len(), 1);
+        let other = core.save_workout(d.into(), "Solo".into(), None, "My workouts".into()).unwrap();
+        assert_eq!(other.order, 1.0); // after the others
+        // The saved workout logs again with last time's weights.
+        core.log_routine_day(first.id.clone(), first.days[0].id.clone(), "2026-11-14".into()).unwrap();
+        assert_eq!(plan_of(&core, "2026-11-14", &bench), [(Some(100.0), Some(8.0)), (Some(100.0), Some(7.0))]);
+        assert!(core.day("2026-11-14".into()).unwrap().sets.iter().filter(|s| s.group.is_some()).count() >= 3);
+    }
+
+    #[test]
+    fn programs_start_with_their_mode_schedule_and_cycle() {
+        let core = IronCore::in_memory().unwrap();
+        let templates = core.program_templates();
+        assert_eq!(templates.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(), ["dorian4", "lyleGbr"]);
+        assert_eq!(templates[1].day_names, ["Lower", "Upper"]);
+        assert_eq!((templates[0].mode, templates[0].weekdays.clone()), (TrainingMode::Dorian, vec![1, 2, 4, 5]));
+
+        core.put_routine(Routine { id: "old".into(), name: "Old".into(), order: 4.0, days: vec![] }).unwrap();
+        core.delete_exercise(exercise(&core, "Leg Press").id).unwrap();
+        let built = core.start_program_on("lyleGbr", "Lyle GBR", "2026-11-12").unwrap();
+        assert_eq!(built.missing, ["Leg Press"]);
+        assert_eq!((built.routine.name.as_str(), built.routine.order, built.routine.days.len()), ("Lyle GBR", 1.0, 2));
+        assert_eq!(core.routines().unwrap().len(), 2);
+        let st = core.settings().unwrap();
+        assert_eq!(st.mode, TrainingMode::Lyle);
+        assert_eq!(st.program, Some(ProgramSettings { routine_id: built.routine.id.clone(), last_day_id: None, weekdays: Some(vec![1, 2, 4, 5]) }));
+        assert_eq!(st.cycle, Some(CycleSettings { start: "2026-11-12".into(), weeks: 6.0 }));
+        // The main lifts got Lyle's 6–8 range; one that had its own range keeps it.
+        let squat = exercise(&core, "Barbell Squat");
+        assert_eq!((squat.rep_bottom, squat.rep_top), (Some(6.0), Some(8.0)));
+        assert_eq!(core.next_program_day("2026-11-12".into()).unwrap().unwrap().name, "Lower");
+
+        // A cycle that is running stays; Dorian leaves the cycle alone.
+        let mut curl = exercise(&core, "Barbell Curl");
+        assert_eq!((curl.rep_bottom, curl.rep_top), (Some(12.0), Some(15.0)));
+        curl.rep_top = Some(10.0); // its own range: a later program leaves it be
+        core.put_exercise(curl).unwrap();
+        mode(&core, |st| st.cycle = Some(CycleSettings { start: "2026-11-02".into(), weeks: 8.0 }));
+        core.start_program_on("lyleGbr", "Again", "2026-11-12").unwrap();
+        assert_eq!(core.settings().unwrap().cycle, Some(CycleSettings { start: "2026-11-02".into(), weeks: 8.0 }));
+        assert_eq!(exercise(&core, "Barbell Curl").rep_top, Some(10.0));
+        mode(&core, |st| st.cycle = Some(CycleSettings { start: "2026-09-01".into(), weeks: 6.0 })); // over
+        core.start_program_on("lyleGbr", "Third", "2026-11-12").unwrap();
+        assert_eq!(core.settings().unwrap().cycle, Some(CycleSettings { start: "2026-11-12".into(), weeks: 6.0 }));
+        core.start_program_on("dorian4", "Dorian", "2026-12-01").unwrap();
+        let st = core.settings().unwrap();
+        assert_eq!((st.mode, st.cycle.unwrap().start), (TrainingMode::Dorian, "2026-11-12".to_string()));
+        assert!(core.start_program_on("nope", "x", "2026-11-12").is_err());
+        assert_eq!(core.start_program("dorian4".into(), "Today".into(), "2026-11-12".into()).unwrap().routine.order, 5.0);
     }
 }
