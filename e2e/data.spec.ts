@@ -69,5 +69,5 @@ test('move to the Android app: the backup is shared, or downloaded where sharing
   expect(file.suggestedFilename()).toMatch(/^iron-notes-\d{4}-\d{2}-\d{2}\.json$/);
   const data = JSON.parse(readFileSync((await file.path())!, 'utf8'));
   expect(data.app).toBe('iron-notes');
-  await expect(page.getByRole('status')).toContainText('Open it with Iron Notes Next');
+  await expect(page.getByRole('status')).toContainText('Open it with the Iron Notes app');
 });

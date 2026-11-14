@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -19,11 +21,31 @@ android {
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "io.github.quoterg.ironnotes.next"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    // Two builds of the same app (docs/NATIVE.md "Never offline"):
+    // - next: "Iron Notes Next", installs beside the current app (the TWA) — the beta;
+    // - stable: the cut-over (N11) — the TWA's own package and name, a higher version code, so it installs as an
+    //   update over the TWA when signed with the same upload key.
+    flavorDimensions += "release"
+    productFlavors {
+        create("next") {
+            dimension = "release"
+            applicationId = "io.github.quoterg.ironnotes.next"
+            resValue("string", "app_name", "Iron Notes Next")
+        }
+        create("stable") {
+            dimension = "release"
+            applicationId = "io.github.quoterg.ironnotes"
+            // Above the TWA's last version code (android/twa-manifest.json appVersionCode 2).
+            versionCode = 100
+            versionName = "2.0.0"
+            resValue("string", "app_name", "Iron Notes")
+        }
     }
 
     splits {
@@ -36,14 +58,26 @@ android {
         }
     }
 
+    // The owner's upload key (never committed): native/keystore.properties with storeFile, storePassword,
+    // keyAlias, keyPassword (docs/NATIVE.md "Release"). Without it — CI — release builds use the debug key, only
+    // so the size budget can be checked on a shrunk build.
+    val keystoreProps = rootProject.file("keystore.properties")
+    if (keystoreProps.exists()) {
+        val props = Properties().apply { keystoreProps.inputStream().use { load(it) } }
+        signingConfigs.create("upload") {
+            storeFile = rootProject.file(props.getProperty("storeFile"))
+            storePassword = props.getProperty("storePassword")
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // The owner signs release builds (keys never committed). CI builds with the debug key only
-            // so the size budget can be checked on a shrunk build.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("upload") ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -55,6 +89,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = false
+        resValues = true
     }
 
     packaging {

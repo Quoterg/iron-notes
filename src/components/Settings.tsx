@@ -378,7 +378,7 @@ async function backup() {
 
 /**
  * Move to the Android app (docs/NATIVE.md, N10): the backup file handed to the share sheet, where the native
- * app (Iron Notes Next) is offered; it restores it after a confirm. Nothing leaves the phone, and the data
+ * app (Iron Notes, or Iron Notes Next during the beta) is offered; it restores it after a confirm. Nothing leaves the phone, and the data
  * stays here too. Where files can't be shared, the backup downloads instead, to be opened with the app.
  */
 async function moveToApp() {
