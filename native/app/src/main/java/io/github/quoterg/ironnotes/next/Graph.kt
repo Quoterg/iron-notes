@@ -194,6 +194,29 @@ fun GraphTab(state: AppState, ex: Exercise) {
     }
 }
 
+/** The chart's data as table rows (date, formatted value), newest first (LineChart.tsx). */
+internal fun chartTableRows(dates: List<String>, values: List<Double>, fmt: (Double) -> String): List<Pair<String, String>> =
+    dates.indices.reversed().map { dates[it] to fmt(values[it]) }
+
+/** "Show as table" toggle and the table under a chart; rows exist only while open. */
+@Composable
+internal fun ChartTable(state: AppState, title: String, dates: List<String>, values: List<Double>, fmt: (Double) -> String) {
+    var open by remember { mutableStateOf(false) }
+    LinkBtn(state.t(if (open) "hideTable" else "showTable"), { open = !open }, Modifier.fillMaxWidth())
+    if (open) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Txt(state.t("dateCol"), Modifier.weight(1f), muted = true, small = true, bold = true)
+            Txt(title, Modifier.weight(1f), muted = true, small = true, bold = true, align = TextAlign.End)
+        }
+        chartTableRows(dates, values, fmt).forEach { (d, v) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                Txt(d, Modifier.weight(1f), small = true)
+                Txt(v, Modifier.weight(1f), small = true, align = TextAlign.End)
+            }
+        }
+    }
+}
+
 @Composable
 private fun GraphChart(
     state: AppState,
@@ -280,6 +303,7 @@ private fun GraphChart(
         if (sel != null) Txt("${fmt(sel.value)} · ${longFmt.format(dayMs(sel.date))}", bold = true, small = true)
         else Txt(state.t("chartHint"), muted = true, small = true)
     }
+    ChartTable(state, title, points.map { it.date }, points.map { it.value }, fmt)
 }
 
 /** Nearest point by x: binary search (points are sorted by date). */

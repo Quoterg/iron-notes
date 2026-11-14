@@ -558,6 +558,26 @@ impl Store {
         let rows = st.query_map([mt], |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?, r.get::<_, i64>(2)? != 0)))?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
     }
+
+    /// db.ts `recentExerciseIds`: distinct exercises of the latest done sets (newest date first), looking at
+    /// no more than the 500 newest rows like the web.
+    pub fn recent_exercise_ids(&self, n: usize) -> Result<Vec<String>> {
+        let mut st = self.conn.prepare_cached(
+            "SELECT exercise_id FROM (SELECT exercise_id, data, date, ord FROM sets ORDER BY date DESC, ord DESC LIMIT 500) \
+             WHERE COALESCE(json_extract(data, '$.planned'), 0) = 0 ORDER BY date DESC, ord DESC",
+        )?;
+        let mut out: Vec<String> = Vec::new();
+        for id in st.query_map([], |r| r.get::<_, String>(0))? {
+            let id = id?;
+            if !out.contains(&id) {
+                out.push(id);
+                if out.len() >= n {
+                    break;
+                }
+            }
+        }
+        Ok(out)
+    }
 }
 
 #[cfg(test)]
