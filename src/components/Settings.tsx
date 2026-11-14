@@ -235,6 +235,12 @@ export default function Settings() {
           </label>
         </div>
         <div class="actions">
+          <button class="btn" onClick={() => void moveToApp()}>
+            {t('moveToApp')}
+          </button>
+        </div>
+        <p class="muted small">{t('moveToAppHint')}</p>
+        <div class="actions">
           <button class="btn" onClick={() => void exportCsv()}>
             {t('exportCsv')}
           </button>
@@ -368,6 +374,27 @@ async function deleteAll() {
 async function backup() {
   const data = await exportAll();
   download(`iron-notes-${data.exported.slice(0, 10)}.json`, JSON.stringify(data), 'application/json');
+}
+
+/**
+ * Move to the Android app (docs/NATIVE.md, N10): the backup file handed to the share sheet, where the native
+ * app (Iron Notes Next) is offered; it restores it after a confirm. Nothing leaves the phone, and the data
+ * stays here too. Where files can't be shared, the backup downloads instead, to be opened with the app.
+ */
+async function moveToApp() {
+  const data = await exportAll();
+  const name = `iron-notes-${data.exported.slice(0, 10)}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: name });
+      return;
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return; // closed the share sheet
+    }
+  }
+  download(name, JSON.stringify(data), 'application/json');
+  toast(t('moveToAppDownloaded'));
 }
 
 async function restore(input: HTMLInputElement) {
