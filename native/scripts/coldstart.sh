@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # Cold start of an installed app, median of N runs: ./coldstart.sh [package] [runs]
-#   ./coldstart.sh io.github.quoterg.ironnotes.next    # native app
-#   ./coldstart.sh io.github.quoterg.ironnotes         # the TWA (see the note below)
+#   ./coldstart.sh io.github.quoterg.ironnotes.next    # native app, `next` flavour (the beta)
+#   ./coldstart.sh io.github.quoterg.ironnotes         # native `stable` flavour once released (before: the TWA,
+#                                                      # see the note below)
 # Needs adb and a phone with USB debugging. Each run force-stops the app first. To also make Chrome
 # start cold for the TWA (the worst case), pass COLD_CHROME=1.
 #

@@ -12,9 +12,11 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout.
-  N0–N6 merged (#44–#51); N7 #52, N8 #53, N9 #54 approved (waiting on CI — runners pinned to ubuntu-24.04);
-  N10 move data = stacked PR on #54. Next: **N11 cut-over** — release the native app as `io.github.quoterg.ironnotes`
-  over the TWA, signed by the owner (docs/NATIVE.md); owner tests "Move to the Android app" on the phone first.
+  N0–N9 merged (#44–#54); N10 move data = #55 (review fixes pushed); N11 cut-over prepared = stacked PR on #55.
+  **Owner, to release:** follow docs/NATIVE.md "Release": `native/keystore.properties` → the TWA's
+  `android/android.keystore` (alias ironnotes), `./gradlew :app:assembleStableRelease`, check the signer's SHA-256 is
+  the TWA's (66:CB:16:…), GitHub release v2.0.0, install over the TWA, then "Move to the Android app" on the website
+  in Chrome → Iron Notes. Back up the keystore.
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
@@ -40,6 +42,26 @@
   function. Picker list padded above the navigation bar.
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
+
+## 2026-11-14 — N11 Cut-over (prepared; the owner signs and releases)
+
+- Two build flavours: `next` (io.github.quoterg.ironnotes.next, "Iron Notes Next", the beta beside the TWA) and
+  `stable` (io.github.quoterg.ironnotes, "Iron Notes", versionCode 100 / 2.0.0 — above the TWA's 2, so it installs
+  as an update when signed with the TWA's key). The flavour can't be called `main` (clashes with the source set).
+  `app_name` is a flavour resValue; the res strings files are gone.
+- Release signing from `native/keystore.properties` (gitignored, never committed); without it (CI) release builds
+  stay debug-signed for the size budget.
+- Web move strings no longer name "Iron Notes Next" ("the Iron Notes app" / "the app"), so they hold after the
+  cut-over; strings.json regenerated; e2e updated.
+- CI: `assembleNextDebug assembleRelease lintNextRelease`, `testNextDebugUnitTest`; check-size.sh checks both
+  flavours' APKs. CLAUDE.md / NATIVE.md commands updated; release steps in docs/NATIVE.md "Release".
+- Review fixes (#56): a `stable` release build fails without the upload key (except CI or `-PdebugSignedStable`),
+  and a missing keystore.properties key or store file gives a clear error — tested: no key → refused; missing
+  keyPassword → named; a throwaway key → the APK is signed with it. Nits: check-size glob loop, namespace note in
+  NATIVE.md, coldstart usage, comment wrap.
+- Verified: both flavours build (arm64 4186 KB, v7a 3626 KB, universal 7067 KB each, in budget); aapt2 shows the
+  packages, labels and version codes above; both install side by side on the Android 7 emulator and start
+  (stable ~1.0 s cold, day log shown, no crash). Web: 293 unit, 43 e2e, build 23.0 KB, Lighthouse passing.
 
 ## 2026-11-14 — N10 Move data (web → native)
 

@@ -5,3 +5,4 @@ local.properties
 *.jks
 .kotlin/
 core-rs/target/
+keystore.properties
