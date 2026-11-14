@@ -140,7 +140,13 @@ fn trend_name(t: crate::feedback::Trend) -> &'static str {
 impl IronCore {
     /// Statistics for a period ending `today` (`from`/`to` only for `Custom`).
     pub fn stats_summary(&self, period: StatsPeriod, today: String, from: String, to: String) -> R<StatsSummary> {
-        let (from, to) = if period == StatsPeriod::Custom { (from, to) } else { (period_start(period, &today), today) };
+        let (from, to) = if period == StatsPeriod::Custom {
+            // An open end means today; a reversed range is read the right way round.
+            let to = if to.is_empty() { today.clone() } else { to };
+            if !from.is_empty() && from > to { (to, from) } else { (from, to) }
+        } else {
+            (period_start(period, &today), today)
+        };
         self.with(|s| {
             let st = s.settings()?;
             let exs: HashMap<String, Exercise> = s.exercises()?.into_iter().map(|e| (e.id.clone(), e)).collect();
@@ -148,7 +154,7 @@ impl IronCore {
             // Body weight by date only when a body-weight exercise is in the period.
             let bw = if sets.iter().any(|x| uses_body_weight(load_of(exs.get(&x.exercise_id)))) { Some(body_weights(s)?) } else { None };
             let sum = summarize(&sets, &|id: &str| exs.get(id).cloned(), &from, &to, st.week_start, st.formula, &|d: &str| bw.as_ref().and_then(|b| b.at(d)));
-            let eff = self.effective_of(s, &sets)?;
+            let eff = self.effective_of_with(s, &sets, &|id| exs.get(id), st.formula, bw.as_ref())?;
             let n_of = |x: &WorkoutSet| eff.get(&x.id).map_or(0.0, |e| e.n);
             let muscles_of = |id: &str| exs.get(id).and_then(|e| e.muscles.clone());
             let per = period_muscles(&sets, &muscles_of, &n_of, goal_of(st.mode).as_ref(), &from, &to);
@@ -187,13 +193,17 @@ impl IronCore {
             let bw = if sets.iter().any(|x| uses_body_weight(load_of(exs.get(x.exercise_id.as_str()).copied()))) { Some(body_weights(s)?) } else { None };
             // Per exercise with a reps field, in the order first seen; real load.
             let mut by: Vec<(String, Vec<WorkoutSet>)> = Vec::new();
+            let mut index: HashMap<String, usize> = HashMap::new();
             for x in &sets {
                 if !exs.get(x.exercise_id.as_str()).map_or(false, |e| has_reps(e.kind)) {
                     continue;
                 }
-                match by.iter_mut().find(|(id, _)| *id == x.exercise_id) {
-                    Some((_, l)) => l.push(x.clone()),
-                    None => by.push((x.exercise_id.clone(), vec![x.clone()])),
+                match index.get(&x.exercise_id) {
+                    Some(&i) => by[i].1.push(x.clone()),
+                    None => {
+                        index.insert(x.exercise_id.clone(), by.len());
+                        by.push((x.exercise_id.clone(), vec![x.clone()]));
+                    }
                 }
             }
             let by: Vec<(String, Vec<WorkoutSet>)> = by
@@ -207,7 +217,7 @@ impl IronCore {
             let changes = exercise_changes(&by, &range.from, &range.to, st.formula);
             let muscles_of = |id: &str| exs.get(id).and_then(|e| e.muscles.clone());
             let sore = soreness(&sets, &muscles_of, &range.from, &range.to);
-            let eff = self.effective_of(s, &sets)?;
+            let eff = self.effective_of_with(s, &sets, &|id| exs.get(id).copied(), st.formula, bw.as_ref())?;
             let per = period_muscles(&sets, &muscles_of, &|x: &WorkoutSet| eff.get(&x.id).map_or(0.0, |e| e.n), goal_of(st.mode).as_ref(), &range.from, &range.to);
 
             let program = match &st.program {
@@ -273,6 +283,10 @@ impl IronCore {
     pub fn swap_in_program(&self, from_id: String, to_id: String) -> R<bool> {
         self.with(|s| {
             let Some(p) = s.settings()?.program else { return Ok(false) };
+            // Never write a routine item for an exercise that isn't in the library.
+            if s.exercise(&to_id)?.is_none() {
+                return Ok(false);
+            }
             let Some(r) = s.routines()?.into_iter().find(|r| r.id == p.routine_id) else { return Ok(false) };
             let swapped = swap_in_routine(&r, &from_id, &to_id);
             if swapped == r {

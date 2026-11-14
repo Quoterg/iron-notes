@@ -251,18 +251,30 @@ impl IronCore {
     /// sets logged without effort are estimated from their exercise's best e1RM over its whole history
     /// (real load), and body-weight sets count the body weight of their day. Keyed by set id.
     pub(crate) fn effective_of(&self, s: &Store, sets: &[WorkoutSet]) -> Result<HashMap<String, crate::effective::SetEffective>, StoreError> {
-        let formula = s.settings()?.formula;
         let exercises: HashMap<String, Exercise> = s.exercises()?.into_iter().map(|e| (e.id.clone(), e)).collect();
-        let uses_bw = |id: &str| load::uses_body_weight(load::load_of(exercises.get(id)));
+        self.effective_of_with(s, sets, &|id| exercises.get(id), s.settings()?.formula, None)
+    }
+
+    /// `effective_of` for callers that already hold the library, the formula and (maybe) the body weights.
+    /// Planned sets are skipped (every screen leaves them out).
+    pub(crate) fn effective_of_with<'a>(
+        &self,
+        s: &Store,
+        sets: &[WorkoutSet],
+        exercise: &dyn Fn(&str) -> Option<&'a Exercise>,
+        formula: calc::Formula,
+        bw: Option<&load::BodyWeights>,
+    ) -> Result<HashMap<String, crate::effective::SetEffective>, StoreError> {
+        let uses_bw = |id: &str| load::uses_body_weight(load::load_of(exercise(id)));
         // Only exercises with sets that need an estimate read their history.
         let mut best: HashMap<&str, f64> = HashMap::new();
-        for x in sets {
+        for x in sets.iter().filter(|x| !x.is_planned()) {
             let needs = x.rir.is_none() && !x.is_warmup() && (x.weight.map_or(false, |w| w > 0.0) || uses_bw(&x.exercise_id)) && x.reps.map_or(false, |r| r > 0.0);
             if !needs || best.contains_key(x.exercise_id.as_str()) {
                 continue;
             }
             let mut b = 0.0;
-            if let Some(ex) = exercises.get(&x.exercise_id) {
+            if let Some(ex) = exercise(&x.exercise_id) {
                 for l in self.loaded_cached(s, ex)?.iter() {
                     if !l.set.is_planned() && !l.set.is_warmup() {
                         b = calc::js_max(b, calc::one_rm(l.set.weight.unwrap_or(0.0), l.set.reps.unwrap_or(0.0), formula));
@@ -271,12 +283,20 @@ impl IronCore {
             }
             best.insert(&x.exercise_id, b);
         }
-        let bw = if sets.iter().any(|x| uses_bw(&x.exercise_id)) { Some(body_weights(s)?) } else { None };
+        let owned;
+        let bw = match bw {
+            Some(b) => Some(b),
+            None if sets.iter().any(|x| !x.is_planned() && uses_bw(&x.exercise_id)) => {
+                owned = body_weights(s)?;
+                Some(&owned)
+            }
+            None => None,
+        };
         let mut out = HashMap::new();
-        for x in sets {
-            let t = load::load_of(exercises.get(&x.exercise_id));
+        for x in sets.iter().filter(|x| !x.is_planned()) {
+            let t = load::load_of(exercise(&x.exercise_id));
             let real = if load::uses_body_weight(t) {
-                let at = bw.as_ref().and_then(|b| b.at(&x.date));
+                let at = bw.and_then(|b| b.at(&x.date));
                 WorkoutSet { weight: load::real_load(x.weight, t, at), ..x.clone() }
             } else {
                 x.clone()

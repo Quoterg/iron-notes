@@ -33,7 +33,11 @@ import io.github.quoterg.ironnotes.core.MuscleStatus
 fun DayMuscles(state: AppState, date: String) {
     var data by remember(date) { mutableStateOf<DayMusclesData?>(null) }
     // Changed sets reload the day; another mode or formula recounts.
-    LaunchedEffect(date, state.day, state.settings.mode, state.settings.formula) { state.run({ it.dayMuscles(date) }) { data = it } }
+    val latest = remember { Latest() }
+    LaunchedEffect(date, state.day, state.settings.mode, state.settings.formula) {
+        val id = latest.next()
+        state.run({ it.dayMuscles(date) }) { if (latest.isLatest(id)) data = it }
+    }
     val d = data ?: return
     if (d.rows.isEmpty()) return
     val p = LocalPalette.current

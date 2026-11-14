@@ -56,7 +56,11 @@ fun MusclesScreen(state: AppState) {
     var sel by remember { mutableStateOf<MuscleId?>(null) }
     val today = remember { today() }
     // Another mode / week start / formula, or changed sets (the day reloads), recounts.
-    LaunchedEffect(st.mode, st.weekStart, st.formula, state.day) { state.run({ it.musclesOverview(today) }) { data = it } }
+    val latest = remember { Latest() }
+    LaunchedEffect(st.mode, st.weekStart, st.formula, state.day) {
+        val id = latest.next()
+        state.run({ it.musclesOverview(today) }) { if (latest.isLatest(id)) data = it }
+    }
 
     Sheet(state.t("muscles"), { state.back() }, state.t("back")) {
         SheetBody {
