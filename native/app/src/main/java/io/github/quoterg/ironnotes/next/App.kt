@@ -191,6 +191,9 @@ private fun ScreenView(state: AppState, screen: Screen) {
         is Screen.Routine -> RoutineScreen(state, screen.id)
         is Screen.RoutineDay -> RoutineDayScreen(state, screen.routineId, screen.dayId)
         Screen.Programs -> ProgramsScreen(state)
+        Screen.Muscles -> MusclesScreen(state)
+        Screen.Analysis -> AnalysisScreen(state)
+        Screen.Review -> ReviewScreen(state)
     }
 }
 

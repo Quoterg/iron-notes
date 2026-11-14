@@ -139,8 +139,9 @@ fun CalendarTab(state: AppState) {
             if (cal != null) "${cal.workouts} ${state.t("workoutsInMonth")}" else state.t("loading"),
             Modifier.fillMaxWidth(), muted = true, small = true, align = TextAlign.Center,
         )
-        if (month != current.substring(0, 7)) {
-            Actions { Btn(state.t("thisMonth"), { month = current.substring(0, 7) }) }
+        Actions {
+            if (month != current.substring(0, 7)) Btn(state.t("thisMonth"), { month = current.substring(0, 7) })
+            Btn(state.t("analysis"), { state.open(Screen.Analysis) }, kind = BtnKind.PRIMARY)
         }
     }
 }

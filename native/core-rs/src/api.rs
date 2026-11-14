@@ -36,7 +36,7 @@ impl From<StoreError> for CoreError {
     }
 }
 
-type R<T> = Result<T, CoreError>;
+pub(crate) type R<T> = Result<T, CoreError>;
 
 /// A day's log in one call (the day log's first paint).
 #[derive(Debug, Clone, uniffi::Record)]
@@ -237,7 +237,7 @@ impl IronCore {
     }
 
     /// The exercise's done sets by the real load, from the cache or read once.
-    fn loaded_cached(&self, s: &Store, ex: &Exercise) -> Result<std::sync::Arc<Vec<load::LoadedSet>>, StoreError> {
+    pub(crate) fn loaded_cached(&self, s: &Store, ex: &Exercise) -> Result<std::sync::Arc<Vec<load::LoadedSet>>, StoreError> {
         if let Some(l) = self.loaded.lock().unwrap_or_else(|p| p.into_inner()).get(&ex.id) {
             return Ok(l.clone());
         }
@@ -247,7 +247,46 @@ impl IronCore {
         Ok(l)
     }
 
-    fn with<T>(&self, f: impl FnOnce(&Store) -> Result<T, StoreError>) -> R<T> {
+    /// effort.ts `effectiveOf`: effective reps of these sets, as every screen that sums them counts them —
+    /// sets logged without effort are estimated from their exercise's best e1RM over its whole history
+    /// (real load), and body-weight sets count the body weight of their day. Keyed by set id.
+    pub(crate) fn effective_of(&self, s: &Store, sets: &[WorkoutSet]) -> Result<HashMap<String, crate::effective::SetEffective>, StoreError> {
+        let formula = s.settings()?.formula;
+        let exercises: HashMap<String, Exercise> = s.exercises()?.into_iter().map(|e| (e.id.clone(), e)).collect();
+        let uses_bw = |id: &str| load::uses_body_weight(load::load_of(exercises.get(id)));
+        // Only exercises with sets that need an estimate read their history.
+        let mut best: HashMap<&str, f64> = HashMap::new();
+        for x in sets {
+            let needs = x.rir.is_none() && !x.is_warmup() && (x.weight.map_or(false, |w| w > 0.0) || uses_bw(&x.exercise_id)) && x.reps.map_or(false, |r| r > 0.0);
+            if !needs || best.contains_key(x.exercise_id.as_str()) {
+                continue;
+            }
+            let mut b = 0.0;
+            if let Some(ex) = exercises.get(&x.exercise_id) {
+                for l in self.loaded_cached(s, ex)?.iter() {
+                    if !l.set.is_planned() && !l.set.is_warmup() {
+                        b = calc::js_max(b, calc::one_rm(l.set.weight.unwrap_or(0.0), l.set.reps.unwrap_or(0.0), formula));
+                    }
+                }
+            }
+            best.insert(&x.exercise_id, b);
+        }
+        let bw = if sets.iter().any(|x| uses_bw(&x.exercise_id)) { Some(body_weights(s)?) } else { None };
+        let mut out = HashMap::new();
+        for x in sets {
+            let t = load::load_of(exercises.get(&x.exercise_id));
+            let real = if load::uses_body_weight(t) {
+                let at = bw.as_ref().and_then(|b| b.at(&x.date));
+                WorkoutSet { weight: load::real_load(x.weight, t, at), ..x.clone() }
+            } else {
+                x.clone()
+            };
+            out.insert(x.id.clone(), crate::effective::set_effective(&real, best.get(x.exercise_id.as_str()).copied().unwrap_or(0.0), formula));
+        }
+        Ok(out)
+    }
+
+    pub(crate) fn with<T>(&self, f: impl FnOnce(&Store) -> Result<T, StoreError>) -> R<T> {
         let s = self.store.lock().unwrap_or_else(|p| p.into_inner());
         Ok(f(&s)?)
     }
@@ -257,7 +296,7 @@ impl IronCore {
     }
 
     /// An exercise's record ids, from the cache or computed (`sets`: its history if already read).
-    fn records_cached(&self, s: &Store, ex: &Exercise, sets: Option<&[WorkoutSet]>, bw: &mut Option<load::BodyWeights>) -> Result<Vec<String>, StoreError> {
+    pub(crate) fn records_cached(&self, s: &Store, ex: &Exercise, sets: Option<&[WorkoutSet]>, bw: &mut Option<load::BodyWeights>) -> Result<Vec<String>, StoreError> {
         if let Some(ids) = self.cache().get(&ex.id) {
             return Ok(ids.clone());
         }
@@ -504,8 +543,12 @@ impl IronCore {
             let history = s.sets_of(&ex.id)?;
             let real = self.loaded_cached(s, &ex)?;
             let on_date = s.sets_on(date)?;
-            let near = s.sets_between(&calc::add_days(date.to_string(), -4), &calc::add_days(date.to_string(), -1))?;
-            Ok(Some((s.settings()?, ex, history, real, on_date, near, s.routines()?, s.exercises()?)))
+            let st = s.settings()?;
+            // Only Dorian HIT uses the last days' sets (too soon) and the program's routine (swap day).
+            let dorian = st.mode == crate::model::TrainingMode::Dorian;
+            let near = if dorian { s.sets_between(&calc::add_days(date.to_string(), -4), &calc::add_days(date.to_string(), -1))? } else { vec![] };
+            let routines = if dorian && st.program.is_some() { s.routines()? } else { vec![] };
+            Ok(Some((st, ex, history, real, on_date, near, routines, s.exercises()?)))
         })?;
         let Some((st, ex, history, real, on_date, near, routines, exercises)) = data else {
             return Ok(ExerciseGuide {
@@ -684,7 +727,7 @@ impl IronCore {
         let lyle = st.mode == TrainingMode::Lyle;
         // Lyle: only the push weeks of the running cycle compare (run-up weeks are lighter on purpose).
         let since = match st.cycle.as_ref() {
-            Some(c) if lyle && c.start.as_str() <= date => calc::add_days(c.start.clone(), 14),
+            Some(c) if lyle && c.start.as_str() <= date => calc::add_days(c.start.clone(), (lyle::RUN_UP.len() * 7) as i32),
             _ => String::new(),
         };
         let counted: Vec<WorkoutSet> = real.iter().filter(|x| x.set.date.as_str() < date).map(|x| x.set.clone()).collect();
@@ -1162,7 +1205,7 @@ fn records_of(s: &Store, ex: &Exercise, sets: Option<&[WorkoutSet]>, bw: &mut Op
 
 /// state.ts `loadedSetsOf`: sets as calculations see them — the real load (body weight ± for body-weight
 /// exercises, by the first weight measure's value on the day) and the volume weight.
-fn real_load(s: &Store, ex: &Exercise, sets: &[WorkoutSet]) -> Result<Vec<load::LoadedSet>, StoreError> {
+pub(crate) fn real_load(s: &Store, ex: &Exercise, sets: &[WorkoutSet]) -> Result<Vec<load::LoadedSet>, StoreError> {
     let t = load::load_of(Some(ex));
     if t == crate::model::LoadType::Total {
         return Ok(load::with_real_load(sets, t, |_| None));
@@ -1172,7 +1215,7 @@ fn real_load(s: &Store, ex: &Exercise, sets: &[WorkoutSet]) -> Result<Vec<load::
 }
 
 /// Body weight by date: the first weight measure's entries (state.ts `bodyWeights`).
-fn body_weights(s: &Store) -> Result<load::BodyWeights, StoreError> {
+pub(crate) fn body_weights(s: &Store) -> Result<load::BodyWeights, StoreError> {
     let mut weights: Vec<BodyMetric> = s.metrics()?.into_iter().filter(|m| m.kind == crate::model::BodyKind::Weight).collect();
     weights.sort_by(|a, b| a.order.partial_cmp(&b.order).unwrap_or(std::cmp::Ordering::Equal));
     let entries = match weights.first() {
@@ -1289,6 +1332,23 @@ mod tests {
         core.delete_set("b".into()).unwrap();
         assert_eq!(series(&core).len(), 1);
         assert_eq!(metrics_for(crate::model::ExerciseType::WeightReps).len(), 5);
+    }
+
+    #[test]
+    fn effective_of_estimates_without_rir_and_uses_rir_when_given() {
+        let core = IronCore::in_memory().unwrap();
+        let bench = core.library().unwrap().exercises.into_iter().find(|e| e.name == "Flat Barbell Bench Press").unwrap().id;
+        let set = |id: &str, date: &str, w: f64, r: f64, rir: Option<f64>| WorkoutSet {
+            id: id.into(), date: date.into(), exercise_id: bench.clone(), order: next_order(), weight: Some(w), reps: Some(r), rir, ..Default::default()
+        };
+        // A best of 100 × 8 to failure; today 100 × 8 without effort is estimated as failure, 100 × 6 at RIR 2 is 8 reps.
+        core.put_sets(vec![set("old", "2026-11-01", 100.0, 8.0, Some(0.0)), set("a", "2026-11-12", 100.0, 8.0, None), set("b", "2026-11-12", 100.0, 6.0, Some(2.0))]).unwrap();
+        let eff = core.with(|s| core.effective_of(s, &s.sets_on("2026-11-12")?)).unwrap();
+        let a = &eff["a"];
+        assert!(a.est && a.n > 0.0, "{a:?}");
+        let b = &eff["b"];
+        assert!(!b.est);
+        assert_eq!(b.n, crate::effective::set_effective(&set("b", "2026-11-12", 100.0, 6.0, Some(2.0)), 0.0, crate::calc::Formula::Epley).n);
     }
 
     #[test]

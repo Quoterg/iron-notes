@@ -107,6 +107,7 @@ fun DayLog(state: AppState) {
             muted = true,
             small = true,
         )
+        DayMuscles(state, date)
         if (tools.grouping) Txt(state.t("pickForSuperset"), Modifier.fillMaxWidth().padding(bottom = 8.dp), muted = true, small = true, align = TextAlign.Center)
         for ((i, e) in entries.withIndex()) {
             val ex = e.ex

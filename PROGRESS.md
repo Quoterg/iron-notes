@@ -11,10 +11,10 @@
 - Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
-  Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout. N0 = #44 (merged),
-  N1a #45, N1b #46 merged; N2 #47, N3 #48 merged; N4 = #49 (review fixes pushed), N5 = #50 (on #49), N6 = stacked PR
-  on #50. Next: **N7 muscles, body map, statistics, review** (Muscles screen + BodyMap, DayMuscles, Analysis,
-  Review; the Body tab may come with N8).
+  Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout.
+  N0–N6 merged (#44–#51). N7 muscles/statistics = PR on main. Next: **N8 settings & the rest** (Settings tab:
+  mode, units, theme, language, timer, plates, cycle/light/program/diet, backup export/import (file picker), FitNotes
+  CSV + Iron Log imports; Body tab: measures, entries, trend; exercise/category editors; summary image share).
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
@@ -38,6 +38,20 @@
   function. Picker list padded above the navigation bar.
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
+
+## 2026-11-14 — N7 Muscles, body map, statistics, review (native)
+
+- Core: `effective_of` (effort.ts) shared; analysis.rs + review.rs ported (130 golden cases, golden-stats.test.ts);
+  api_muscles.rs (`day_muscles`, `muscles_overview`: weeks, states, sessions, history, drill-down contributions +
+  suggestions) and api_stats.rs (`stats_summary` per period incl. custom range, `review_data`, `swap_in_program`) —
+  separate `impl IronCore` blocks so two Sonnet agents (vertical slices) didn't collide. #51 notes: the guide reads
+  the last days/routines only in Dorian (with a program); push weeks start after RUN_UP weeks.
+- App: DayMuscles strip on the day log (tap → Muscles), Muscles screen (goal line, body map on Canvas with tap
+  regions + accessibility actions, bars with sessions, last weeks, drill-down with suggestions), Statistics (from
+  the Calendar tab: periods, tiles, week bars, categories by sets/volume, effective reps per muscle, top exercises),
+  Review (span chips, strength changes, soreness, swap chips → program) from the cycle-done hint.
+- Verified on the Android 7.0 emulator (release): bench 100×8, 100×7, 90×9 → strip "Chest ≈17", body map
+  chest/front delts/triceps, Statistics 1 workout · 3 sets · 24 reps · 2310 kg · ≈17 effective.
 
 ## 2026-11-12 — N6 Training modes on the logging screen (native)
 

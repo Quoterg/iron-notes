@@ -35,8 +35,15 @@ pub mod groups;
 pub mod programs;
 pub mod routines;
 
+// Statistics and cycle review (N7): analysis.ts, review.ts
+pub mod analysis;
+pub mod review;
+
 // What the apps call (UniFFI)
 pub mod api;
+// N7: muscles, body map, day muscles (IronCore methods) / statistics and cycle review
+pub mod api_muscles;
+pub mod api_stats;
 
 uniffi::setup_scaffolding!();
 
