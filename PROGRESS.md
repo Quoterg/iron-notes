@@ -9,16 +9,15 @@
   fingerprint deployed from `android/assetlinks` — then check the app opens full screen. Optional Play
   listing (add Play's app-signing fingerprint, `pnpm assetlinks`, deploy).
 - Phase 3 done: every milestone merged (last: M21a/M21b device sync, #42/#43).
-- **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout.
-  N0–N9 merged (#44–#54); N10 move data = #55 (review fixes pushed); N11 cut-over prepared = stacked PR on #55.
-  **Owner, to release:** follow docs/NATIVE.md "Release": `native/keystore.properties` → the TWA's
-  `android/android.keystore` (alias ironnotes), `./gradlew :app:assembleStableRelease`, check the signer's SHA-256 is
-  the TWA's (66:CB:16:…), GitHub release v2.0.0, install over the TWA, then "Move to the Android app" on the website
-  in Chrome → Iron Notes. Back up the keystore.
-- **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
-  notification must arrive on time (Doze can't be forced on the emulator).
+  **Done:** N0–N11 merged (#44–#56). 2026-11-15 the owner built and signed 2.0.0 (`stable`, signer 66:CB:16:… =
+  the TWA's), installed it over the TWA, and restored the website's backup (Settings → Restore backup — Chrome on
+  Android can't share .json, so the share sheet never opens: #57 fixes the instructions). Data checked by the owner.
+  For later releases: docs/NATIVE.md "Release" (raise versionCode/versionName in the `stable` flavour).
+  Note: importing Iron Notes' own CSV export loses data effective reps need (the owner hit this) — restore the JSON
+  backup instead.
+- Owner tests passed 2026-11-15: "Rest over" arrives on time with the screen locked (native 2.0.0, Moto G30).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
   APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
   `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
