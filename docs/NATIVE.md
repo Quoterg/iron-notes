@@ -92,7 +92,7 @@ sdkmanager --sdk_root=$HOME/.bubblewrap/android_sdk "ndk;28.2.13676358"
 
 cargo test --manifest-path core-rs/Cargo.toml   # Rust core, incl. the golden fixtures
 ./gradlew :app:assembleNextDebug     # app/build/outputs/apk/next/debug/app-next-<cpu>-debug.apk — install with adb
-./gradlew :app:assembleRelease       # both flavours, shrunk; debug-signed without keystore.properties (see Release)
+./gradlew :app:assembleRelease -PdebugSignedStable   # both flavours, shrunk, debug-signed: size check only
 ./scripts/check-size.sh              # per-CPU release APKs ≤ 6 MB, universal ≤ 9 MB
 ./scripts/coldstart.sh io.github.quoterg.ironnotes.next   # phone over USB; median of 10 cold starts
 ```
@@ -128,7 +128,11 @@ The app has two build flavours (`native/app/build.gradle.kts`):
 | `next`   | `io.github.quoterg.ironnotes.next` | Iron Notes Next   | 1            | beta, installs beside the TWA |
 | `stable` | `io.github.quoterg.ironnotes`      | Iron Notes        | 100          | the cut-over: updates the TWA (code 2) |
 
-CI builds both with the debug key (only to check the size budget). An update over the TWA needs the
+Both keep the code namespace `io.github.quoterg.ironnotes.next` (so the activity is
+`io.github.quoterg.ironnotes.next.MainActivity` in both, and the manifest's `.MainActivity` resolves to it) —
+don't rename it per flavour. CI builds both with the debug key (only to check the size budget). Anywhere
+else, a `stable` release build **fails without the upload key** (a debug-signed one can't update the TWA
+and would block later updates); for a local size check only, pass `-PdebugSignedStable`. An update over the TWA needs the
 **same key that signed the TWA**: `android/android.keystore`, alias `ironnotes` (docs/ANDROID.md).
 
 1. Once, create `native/keystore.properties`. It is gitignored, so never commit it.

@@ -5,7 +5,7 @@ set -eu
 dirs=${1:-"app/build/outputs/apk/next/release app/build/outputs/apk/stable/release"}
 fail=0
 found=0
-for apk in $(for d in $dirs; do ls "$d"/*.apk 2>/dev/null; done); do
+for d in $dirs; do for apk in "$d"/*.apk; do
   [ -e "$apk" ] || continue
   found=1
   # Any APK not named "universal" is a per-CPU split and gets the 6 MB budget.
@@ -14,6 +14,6 @@ for apk in $(for d in $dirs; do ls "$d"/*.apk 2>/dev/null; done); do
   status=ok
   [ "$size" -le "$limit" ] || { status="OVER BUDGET"; fail=1; }
   echo "$(basename "$apk"): $((size / 1024)) KB (budget $((limit / 1024)) KB) $status"
-done
+done; done
 [ "$found" = 1 ] || { echo "no APKs in $dirs" >&2; exit 1; }
 exit "$fail"

@@ -60,15 +60,19 @@ android {
 
     // The owner's upload key (never committed): native/keystore.properties with storeFile, storePassword,
     // keyAlias, keyPassword (docs/NATIVE.md "Release"). Without it — CI — release builds use the debug key, only
-    // so the size budget can be checked on a shrunk build.
+    // so the size budget can be checked on a shrunk build; a stable release then refuses to build (below).
     val keystoreProps = rootProject.file("keystore.properties")
     if (keystoreProps.exists()) {
         val props = Properties().apply { keystoreProps.inputStream().use { load(it) } }
+        fun required(key: String): String = props.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: throw GradleException("native/keystore.properties: \"$key\" is missing (docs/NATIVE.md \"Release\")")
+        val store = rootProject.file(required("storeFile"))
+        if (!store.exists()) throw GradleException("native/keystore.properties: storeFile not found: $store")
         signingConfigs.create("upload") {
-            storeFile = rootProject.file(props.getProperty("storeFile"))
-            storePassword = props.getProperty("storePassword")
-            keyAlias = props.getProperty("keyAlias")
-            keyPassword = props.getProperty("keyPassword")
+            storeFile = store
+            storePassword = required("storePassword")
+            keyAlias = required("keyAlias")
+            keyPassword = required("keyPassword")
         }
     }
 
@@ -181,4 +185,18 @@ dependencies {
     // Host JVM unit tests: the jar (the aar only holds Android libraries).
     testImplementation("net.java.dev.jna:jna:5.19.1")
     testImplementation("junit:junit:4.13.2")
+}
+
+// A debug-signed `stable` release (package io.github.quoterg.ironnotes) can't update the TWA, and once installed it
+// blocks every correctly signed update (uninstalling loses the data). So without the upload key a stable release
+// build fails — except on CI (only the size budget) or with -PdebugSignedStable for a local size check.
+gradle.taskGraph.whenReady {
+    val exempt = System.getenv("CI") == "true" || project.hasProperty("debugSignedStable")
+    val hasKey = android.signingConfigs.findByName("upload") != null
+    if (!exempt && !hasKey && allTasks.any { it.project == project && it.name.contains("StableRelease") }) {
+        throw GradleException(
+            "A stable release needs the upload key: create native/keystore.properties (docs/NATIVE.md \"Release\"). " +
+                "For a local size check only, pass -PdebugSignedStable."
+        )
+    }
 }

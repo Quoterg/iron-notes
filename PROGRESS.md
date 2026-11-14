@@ -55,6 +55,10 @@
   cut-over; strings.json regenerated; e2e updated.
 - CI: `assembleNextDebug assembleRelease lintNextRelease`, `testNextDebugUnitTest`; check-size.sh checks both
   flavours' APKs. CLAUDE.md / NATIVE.md commands updated; release steps in docs/NATIVE.md "Release".
+- Review fixes (#56): a `stable` release build fails without the upload key (except CI or `-PdebugSignedStable`),
+  and a missing keystore.properties key or store file gives a clear error — tested: no key → refused; missing
+  keyPassword → named; a throwaway key → the APK is signed with it. Nits: check-size glob loop, namespace note in
+  NATIVE.md, coldstart usage, comment wrap.
 - Verified: both flavours build (arm64 4186 KB, v7a 3626 KB, universal 7067 KB each, in budget); aapt2 shows the
   packages, labels and version codes above; both install side by side on the Android 7 emulator and start
   (stable ~1.0 s cold, day log shown, no crash). Web: 293 unit, 43 e2e, build 23.0 KB, Lighthouse passing.
