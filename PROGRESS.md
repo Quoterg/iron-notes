@@ -19,6 +19,8 @@
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
   APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
   `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
+- Native known gaps (accepted in review): restore has no safety download first (native restore is all-or-nothing);
+  an Iron Log re-import with no new entries still sets the diet phase (as the web does).
 - Local native toolchain: JDK 17 at ~/.bubblewrap/jdk, SDK ~/.bubblewrap/android_sdk (NDK r28c, emulator,
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
