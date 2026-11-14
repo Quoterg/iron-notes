@@ -46,6 +46,8 @@ import kotlin.math.abs
 fun App(state: AppState) {
     val p = LocalPalette.current
     BackHandler(enabled = state.stack.isNotEmpty()) { state.back() }
+    // Registered after the stack's handler, so it wins: Back dismisses the restore confirm first.
+    BackHandler(enabled = state.incomingBackup != null) { state.incomingBackup = null }
     Box(Modifier.fillMaxSize().background(p.bg).glow(p)) {
         if (state.ready) {
             Column(Modifier.fillMaxSize()) {
@@ -61,6 +63,19 @@ fun App(state: AppState) {
             StackTop(state)
             // Above the sheets, under the toast; draws nothing without a running timer.
             RestTimerBar(state, RestTimer.get(LocalContext.current), Modifier.align(Alignment.BottomCenter))
+        }
+        // A backup handed over from the web app ("Move to the Android app"): ask before replacing this app's data.
+        if (state.incomingBackup != null) {
+            // Swallows every touch, so nothing under it (logging a set, the tabs) can be used while the
+            // "replaces the data in this app" question is up.
+            Box(
+                Modifier.fillMaxSize().background(p.bg.copy(alpha = 0.92f))
+                    .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } }
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                ConfirmCard(state, state.t("moveIncomingQ"), state.t("importBackup"), { state.restoreIncoming() }, { state.incomingBackup = null })
+            }
         }
         state.toast?.let { ToastView(state, it, Modifier.align(Alignment.BottomCenter)) }
     }

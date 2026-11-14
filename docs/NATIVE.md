@@ -151,7 +151,7 @@ PR that touches `native/`.
   body measurements, imports (FitNotes CSV, Iron Log), summary image share.
 - [x] **N9 Parity sweep** — every web e2e spec checked against the native app; baseline profile;
   budgets met.
-- [ ] **N10 Move data** — web "Move to the Android app" button + native receive; side-by-side beta.
+- [x] **N10 Move data** — web "Move to the Android app" button + native receive; side-by-side beta.
 - [ ] **N11 Cut-over** — release under `io.github.quoterg.ironnotes` over the TWA (owner signs).
 - Later: device sync in the native app (the M21 protocol), Health Connect, home-screen widget, and the
   **iPhone app** (SwiftUI on the same Rust core; building it needs a Mac with Xcode).

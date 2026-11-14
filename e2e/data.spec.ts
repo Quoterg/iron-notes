@@ -60,3 +60,14 @@ test('import a FitNotes CSV, re-import skips duplicates, export CSV, delete all'
   await page.getByRole('button', { name: 'Start a workout' }).click();
   await expect(page.getByRole('button', { name: /Chest/ })).toBeVisible();
 });
+
+test('move to the Android app: the backup is shared, or downloaded where sharing is unavailable', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  // Headless Chromium can't share files: the same backup file downloads, with a hint to open it in the app.
+  const [file] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Move to the Android app' }).click()]);
+  expect(file.suggestedFilename()).toMatch(/^iron-notes-\d{4}-\d{2}-\d{2}\.json$/);
+  const data = JSON.parse(readFileSync((await file.path())!, 'utf8'));
+  expect(data.app).toBe('iron-notes');
+  await expect(page.getByRole('status')).toContainText('Open it with Iron Notes Next');
+});
