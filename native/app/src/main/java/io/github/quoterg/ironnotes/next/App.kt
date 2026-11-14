@@ -62,6 +62,12 @@ fun App(state: AppState) {
             // Above the sheets, under the toast; draws nothing without a running timer.
             RestTimerBar(state, RestTimer.get(LocalContext.current), Modifier.align(Alignment.BottomCenter))
         }
+        // A backup handed over from the web app ("Move to the Android app"): ask before replacing this app's data.
+        if (state.incomingBackup != null) {
+            Box(Modifier.fillMaxSize().background(p.bg.copy(alpha = 0.92f)).padding(16.dp), contentAlignment = Alignment.Center) {
+                ConfirmCard(state, state.t("moveIncomingQ"), state.t("importBackup"), { state.restoreIncoming() }, { state.incomingBackup = null })
+            }
+        }
         state.toast?.let { ToastView(state, it, Modifier.align(Alignment.BottomCenter)) }
     }
 }

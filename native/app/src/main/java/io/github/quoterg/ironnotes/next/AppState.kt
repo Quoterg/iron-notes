@@ -97,6 +97,38 @@ class AppState(context: Context, val scope: CoroutineScope) {
 
     private fun core(): IronCore = Core.get(app)
 
+    /** A backup handed over by the web app's "Move to the Android app" (or opened as a file), awaiting the confirm. */
+    var incomingBackup by mutableStateOf<String?>(null)
+
+    /** Reads a shared / opened backup file (off the main thread) and asks before restoring it. */
+    fun receiveBackup(uri: android.net.Uri) = scope.launch {
+        val text = withContext(Dispatchers.IO) {
+            runCatching { app.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
+        }
+        if (text.isNullOrBlank()) showToast(t("notBackup")) else incomingBackup = text
+    }
+
+    /** Restores the incoming backup (replacing this app's data), then reloads everything. */
+    fun restoreIncoming() {
+        val text = incomingBackup ?: return
+        incomingBackup = null
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) { core().importBackupJson(text) }
+                RoutineStore.load(this@AppState)
+                BodyStore.load(this@AppState)
+                stack.clear()
+                tab = Tab.LOG
+                start()
+                showToast(t("restored"))
+            } catch (e: io.github.quoterg.ironnotes.core.CoreException.InvalidBackup) {
+                showToast(t("notBackup"))
+            } catch (e: Exception) {
+                showToast(e.message ?: e.toString())
+            }
+        }
+    }
+
     /** Opens the database, loads settings, the library and today. */
     fun start() = scope.launch {
         val (s, lib) = withContext(Dispatchers.IO) { core().settings() to core().library() }

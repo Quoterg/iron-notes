@@ -194,6 +194,7 @@ export const later = {
   moveToApp: 'Move to the Android app',
   moveToAppHint: 'Shares your data as a backup file: choose Iron Notes Next to restore it there. Your data also stays here.',
   moveToAppDownloaded: 'Sharing isn’t available here: the backup was downloaded. Open it with Iron Notes Next.',
+  moveIncomingQ: 'Restore this backup into Iron Notes Next? It replaces the data in this app; the data in the browser stays as it is.',
   deleteAllQ: 'Delete ALL workouts, exercises, routines and body measures on this device? A backup file is downloaded first.',
   deleteAllAfterBackup: 'Did the backup file download? Delete everything now?',
   persistDenied: 'The browser didn’t allow it (it may once the app is installed or used more).',
