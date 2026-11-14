@@ -382,7 +382,10 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                     }
                     val cycle = st.cycle
                     if (g != null && lyle && selected == null && cycle != null && (lTarget?.week ?: 0.0) > cycle.weeks) {
-                        Hint { Txt(state.t("cycleDone"), small = true) }
+                        Hint {
+                            Txt(state.t("cycleDone"), small = true)
+                            Btn(state.t("reviewCycle"), { state.open(Screen.Review) }, small = true)
+                        }
                     }
                     val shown = plates
                     if (plateKg != null && shown != null) PlatesLine(state, shown)

@@ -39,6 +39,12 @@ sealed interface Screen {
     data class RoutineDay(val routineId: String, val dayId: String?) : Screen
     /** Training programs. */
     data object Programs : Screen
+    /** Effective reps per muscle group: body map, bars, last weeks. */
+    data object Muscles : Screen
+    /** Statistics for a period. */
+    data object Analysis : Screen
+    /** The cycle / block review. */
+    data object Review : Screen
 }
 
 class Toast(val text: String, val actionLabel: String? = null, val action: (() -> Unit)? = null)
