@@ -384,7 +384,8 @@ async function backup() {
 async function moveToApp() {
   const data = await exportAll();
   const name = `iron-notes-${data.exported.slice(0, 10)}.json`;
-  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  const json = JSON.stringify(data); // once: it blocks the main thread for long histories
+  const file = new File([json], name, { type: 'application/json' });
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file], title: name });
@@ -393,7 +394,7 @@ async function moveToApp() {
       if ((e as Error).name === 'AbortError') return; // closed the share sheet
     }
   }
-  download(name, JSON.stringify(data), 'application/json');
+  download(name, json, 'application/json');
   toast(t('moveToAppDownloaded'));
 }
 

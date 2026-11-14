@@ -434,7 +434,7 @@ private fun BackupCard(state: AppState, ctx: Context) {
     }
     val opener = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        state.run({ ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: error("no input") }) { restoreText = it }
+        state.run({ ctx.contentResolver.openInputStream(uri)?.use { readTextCapped(it) } ?: error(state.t("notBackup")) }) { restoreText = it }
     }
 
     fun restore(json: String) {

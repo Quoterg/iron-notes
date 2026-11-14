@@ -55,6 +55,14 @@
   Recent ordered by date then set order.
 - Verified: emulator — a backup sent with ACTION_SEND while the app is open → confirm → restored (Imported Lift
   50 kg × 12 on the day). Web: 293 unit, 43 e2e, build 23.0 KB, Lighthouse passing.
+- Review fixes (#55): the confirm swallows every touch and Back dismisses it (no Compose UI tests in the app:
+  checked on the emulator — a tab tap under it does nothing); incoming files read with a 64 MB cap
+  (`readTextCapped`, unit-tested; also Settings → Restore); `start()` cancels a running load and is awaited
+  before a handed-over backup is read and before the "restored" toast; unexpected restore errors show
+  `notBackup` (logged); web `moveToApp` stringifies once.
+- Known gaps: a pending confirm is dropped on rotation / process death (the share has to be repeated);
+  "Open with" from Downloads offers the app only when the file comes as `application/json` (some file
+  managers say `application/octet-stream` — then use Share instead).
 
 ## 2026-11-14 — N9 Parity sweep (native)
 

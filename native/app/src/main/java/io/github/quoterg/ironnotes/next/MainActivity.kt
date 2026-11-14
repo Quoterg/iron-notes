@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
             // The database opens off the main thread after the first frame (the window background and
             // the bars show at once).
             LaunchedEffect(Unit) {
-                state.start()
+                // Loaded first, so a restore of a handed-over backup can't race this load.
+                state.start().join()
                 pending?.let { state.receiveBackup(it) }
                 pending = null
             }
