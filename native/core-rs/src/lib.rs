@@ -39,11 +39,26 @@ pub mod routines;
 pub mod analysis;
 pub mod review;
 
+// Workout summary (M26): summary.ts
+pub mod summary;
+
 // What the apps call (UniFFI)
 pub mod api;
 // N7: muscles, body map, day muscles (IronCore methods) / statistics and cycle review
 pub mod api_muscles;
 pub mod api_stats;
+// Exercise/category editors, calculators and the workout summary (IronCore methods and free functions)
+pub mod api_tools;
+// Body tab (body.ts) and its IronCore methods
+pub mod body;
+pub mod api_body;
+// Settings tab helpers (plate set limits)
+pub mod api_settings;
+
+// Imports and CSV export (csv.ts, ironlog.ts) and their IronCore methods
+pub mod csv;
+pub mod ironlog;
+pub mod api_import;
 
 uniffi::setup_scaffolding!();
 

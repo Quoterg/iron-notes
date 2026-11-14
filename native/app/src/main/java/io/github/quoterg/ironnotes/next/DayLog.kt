@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.quoterg.ironnotes.core.DayData
+import io.github.quoterg.ironnotes.core.durationOfSets
+import io.github.quoterg.ironnotes.core.fmtDuration
 import io.github.quoterg.ironnotes.core.Exercise
 import io.github.quoterg.ironnotes.core.LoadType
 import io.github.quoterg.ironnotes.core.WorkoutSet
@@ -100,9 +102,11 @@ fun DayLog(state: AppState) {
             }
         }
     } else {
+        val duration = remember(day) { durationOfSets(day.sets, tzOffsetMin(day.date)) }
         val volume = if (day.volume > 0) " · ${state.i18n.weight(day.volume, s)} ${state.t("volume")}" else ""
         Txt(
-            "${entries.size} ${state.t("exercises").lowercase()} · ${day.setCount} ${state.t("sets")}$volume",
+            "${entries.size} ${state.t("exercises").lowercase()} · ${day.setCount} ${state.t("sets")}$volume" +
+                (duration?.let { " · ${fmtDuration(it)}" } ?: ""),
             Modifier.padding(bottom = 8.dp),
             muted = true,
             small = true,

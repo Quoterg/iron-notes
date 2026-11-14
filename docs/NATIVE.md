@@ -147,7 +147,7 @@ PR that touches `native/`.
 - [x] **N5 Calendar, routines, saved workouts, programs** (+ day tools: copy, reorder, supersets, share, delete).
 - [x] **N6 Training modes** — Dorian, Lyle cycles, lighter week, feedback, day plan (targets, effort, readiness, warm-ups, plates, effective reps on the logging screen).
 - [x] **N7 Muscles, body map, statistics, review.**
-- [ ] **N8 Settings & the rest** — themes, language (strings generated), units, plates, load types,
+- [x] **N8 Settings & the rest** — themes, language (strings generated), units, plates, load types,
   body measurements, imports (FitNotes CSV, Iron Log), summary image share.
 - [ ] **N9 Parity sweep** — every web e2e spec checked against the native app; baseline profile;
   budgets met.

@@ -137,6 +137,8 @@ private fun TabContent(state: AppState) {
         }
         Tab.CALENDAR -> CalendarTab(state)
         Tab.ROUTINES -> RoutinesTab(state)
+        Tab.BODY -> BodyTab(state)
+        Tab.SETTINGS -> SettingsTab(state)
         // Later milestones (N7/N8 body & settings).
         else -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Txt("—", muted = true)
@@ -174,7 +176,18 @@ private fun TabBar(state: AppState, modifier: Modifier) {
                     .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Txt(state.t(tab.key), size = 13.sp, bold = active, color = if (active) p.activeText else p.muted, maxLines = 2)
+                // Long names ("Inställningar") shrink to fit on one line instead of breaking mid-word
+                // (hyphenation patterns aren't available on every Android version).
+                androidx.compose.foundation.text.BasicText(
+                    state.t(tab.key),
+                    style = androidx.compose.ui.text.TextStyle(
+                        color = if (active) p.activeText else p.muted,
+                        fontWeight = if (active) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    ),
+                    maxLines = 1,
+                    autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 13.sp),
+                )
             }
         }
     }
@@ -194,6 +207,12 @@ private fun ScreenView(state: AppState, screen: Screen) {
         Screen.Muscles -> MusclesScreen(state)
         Screen.Analysis -> AnalysisScreen(state)
         Screen.Review -> ReviewScreen(state)
+        is Screen.Metric -> MetricScreen(state, screen.id)
+        is Screen.EditExercise -> ExerciseEditorScreen(state, screen.id, screen.categoryId, screen.date)
+        is Screen.Category -> CategoryEditorScreen(state, screen.id)
+        Screen.ManageExercises -> PickerScreen(state, today(), manage = true)
+        is Screen.Tools -> ToolsScreen(state, screen.weight, screen.reps)
+        is Screen.Summary -> SummaryScreen(state, screen.date)
     }
 }
 

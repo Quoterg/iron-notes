@@ -102,7 +102,7 @@ fn is_color(s: &str) -> bool {
 }
 
 /// JS `Number.prototype.toString` for a finite number.
-fn js_num(f: f64) -> String {
+pub(crate) fn js_num(f: f64) -> String {
     if f == 0.0 {
         return "0".into();
     }

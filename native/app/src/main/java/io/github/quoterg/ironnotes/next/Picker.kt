@@ -47,7 +47,7 @@ private sealed interface Item {
 
 /** Add exercise (Picker.tsx, add mode): search, favourites, categories, then the exercises of one. */
 @Composable
-fun PickerScreen(state: AppState, date: String) {
+fun PickerScreen(state: AppState, date: String, manage: Boolean = false) {
     var q by rememberSaveable { mutableStateOf("") }
     var cat by rememberSaveable { mutableStateOf<String?>(null) }
     val exercises = state.exercises
@@ -105,7 +105,7 @@ fun PickerScreen(state: AppState, date: String) {
         }
     }
 
-    Sheet(state.t("addExercise"), { state.back() }, state.t("back")) {
+    Sheet(state.t(if (manage) "manageExercises" else "addExercise"), { state.back() }, state.t("back")) {
         Field(q, { q = it }, state.t("searchExercises"), Modifier.fillMaxWidth().padding(16.dp, 12.dp))
         LazyColumn(Modifier.fillMaxWidth().navigationBarsPadding(), contentPadding = PaddingValues(bottom = 96.dp)) {
             items(items, key = { it.key }) { item ->
@@ -136,14 +136,33 @@ fun PickerScreen(state: AppState, date: String) {
                     is Item.Ex -> Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             .clickable(role = Role.Button) {
-                                // The web replaces the picker with the exercise's screen.
-                                state.back()
-                                state.open(Screen.Exercise(item.e.id, date))
+                                if (manage) {
+                                    state.open(Screen.EditExercise(item.e.id, null))
+                                } else {
+                                    // The web replaces the picker with the exercise's screen.
+                                    state.back()
+                                    state.open(Screen.Exercise(item.e.id, date))
+                                }
                             }.padding(16.dp, 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (item.showCat) Dot(state.catById[item.e.categoryId]?.color)
                         Txt(shownName(item.e), Modifier.weight(1f))
+                    }
+                }
+            }
+            item(key = "new") {
+                Actions(Modifier.padding(horizontal = 16.dp)) {
+                    Btn(
+                        "+ ${state.t("newExercise")}",
+                        { state.open(Screen.EditExercise(null, selected?.id, if (manage) null else date)) },
+                        kind = BtnKind.PRIMARY,
+                    )
+                    if (manage && query.isEmpty()) {
+                        Btn(
+                            if (selected != null) state.t("editCategory") else "+ ${state.t("newCategory")}",
+                            { state.open(Screen.Category(selected?.id)) },
+                        )
                     }
                 }
             }

@@ -305,6 +305,34 @@ impl Store {
         }
         Ok(tx.commit()?)
     }
+    /// An import in ONE transaction (Settings imports): new categories, exercises and sets (FitNotes CSV),
+    /// body entries and the diet phase (Iron Log). Nothing is written if any part fails.
+    pub fn import_rows(&self, cats: &[Category], exs: &[Exercise], sets: &[WorkoutSet], entries: &[BodyMetricEntry], diet: Option<crate::model::Diet>) -> Result<()> {
+        let mut settings = None;
+        if let Some(d) = diet {
+            let mut st = self.settings()?;
+            st.diet = Some(d);
+            settings = Some(st);
+        }
+        let tx = self.tx()?;
+        for c in cats {
+            put_doc(&tx, "categories", &c.id, c)?;
+        }
+        for e in exs {
+            put_doc(&tx, "exercises", &e.id, e)?;
+        }
+        for s in sets {
+            put_set_row(&tx, s)?;
+        }
+        for e in entries {
+            put_entry_row(&tx, e)?;
+        }
+        if let Some(st) = settings {
+            put_kv(&tx, "settings", &serde_json::to_value(&st)?)?;
+            stamp(&tx, "kv", "settings", false)?;
+        }
+        Ok(tx.commit()?)
+    }
     pub fn delete_set(&self, id: &str) -> Result<()> {
         self.delete_sets(&[id])
     }

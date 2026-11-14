@@ -1,6 +1,5 @@
 package io.github.quoterg.ironnotes.next
 
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -57,7 +55,6 @@ fun workoutText(state: AppState, title: String, groups: List<Pair<Exercise, List
 @Composable
 fun DayTools(state: AppState, day: DayData, groups: List<Pair<Exercise, List<WorkoutSet>>>, tools: DayToolsState) {
     val date = day.date
-    val context = LocalContext.current
     var confirmDelete by remember(date) { mutableStateOf(false) }
 
     if (tools.grouping && tools.picked.size >= 2) {
@@ -110,11 +107,7 @@ fun DayTools(state: AppState, day: DayData, groups: List<Pair<Exercise, List<Wor
                 Modifier.semantics { stateDescription = if (tools.grouping) "on" else "off" },
             )
         }
-        Chip(state.t("share"), false, {
-            val text = workoutText(state, state.i18n.dayLabel(date), groups, day.comment.orEmpty())
-            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-            context.startActivity(Intent.createChooser(send, state.t("share")))
-        })
+        Chip(state.t("share"), false, { state.open(Screen.Summary(date)) })
         Chip(state.t("deleteWorkout"), false, { confirmDelete = true })
     }
 }

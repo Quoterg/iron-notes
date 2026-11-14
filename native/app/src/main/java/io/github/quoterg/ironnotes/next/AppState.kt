@@ -45,6 +45,18 @@ sealed interface Screen {
     data object Analysis : Screen
     /** The cycle / block review. */
     data object Review : Screen
+    /** One body measure (id null: none, closes itself). */
+    data class Metric(val id: String?) : Screen
+    /** Create or edit an exercise (id null = new; `date`: a new one from "Add exercise" goes on to log it). */
+    data class EditExercise(val id: String?, val categoryId: String?, val date: String? = null) : Screen
+    /** Create or edit a category (id null = new). */
+    data class Category(val id: String?) : Screen
+    /** Exercises and categories: the picker in manage mode (tap = edit, new exercise / category). */
+    data object ManageExercises : Screen
+    /** The calculators; `weight` in kg and `reps` prefill (from the set being entered). */
+    data class Tools(val weight: Double?, val reps: Double?) : Screen
+    /** A day's workout summary, shared as text or an image. */
+    data class Summary(val date: String) : Screen
 }
 
 class Toast(val text: String, val actionLabel: String? = null, val action: (() -> Unit)? = null)
@@ -66,6 +78,13 @@ class AppState(context: Context, val scope: CoroutineScope) {
     // Lookups rebuilt only when the lists change (they are read for every row on every recomposition).
     val exById: Map<String, Exercise> by derivedStateOf { exercises.associateBy { it.id } }
     val catById: Map<String, Category> by derivedStateOf { categories.associateBy { it.id } }
+
+    /** The theme choice (per device, like the web's localStorage key). */
+    var theme by mutableStateOf(ThemeChoice.load(app)); private set
+    fun chooseTheme(c: ThemeChoice) {
+        theme = c
+        ThemeChoice.save(app, c)
+    }
 
     var tab by mutableStateOf(Tab.LOG)
     var date by mutableStateOf(today()); private set
