@@ -543,8 +543,12 @@ impl IronCore {
             let history = s.sets_of(&ex.id)?;
             let real = self.loaded_cached(s, &ex)?;
             let on_date = s.sets_on(date)?;
-            let near = s.sets_between(&calc::add_days(date.to_string(), -4), &calc::add_days(date.to_string(), -1))?;
-            Ok(Some((s.settings()?, ex, history, real, on_date, near, s.routines()?, s.exercises()?)))
+            let st = s.settings()?;
+            // Only Dorian HIT uses the last days' sets (too soon) and the program's routine (swap day).
+            let dorian = st.mode == crate::model::TrainingMode::Dorian;
+            let near = if dorian { s.sets_between(&calc::add_days(date.to_string(), -4), &calc::add_days(date.to_string(), -1))? } else { vec![] };
+            let routines = if dorian && st.program.is_some() { s.routines()? } else { vec![] };
+            Ok(Some((st, ex, history, real, on_date, near, routines, s.exercises()?)))
         })?;
         let Some((st, ex, history, real, on_date, near, routines, exercises)) = data else {
             return Ok(ExerciseGuide {
@@ -723,7 +727,7 @@ impl IronCore {
         let lyle = st.mode == TrainingMode::Lyle;
         // Lyle: only the push weeks of the running cycle compare (run-up weeks are lighter on purpose).
         let since = match st.cycle.as_ref() {
-            Some(c) if lyle && c.start.as_str() <= date => calc::add_days(c.start.clone(), 14),
+            Some(c) if lyle && c.start.as_str() <= date => calc::add_days(c.start.clone(), (lyle::RUN_UP.len() * 7) as i32),
             _ => String::new(),
         };
         let counted: Vec<WorkoutSet> = real.iter().filter(|x| x.set.date.as_str() < date).map(|x| x.set.clone()).collect();
