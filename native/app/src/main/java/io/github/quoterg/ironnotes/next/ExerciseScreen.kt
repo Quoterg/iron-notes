@@ -153,6 +153,13 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     val ex = state.exercises.firstOrNull { it.id == id }
     val context = LocalContext.current
     val timer = remember { RestTimer.get(context) }
+    // Settings "keep the screen on": while this screen is open.
+    val keepOn = state.settings.keepScreenOn
+    androidx.compose.runtime.DisposableEffect(keepOn) {
+        val window = (context as? android.app.Activity)?.window
+        if (keepOn) window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose { window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
     var log by remember(id, date) { mutableStateOf<ExerciseLog?>(null) }
     val form = remember(id, date) { Form() }
     var sel by remember(id, date) { mutableStateOf<String?>(null) }
@@ -327,7 +334,10 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
 
     Sheet(
         state.i18n.shown("exercises", ex.name), { state.back() }, state.t("back"),
-        actions = { IconBtn("⏱", state.t("startTimer"), { timer.start(restFor(ex, cat, st), state) }, small = true) },
+        actions = {
+            IconBtn("⏱", state.t("startTimer"), { timer.start(restFor(ex, cat, st), state) }, small = true)
+            Btn(state.t("edit"), { state.open(Screen.EditExercise(id, null)) }, small = true)
+        },
     ) {
         Column(
             Modifier.weight(1f).fillMaxWidth().imePadding().verticalScroll(rememberScrollState())
@@ -483,6 +493,10 @@ private fun Track(
             }
         } else {
             LinkBtn("+ ${state.t("addComment")}", openComment)
+        }
+        if (Field.WEIGHT in fields) {
+            val v = fromForm(form, ex, state.settings)
+            LinkBtn(state.t("tools"), { state.open(Screen.Tools(v?.weight, v?.reps)) })
         }
         Actions {
             Btn(state.t(if (editing) "update" else "save"), save, kind = BtnKind.PRIMARY, enabled = canSave)

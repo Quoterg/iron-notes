@@ -30,5 +30,13 @@
             </intent-filter>
         </activity>
         <receiver android:name=".RestAlarmReceiver" android:exported="false" />
+        <!-- Workout summary image: shared through a content:// URI from the cache (res/xml/share_paths.xml). -->
+        <provider
+            android:name=".ShareFileProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/share_paths" />
+        </provider>
     </application>
 </manifest>

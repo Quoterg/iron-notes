@@ -314,7 +314,7 @@ impl IronCore {
         }
     }
 
-    fn forget_all(&self) {
+    pub(crate) fn forget_all(&self) {
         self.cache().clear();
         self.loaded.lock().unwrap_or_else(|p| p.into_inner()).clear();
     }

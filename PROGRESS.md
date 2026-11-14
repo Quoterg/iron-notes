@@ -12,14 +12,15 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout.
-  N0–N6 merged (#44–#51). N7 muscles/statistics = PR on main. Next: **N8 settings & the rest** (Settings tab:
-  mode, units, theme, language, timer, plates, cycle/light/program/diet, backup export/import (file picker), FitNotes
-  CSV + Iron Log imports; Body tab: measures, entries, trend; exercise/category editors; summary image share).
+  N0–N6 merged (#44–#51); N7 = #52; N8 settings/body/imports/editors = stacked PR on #52. Next: **N9 parity
+  sweep** (web e2e specs vs native, baseline profile, budgets), then N10 move data, N11 cut-over.
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
   APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
   `iron_core`; (3) narrow the R8 keep rule for the UniFFI bindings once records/objects are exported.
+- Native known gaps (accepted in review): restore has no safety download first (native restore is all-or-nothing);
+  an Iron Log re-import with no new entries still sets the diet phase (as the web does).
 - Local native toolchain: JDK 17 at ~/.bubblewrap/jdk, SDK ~/.bubblewrap/android_sdk (NDK r28c, emulator,
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
@@ -38,6 +39,24 @@
   function. Picker list padded above the navigation bar.
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
+
+## 2026-11-14 — N8 Settings, body, imports, editors, tools, summary (native)
+
+Four Sonnet agents in parallel (vertical slices, each with its own `api_*.rs`):
+- Settings tab: every setting of the web (units, theme Auto/Day/Night in prefs, rest timer + notification, language +
+  gym English, mode, diet, Lyle cycle, lighter week, plates editor, mark done, keep screen on, week start, formula),
+  backup export/restore through the Storage Access Framework (web file names and texts), links (Programs, Review,
+  Muscles, Manage exercises, Tools). api_settings.rs (clean plates, default plates).
+- Imports: csv.rs + ironlog.rs ported (183 golden cases), api_import.rs (FitNotes CSV preview/import in one
+  transaction, CSV export, Iron Log preview/import with diet phase), Imports.kt section in Settings.
+- Body tab: body.rs ported (316 golden cases), api_body.rs (overview, detail with trend, add/rename/move measures,
+  entries in user units), Body.kt + MetricSheet.kt (entries, Canvas chart with 7-day trend, undo).
+- Editors/tools/summary: exercise editor (all fields, muscles, delete), category editor + manage mode in the picker,
+  Tools (1RM + percent table, plate calculator, warm-ups; api_tools.rs), summary.rs ported (golden) + Summary screen
+  (text and a PNG card shared via a FileProvider), workout duration on the day log.
+- Fixed: tab labels shrink to fit ("Inställningar" broke mid-word); a duplicate RUN_UP_WEEKS between two agents.
+- Verified on the Android 7.0 emulator: Settings renders; Svenska + Night → whole app in Swedish, Hologram theme;
+  Body tab lists the measures and the add-measure form. 99 Rust unit tests + all golden suites, 26 app unit tests.
 
 ## 2026-11-14 — N7 Muscles, body map, statistics, review (native)
 
