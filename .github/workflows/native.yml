@@ -22,7 +22,7 @@ env:
 
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: Playwright has no Chromium build for newer runner images yet
     timeout-minutes: 30
     defaults:
       run:
