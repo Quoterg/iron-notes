@@ -12,8 +12,8 @@
 - **Owner test:** rest notification with the screen off (docs/REST-TIMER.md, 5 minutes).
 - **Phase 4 — native Android app** (owner 2026-11-11): plan in docs/NATIVE.md. Owner chose a **Rust core +
   Kotlin/Compose UI** (iPhone later on the same core). The PWA + TWA stay live throughout.
-  N0–N6 merged (#44–#51); N7 = #52; N8 settings/body/imports/editors = stacked PR on #52. Next: **N9 parity
-  sweep** (web e2e specs vs native, baseline profile, budgets), then N10 move data, N11 cut-over.
+  N0–N6 merged (#44–#51); N7 = #52 (approved), N8 = #53, N9 parity = stacked PR on #53. Next: **N10 move data**
+  (web "Move to the Android app" + native receive of the backup), then **N11 cut-over** (owner signs).
 - **Owner test (native):** install the N3 APK, log a set, lock the phone during rest: the "Rest over"
   notification must arrive on time (Doze can't be forced on the emulator).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
@@ -37,6 +37,22 @@
   function. Picker list padded above the navigation bar.
 - Verified on the Android 7.0 emulator (release build): 3 days of bench → graph 114 / 114 / 117 e1RM, history
   with the right trophies, rep maxes 1–8, best e1RM 117 kg (97.5 × 6). APKs 3.0–3.6 MB, universal 8.2 MB.
+
+## 2026-11-14 — N9 Parity sweep (native)
+
+- Audit (Sonnet, read-only): every e2e/*.spec.ts test against the native code → all OK except five gaps, closed by
+  four parallel Sonnet agents: picker favourite star + Recent (core `recent_exercise_ids`) + saved workouts
+  ("Add workout", `logRoutineDay`); supersets on the exercise screen (new sets join the day's group, Save jumps to
+  the next member, rest only at the end of a round, chip bar; core `superset_of`, `next_in_superset`); per-set done
+  tick (markDone / planned, `stampAt`); Delete all data (backup first via SAF, two confirms, core `delete_all` =
+  fresh install); "Show as table" under the exercise and body charts. Extras: calendar cycle phases + legend (core
+  `month_phases`), Statistics custom range (framework DatePickerDialog, to ≤ today).
+- #52 review notes: `effective_of_with` reuses the caller's library/formula/body weights and skips planned sets;
+  review groups by map; swaps only to existing exercises; custom ranges normalised; Latest guard on Muscles/DayMuscles.
+- Baseline profile: not generated (needs an Android 9+ device/AVD with Macrobenchmark); Compose/AndroidX ship their
+  own profiles via profileinstaller, and the owner's phone test showed fast cold starts. Budgets hold (below).
+- Verified on the Android 7.0 emulator (release): bench + row grouped → saving bench jumps to Barbell Row under the
+  superset bar, no rest timer mid-round. 103 Rust unit tests + all golden suites; app unit tests 29.
 
 ## 2026-11-14 — N8 Settings, body, imports, editors, tools, summary (native)
 

@@ -322,6 +322,7 @@ private fun BodyChart(state: AppState, title: String, dates: List<String>, value
             Txt("● ${state.t("trend")}", small = true, color = trendColor)
         }
     }
+    ChartTable(state, title, dates, values, fmt)
 }
 
 /** Nearest point by x: binary search (points are sorted by date). */

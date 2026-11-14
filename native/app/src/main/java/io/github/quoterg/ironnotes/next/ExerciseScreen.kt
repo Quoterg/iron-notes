@@ -1,9 +1,15 @@
 package io.github.quoterg.ironnotes.next
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -33,6 +39,8 @@ import io.github.quoterg.ironnotes.core.ExerciseGuide
 import io.github.quoterg.ironnotes.core.ExerciseLog
 import io.github.quoterg.ironnotes.core.PlatesHint
 import io.github.quoterg.ironnotes.core.SetEffort
+import io.github.quoterg.ironnotes.core.SupersetInfo
+import io.github.quoterg.ironnotes.core.stampAt
 import io.github.quoterg.ironnotes.core.TrainingMode
 import io.github.quoterg.ironnotes.core.WarmupHint
 import io.github.quoterg.ironnotes.core.LoadType
@@ -176,6 +184,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     val warmReq = remember(id, date) { Latest() }
     var plates by remember(id, date) { mutableStateOf<PlatesHint?>(null) }
     val platesReq = remember(id, date) { Latest() }
+    var superset by remember(id, date) { mutableStateOf<SupersetInfo?>(null) }
 
     fun reloadGuide() {
         val rid = guideReq.next()
@@ -187,6 +196,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     /** Reads the log (and the guide) again, after every write. */
     fun reload(then: (ExerciseLog) -> Unit = {}) {
         reloadGuide()
+        state.run({ it.supersetOf(id, date) }) { superset = it }
         state.run({ it.exerciseLog(id, date) }) { l ->
             log = l
             then(l)
@@ -286,7 +296,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                 ?: WorkoutSet(
                     id = newId(), date = date, exerciseId = id, order = nextOrder(),
                     weight = v.weight, reps = v.reps, distance = v.distance, time = v.time,
-                    comment = comment, group = null, done = if (st.markDone) true else null, planned = null,
+                    comment = comment, group = superset?.group, done = if (st.markDone) true else null, planned = null,
                     rir = null, after = null, warmup = null, deload = null, sore = readiness, at = now,
                 )
             ).withEffort()
@@ -306,8 +316,24 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                 afterWrite()
                 if (hadOthers && s.id in nl.records) state.showToast(state.t("newRecord"))
             }
-            if (st.autoTimer) timer.start(restFor(ex, cat, st), state)
+            // In a superset: on to the next exercise; rest only after the round's last one.
+            if ((superset?.members?.size ?: 0) > 1) {
+                state.run({ it.nextInSuperset(id, date) }, { if (st.autoTimer) timer.start(restFor(ex, cat, st), state) }) { step ->
+                    if (st.autoTimer && (step == null || step.endOfRound)) timer.start(restFor(ex, cat, st), state)
+                    if (step != null) state.stack[state.stack.lastIndex] = Screen.Exercise(step.next, date)
+                }
+            } else if (st.autoTimer) timer.start(restFor(ex, cat, st), state)
         }
+    }
+
+    /** The set's "done" box: shown at once, then written (a tick clears `planned`, and stamps the time). */
+    fun tick(s: WorkoutSet, checked: Boolean) {
+        val next = s.copy(
+            done = checked, planned = if (checked) null else s.planned,
+            at = stampAt(s.at, s.done == true, checked, System.currentTimeMillis().toDouble()),
+        )
+        log = log?.let { l -> l.copy(sets = l.sets.map { if (it.id == s.id) next else it }) }
+        state.run({ it.putSet(next) }, { reload() }) { reload { afterWrite() } }
     }
 
     fun clearOrDelete() {
@@ -357,6 +383,22 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             }
             if (!ex.notes.isNullOrBlank()) Txt(ex.notes!!, Modifier.padding(top = 4.dp), muted = true, small = true)
             if (dorian) guide?.let { Column(Modifier.padding(top = 8.dp)) { TooSoon(state, it) } }
+
+            val members = superset?.members.orEmpty()
+            if (members.size > 1) {
+                Chips(
+                    Modifier.padding(top = 12.dp).border(2.dp, parseColor(superset?.color) ?: LocalPalette.current.cardBorder, RoundedCornerShape(18.dp))
+                        .padding(6.dp).semantics { contentDescription = state.t("superset") },
+                ) {
+                    members.forEach { m ->
+                        Chip(
+                            state.exById[m]?.let { state.i18n.shown("exercises", it.name) } ?: m, m == id,
+                            { if (m != id) state.stack[state.stack.lastIndex] = Screen.Exercise(m, date) },
+                            Modifier.semantics { this.selected = m == id },
+                        )
+                    }
+                }
+            }
 
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("track", "history", "graph", "records").forEach { k ->
@@ -428,7 +470,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                             Txt(state.t("effToday", "n" to state.i18n.dnum(total)), Modifier.padding(start = 4.dp, bottom = 4.dp), muted = true, small = true)
                         }
                         todays.forEachIndexed { i, s ->
-                            SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records, if (hasReps) effortText(state, s) else "", if (hasReps) eff[s.id] else null) { select(s) }
+                            SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records, if (hasReps) effortText(state, s) else "", if (hasReps) eff[s.id] else null, st.markDone || s.planned == true, { tick(s, it) }) { select(s) }
                         }
                     }
                 } else {
@@ -548,13 +590,15 @@ private fun TimeField(state: AppState, form: Form) {
 @Composable
 private fun SetRow(
     state: AppState, ex: Exercise, load: LoadType, n: Int, s: WorkoutSet, selected: Boolean, record: Boolean,
-    effort: String, effective: SetEffort?, onClick: () -> Unit,
+    effort: String, effective: SetEffort?, showTick: Boolean, onTick: (Boolean) -> Unit, onClick: () -> Unit,
 ) {
     val p = LocalPalette.current
     val shape = RoundedCornerShape(12.dp)
     val fg = if (selected) p.activeText else p.text
+    val dim = s.planned == true || (state.settings.markDone && s.done != true)
     Row(
-        Modifier.fillMaxWidth().background(if (selected) p.active else androidx.compose.ui.graphics.Color.Transparent, shape)
+        Modifier.fillMaxWidth().alpha(if (dim) 0.55f else 1f)
+            .background(if (selected) p.active else androidx.compose.ui.graphics.Color.Transparent, shape)
             .semantics { this.selected = selected }
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 12.dp),
@@ -568,6 +612,20 @@ private fun SetRow(
         }
         if (effective != null) EffBadge(state, effective)
         if (record) Trophy(state.t("record"))
+        if (showTick) {
+            val on = s.done == true
+            Box(
+                Modifier.size(44.dp).toggleable(on, role = Role.Checkbox, onValueChange = onTick)
+                    .semantics { contentDescription = "${state.t("setDone")} $n" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size(24.dp).background(if (on) p.primary else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(6.dp))
+                        .border(2.dp, if (on) p.primary else p.muted, RoundedCornerShape(6.dp)),
+                    contentAlignment = Alignment.Center,
+                ) { if (on) Txt("✓", color = p.primaryText, bold = true, small = true) }
+            }
+        }
     }
 }
 

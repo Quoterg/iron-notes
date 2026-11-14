@@ -52,13 +52,17 @@ pub mod api_tools;
 // Body tab (body.ts) and its IronCore methods
 pub mod body;
 pub mod api_body;
+pub mod api_picker;
 // Settings tab helpers (plate set limits)
 pub mod api_settings;
+pub mod api_calendar;
+pub mod api_superset;
 
 // Imports and CSV export (csv.ts, ironlog.ts) and their IronCore methods
 pub mod csv;
 pub mod ironlog;
 pub mod api_import;
+pub mod api_data;
 
 uniffi::setup_scaffolding!();
 

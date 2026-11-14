@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.quoterg.ironnotes.core.MuscleId
@@ -36,6 +37,7 @@ import io.github.quoterg.ironnotes.core.StatsPeriod
 import io.github.quoterg.ironnotes.core.StatsSummary
 import io.github.quoterg.ironnotes.core.TrainingMode
 import io.github.quoterg.ironnotes.core.fmtTime
+import io.github.quoterg.ironnotes.core.addDays
 import io.github.quoterg.ironnotes.core.wToUser
 import java.text.SimpleDateFormat
 
@@ -44,8 +46,34 @@ import java.text.SimpleDateFormat
 
 private val PERIODS = listOf(
     StatsPeriod.WEEK to "p_week", StatsPeriod.MONTH to "p_month", StatsPeriod.MONTHS3 to "p_3m",
-    StatsPeriod.YEAR to "p_year", StatsPeriod.ALL to "p_all",
+    StatsPeriod.YEAR to "p_year", StatsPeriod.ALL to "p_all", StatsPeriod.CUSTOM to "p_custom",
 )
+
+/** Analysis.tsx: a new "from" can't be after "to". */
+internal fun pickFrom(picked: String, to: String): String = if (picked > to) to else picked
+
+/** Analysis.tsx: a new "to" is at most today and not before "from". */
+internal fun pickTo(picked: String, from: String, today: String): String = maxOf(minOf(picked, today), from)
+
+/** A button showing a date that opens the framework's DatePickerDialog (min/max inclusive; "" = open). */
+@Composable
+private fun DateField(label: String, value: String, min: String, max: String, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val c = parseIso(value)
+    Column(modifier) {
+        Txt(label, muted = true, small = true)
+        Btn(value, {
+            val dlg = android.app.DatePickerDialog(
+                ctx,
+                { _, y, m, d -> onPick(isoDate(java.util.Calendar.getInstance().apply { clear(); set(y, m, d) })) },
+                c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH),
+            )
+            if (min.isNotEmpty()) dlg.datePicker.minDate = parseIso(min).timeInMillis
+            if (max.isNotEmpty()) dlg.datePicker.maxDate = parseIso(max).timeInMillis + 86_399_000L
+            dlg.show()
+        }, Modifier.fillMaxWidth())
+    }
+}
 private const val TOP = 10
 
 /** The web's `mu_<id>` string key of a muscle (FRONT_DELTS → mu_frontDelts). */
@@ -82,19 +110,28 @@ internal fun MuscleBarRow(state: AppState, muscle: MuscleId, fraction: Double, p
 fun AnalysisScreen(state: AppState) {
     val st = state.settings
     var period by remember { mutableStateOf(StatsPeriod.MONTH) }
+    val now = today()
+    var from by remember { mutableStateOf(addDays(now, -29)) }
+    var to by remember { mutableStateOf(now) }
     var by by remember { mutableStateOf("sets") }
     var sum by remember { mutableStateOf<StatsSummary?>(null) }
     val req = remember { Latest() }
-    LaunchedEffect(period, st.formula, st.mode, st.weekStart) {
+    LaunchedEffect(period, if (period == StatsPeriod.CUSTOM) from else "", if (period == StatsPeriod.CUSTOM) to else "", st.formula, st.mode, st.weekStart) {
         val rid = req.next()
         sum = null
-        state.run({ it.statsSummary(period, today(), "", "") }) { if (req.isLatest(rid)) sum = it }
+        state.run({ it.statsSummary(period, today(), from, to) }) { if (req.isLatest(rid)) sum = it }
     }
 
     Sheet(state.t("analysis"), { state.back() }, state.t("back")) {
         SheetBody {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
                 PERIODS.forEach { (p, key) -> Chip(state.t(key), p == period, { period = p }) }
+            }
+            if (period == StatsPeriod.CUSTOM) {
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    DateField(state.t("from"), from, "", to, { from = pickFrom(it, to) }, Modifier.weight(1f))
+                    DateField(state.t("to"), to, from, now, { to = pickTo(it, from, now) }, Modifier.weight(1f))
+                }
             }
             val s = sum
             if (s == null) {

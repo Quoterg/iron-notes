@@ -149,7 +149,7 @@ PR that touches `native/`.
 - [x] **N7 Muscles, body map, statistics, review.**
 - [x] **N8 Settings & the rest** — themes, language (strings generated), units, plates, load types,
   body measurements, imports (FitNotes CSV, Iron Log), summary image share.
-- [ ] **N9 Parity sweep** — every web e2e spec checked against the native app; baseline profile;
+- [x] **N9 Parity sweep** — every web e2e spec checked against the native app; baseline profile;
   budgets met.
 - [ ] **N10 Move data** — web "Move to the Android app" button + native receive; side-by-side beta.
 - [ ] **N11 Cut-over** — release under `io.github.quoterg.ironnotes` over the TWA (owner signs).

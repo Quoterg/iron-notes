@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -35,6 +37,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.quoterg.ironnotes.core.CalendarMonth
+import io.github.quoterg.ironnotes.core.CalendarPhases
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -62,6 +67,11 @@ fun CalendarTab(state: AppState) {
     LaunchedEffect(month, weekStart, state.day) {
         state.run({ it.calendarMonth(month, weekStart) }) { data = it }
     }
+    var phases by remember { mutableStateOf<CalendarPhases?>(null) }
+    LaunchedEffect(month, weekStart, state.settings) {
+        state.run({ it.monthPhases(month, weekStart.toUByte(), today()) }) { phases = it }
+    }
+    val phaseOf = remember(phases) { phases?.days?.associate { it.date to it.phase } ?: emptyMap() }
     val cal = data?.takeIf { it.month == month }
     val loc = state.locale()
     val title = remember(month, loc) { SimpleDateFormat("LLLL yyyy", loc).format(parseIso("$month-01").time) }
@@ -115,6 +125,11 @@ fun CalendarTab(state: AppState) {
                                     .clip(shape)
                                     .background(bg, shape)
                                     .border(1.dp, if (d == current) p.accent else Color.Transparent, shape)
+                                    .drawBehind {
+                                        // Cycle phase: a line along the bottom of the cell (styles.css .cal-day.ph-*).
+                                        val c = phaseColor(phaseOf[d], p)
+                                        if (c != null) drawLine(c, Offset(8.dp.toPx(), size.height - 2.dp.toPx()), Offset(size.width - 8.dp.toPx(), size.height - 2.dp.toPx()), 3.dp.toPx())
+                                    }
                                     .clickable(role = Role.Button) {
                                         state.loadDay(d)
                                         state.tab = Tab.LOG
@@ -139,9 +154,36 @@ fun CalendarTab(state: AppState) {
             if (cal != null) "${cal.workouts} ${state.t("workoutsInMonth")}" else state.t("loading"),
             Modifier.fillMaxWidth(), muted = true, small = true, align = TextAlign.Center,
         )
+        CycleLegend(state, phases)
         Actions {
             if (month != current.substring(0, 7)) Btn(state.t("thisMonth"), { month = current.substring(0, 7) })
             Btn(state.t("analysis"), { state.open(Screen.Analysis) }, kind = BtnKind.PRIMARY)
+        }
+    }
+}
+
+/** Colour of a cycle phase's line (styles.css: run-up muted, push accent, lighter week over). */
+internal fun phaseColor(phase: String?, p: Palette): Color? = when (phase) {
+    "runup" -> p.muted
+    "push" -> p.accent
+    "light" -> p.over
+    else -> null
+}
+
+/** What the coloured lines mean (Calendar.tsx CycleLegend); nothing without a cycle or lighter week. */
+@Composable
+private fun CycleLegend(state: AppState, ph: CalendarPhases?) {
+    if (ph == null || !ph.legend) return
+    val p = LocalPalette.current
+    val head = if (ph.nowWeek > 0u) {
+        state.t("cycleWeek", "n" to ph.nowWeek.toInt(), "N" to ph.nowWeeks.toInt(), "phase" to state.t(if (ph.nowPhase == "runup") "runUp" else "push")) + " · "
+    } else ""
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        if (head.isNotEmpty()) Txt(head, muted = true, small = true)
+        val keys = if (ph.modeLyle) listOf("runup" to "runUp", "push" to "push") else listOf("light" to "lightWeek")
+        keys.forEachIndexed { i, (phase, key) ->
+            Box(Modifier.padding(start = if (i == 0) 0.dp else 10.dp, end = 4.dp).width(16.dp).height(3.dp).background(phaseColor(phase, p) ?: Color.Transparent))
+            Txt(state.t(key), muted = true, small = true)
         }
     }
 }

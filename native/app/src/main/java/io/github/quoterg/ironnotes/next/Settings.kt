@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -386,6 +387,43 @@ private fun PlatesEditor(state: AppState, s: Settings) {
 private fun BackupCard(state: AppState, ctx: Context) {
     var restoreText by remember { mutableStateOf<String?>(null) }
     var stamp by remember { mutableStateOf("") }
+    // Delete all: 0 idle, 1 first confirm, 2 backup written and asking again.
+    var wipeStep by remember { mutableIntStateOf(0) }
+
+    val wipeSaver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) {
+            wipeStep = 0
+            return@rememberLauncherForActivityResult
+        }
+        state.scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val json = Core.get(ctx).exportBackupJson(stamp)
+                    (ctx.contentResolver.openOutputStream(uri, "wt") ?: error("no output")).use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                }
+                wipeStep = 2
+            } catch (e: Exception) {
+                wipeStep = 0
+                state.showToast(e.message ?: e.toString())
+            }
+        }
+    }
+
+    fun wipe() {
+        wipeStep = 0
+        state.scope.launch {
+            try {
+                withContext(Dispatchers.IO) { Core.get(ctx).deleteAll() }
+            } catch (e: Exception) {
+                state.showToast(e.message ?: e.toString())
+                return@launch
+            }
+            RoutineStore.load(state)
+            BodyStore.load(state)
+            state.start()
+            state.showToast(state.t("deletedAll"))
+        }
+    }
 
     val saver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -431,5 +469,13 @@ private fun BackupCard(state: AppState, ctx: Context) {
         }
         restoreText?.let { json -> ConfirmCard(state, state.t("importQ"), state.t("importBackup"), { restore(json) }, { restoreText = null }) }
         ImportSection(state)
+        when (wipeStep) {
+            0 -> Btn(state.t("deleteAll"), { wipeStep = 1 }, Modifier.fillMaxWidth().padding(top = 8.dp), kind = BtnKind.DANGER)
+            1 -> ConfirmCard(state, state.t("deleteAllQ"), state.t("deleteAll"), {
+                stamp = backupStamp()
+                wipeSaver.launch(backupFileName(stamp))
+            }, { wipeStep = 0 })
+            else -> ConfirmCard(state, state.t("deleteAllAfterBackup"), state.t("deleteAll"), { wipe() }, { wipeStep = 0 })
+        }
     }
 }
