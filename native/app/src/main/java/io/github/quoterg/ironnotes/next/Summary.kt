@@ -30,6 +30,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.github.quoterg.ironnotes.core.DayData
 import io.github.quoterg.ironnotes.core.Summary
 import io.github.quoterg.ironnotes.core.WorkoutSet
@@ -97,17 +100,25 @@ fun SummaryScreen(state: AppState, date: String) {
     }
 
     fun shareImage() {
-        try {
-            val file = File(File(context.cacheDir, "share").apply { mkdirs() }, "iron-notes-$date.png")
-            val bmp = drawCard(colors, title, stats, if (goals.isNotEmpty()) "${state.t("goalsMet")}: ${goals.joinToString(", ")}" else "", lines)
-            file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            bmp.recycle()
-            val uri = FileProvider.getUriForFile(context, context.packageName + ".share", file)
-            val send = Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            context.startActivity(Intent.createChooser(send, state.t("shareImage")).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
-        } catch (e: Exception) {
-            state.showToast(state.t("shareFailed"))
+        val goalLine = if (goals.isNotEmpty()) "${state.t("goalsMet")}: ${goals.joinToString(", ")}" else ""
+        state.scope.launch {
+            try {
+                // Drawing a 1080×1350 card and compressing it takes a moment on old phones: off the main thread.
+                val uri = withContext(Dispatchers.IO) {
+                    val dir = File(context.cacheDir, "share").apply { mkdirs() }
+                    dir.listFiles()?.forEach { it.delete() } // only the latest shared card is kept
+                    val file = File(dir, "iron-notes-$date.png")
+                    val bmp = drawCard(colors, title, stats, goalLine, lines)
+                    file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    bmp.recycle()
+                    FileProvider.getUriForFile(context, context.packageName + ".share", file)
+                }
+                val send = Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                context.startActivity(Intent.createChooser(send, state.t("shareImage")).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+            } catch (e: Exception) {
+                state.showToast(state.t("shareFailed"))
+            }
         }
     }
 
