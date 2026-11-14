@@ -563,8 +563,8 @@ impl Store {
     /// no more than the 500 newest rows like the web.
     pub fn recent_exercise_ids(&self, n: usize) -> Result<Vec<String>> {
         let mut st = self.conn.prepare_cached(
-            "SELECT exercise_id FROM (SELECT exercise_id, data FROM sets ORDER BY date DESC LIMIT 500) \
-             WHERE COALESCE(json_extract(data, '$.planned'), 0) = 0",
+            "SELECT exercise_id FROM (SELECT exercise_id, data, date, ord FROM sets ORDER BY date DESC, ord DESC LIMIT 500) \
+             WHERE COALESCE(json_extract(data, '$.planned'), 0) = 0 ORDER BY date DESC, ord DESC",
         )?;
         let mut out: Vec<String> = Vec::new();
         for id in st.query_map([], |r| r.get::<_, String>(0))? {

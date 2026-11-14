@@ -448,7 +448,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                     }
                 }
                 Track(
-                    state, ex, form, fields, load, values != null && !saving, selected != null, showComment, { showComment = true },
+                    state, ex, form, fields, load, values != null && !saving && superset != null, selected != null, showComment, { showComment = true },
                     ::save, ::clearOrDelete,
                     onWorking = { w ->
                         // Back to working sets after warm-ups: the form takes the set's target again.
