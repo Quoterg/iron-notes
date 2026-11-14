@@ -91,8 +91,8 @@ cargo install cargo-ndk --version 4.1.2 --locked
 sdkmanager --sdk_root=$HOME/.bubblewrap/android_sdk "ndk;28.2.13676358"
 
 cargo test --manifest-path core-rs/Cargo.toml   # Rust core, incl. the golden fixtures
-./gradlew :app:assembleDebug         # app/build/outputs/apk/debug/app-<cpu>-debug.apk — install with adb
-./gradlew :app:assembleRelease       # shrunk, debug-signed: for the size budget only
+./gradlew :app:assembleNextDebug     # app/build/outputs/apk/next/debug/app-next-<cpu>-debug.apk — install with adb
+./gradlew :app:assembleRelease       # both flavours, shrunk; debug-signed without keystore.properties (see Release)
 ./scripts/check-size.sh              # per-CPU release APKs ≤ 6 MB, universal ≤ 9 MB
 ./scripts/coldstart.sh io.github.quoterg.ironnotes.next   # phone over USB; median of 10 cold starts
 ```
@@ -118,6 +118,47 @@ the change to `native/core-rs` until `cargo test` passes again (CI runs both).
    a **"Move to the Android app"** button that hands its backup to the native app in one tap. The data
    also stays in Chrome, so nothing is lost if a step is skipped.
 5. The TWA build stays in the repo (`android/`) until the native app has been the release for a while.
+
+## Release (N11 cut-over, the owner signs)
+
+The app has two build flavours (`native/app/build.gradle.kts`):
+
+| Flavour  | Package                            | Name              | Version code | Use                         |
+|----------|------------------------------------|-------------------|--------------|-----------------------------|
+| `next`   | `io.github.quoterg.ironnotes.next` | Iron Notes Next   | 1            | beta, installs beside the TWA |
+| `stable` | `io.github.quoterg.ironnotes`      | Iron Notes        | 100          | the cut-over: updates the TWA (code 2) |
+
+CI builds both with the debug key (only to check the size budget). An update over the TWA needs the
+**same key that signed the TWA**: `android/android.keystore`, alias `ironnotes` (docs/ANDROID.md).
+
+1. Once, create `native/keystore.properties`. It is gitignored, so never commit it.
+   `storeFile` is relative to `native/`.
+   ```properties
+   storeFile=../android/android.keystore
+   storePassword=…
+   keyAlias=ironnotes
+   keyPassword=…
+   ```
+2. Build and check the signer. It must be the TWA's SHA-256 (`66:CB:16:…`, the one in
+   `public/.well-known/assetlinks.json`):
+   ```sh
+   cd native
+   ./gradlew :app:assembleStableRelease        # app/build/outputs/apk/stable/release/
+   $ANDROID_HOME/build-tools/36.1.0/apksigner verify --print-certs \
+     app/build/outputs/apk/stable/release/app-stable-arm64-v8a-release.apk | grep SHA-256
+   ```
+   For Google Play, use `./gradlew :app:bundleStableRelease` (an `.aab` file) instead.
+3. Publish a GitHub release `v2.0.0` with `app-stable-arm64-v8a-release.apk` (most phones),
+   `app-stable-armeabi-v7a-release.apk` (old 32-bit phones) and `app-stable-universal-release.apk`.
+   For the next native release, raise `versionCode` and `versionName` in the `stable` flavour.
+4. On the phone, install the APK over the TWA. Android shows it as an update. Then move the data:
+   open iron-notes.pages.dev in Chrome (the TWA's data is Chrome's), go to Settings →
+   **Move to the Android app**, and choose **Iron Notes**. You can do this before or after the
+   update. The data also stays in Chrome, so nothing is lost if a step is skipped. If the beta data
+   in Iron Notes Next is newer, use Export there and open the file with Iron Notes instead. Then
+   uninstall Iron Notes Next.
+5. Keep a backup of `android/android.keystore` and its passwords. Without that key, no future
+   release can update the app.
 
 ## Milestones
 
