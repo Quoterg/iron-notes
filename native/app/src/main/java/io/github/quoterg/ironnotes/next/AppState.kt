@@ -100,6 +100,9 @@ class AppState(context: Context, val scope: CoroutineScope) {
     /** A backup handed over by the web app's "Move to the Android app" (or opened as a file), awaiting the confirm. */
     var incomingBackup by mutableStateOf<String?>(null)
 
+    /** A term being explained (Explain.kt), shown over everything. */
+    var explaining by mutableStateOf<Topic?>(null)
+
     /**
      * Reads a shared / opened backup file (off the main thread, at most [MAX_BACKUP_BYTES] — any app can send
      * one) and asks before restoring it.

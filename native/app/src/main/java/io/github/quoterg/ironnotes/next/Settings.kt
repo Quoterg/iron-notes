@@ -253,9 +253,13 @@ private fun ModeCard(state: AppState, s: Settings) {
             listOf(TrainingMode.STANDARD to state.t("modeStandard"), TrainingMode.DORIAN to state.t("modeDorian"), TrainingMode.LYLE to state.t("modeLyle")),
             s.mode, { state.putSettings(s.copy(mode = it)) }, hideLabel = true,
         )
+        // Every mode in one plain line, so it can be understood before it is chosen (Q2b); then how to log in the chosen one.
+        for ((m, key) in listOf(TrainingMode.STANDARD to "modeStandard", TrainingMode.DORIAN to "modeDorian", TrainingMode.LYLE to "modeLyle")) {
+            Txt("${state.t(key)}: ${state.t(key + "Line")}", Modifier.padding(top = 4.dp), small = true, muted = m != s.mode, bold = m == s.mode)
+        }
         Txt(
             state.t(when (s.mode) { TrainingMode.DORIAN -> "modeDorianHint"; TrainingMode.LYLE -> "modeLyleHint"; else -> "modeStandardHint" }),
-            Modifier.padding(vertical = 4.dp), muted = true, small = true,
+            Modifier.padding(top = 8.dp, bottom = 4.dp), muted = true, small = true,
         )
         if (s.mode != TrainingMode.STANDARD) {
             Choice(

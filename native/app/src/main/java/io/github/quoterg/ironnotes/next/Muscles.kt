@@ -66,10 +66,13 @@ fun MusclesScreen(state: AppState) {
         SheetBody {
             val d = data
             val goal = d?.goal
-            Txt(
-                if (goal != null) state.t("musclesGoal", "goal" to goal.label) else state.t("musclesNoGoal"),
-                Modifier.padding(bottom = 12.dp), muted = true, small = true,
-            )
+            Row(Modifier.padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Txt(
+                    if (goal != null) state.t("musclesGoal", "goal" to goal.label) else state.t("musclesNoGoal"),
+                    Modifier.weight(1f), muted = true, small = true,
+                )
+                InfoBtn(state, Topic.EFF)
+            }
             if (d == null) {
                 Txt(state.t("loading"), Modifier.fillMaxWidth(), muted = true, align = TextAlign.Center)
                 return@SheetBody

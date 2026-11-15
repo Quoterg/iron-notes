@@ -83,6 +83,8 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
 .axis-title { margin: 8px 0 0; }
+.mode-lines { margin: 8px 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.mode-lines .on { font-weight: 600; }
 .center { text-align: center; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 a { color: var(--accent); }

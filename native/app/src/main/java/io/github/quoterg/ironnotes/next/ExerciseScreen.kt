@@ -705,7 +705,7 @@ private fun SetRow(
             if (!s.comment.isNullOrEmpty()) Txt(s.comment!!, small = true, color = if (selected) p.activeText else p.muted)
         }
         if (effective != null) EffBadge(state, effective)
-        if (record) Trophy(state.t("record"))
+        if (record) Trophy(state.t("record"), Modifier.explains(state, Topic.RECORD).padding(8.dp))
         if (showTick) {
             val on = s.done == true
             Box(

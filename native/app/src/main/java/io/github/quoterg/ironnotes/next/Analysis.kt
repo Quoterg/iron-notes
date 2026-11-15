@@ -168,7 +168,10 @@ fun AnalysisScreen(state: AppState) {
                 }
                 if (s.muscles.isNotEmpty()) {
                     Card {
-                        Heading(state.t("effPerMuscle"))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Heading(state.t("effPerMuscle"), Modifier.weight(1f))
+                            InfoBtn(state, Topic.EFF)
+                        }
                         Txt(state.t("effPerMuscleHint", "weeks" to state.i18n.dnum(s.muscleWeeks, 1)), Modifier.padding(bottom = 4.dp), muted = true, small = true)
                         val top = s.muscles.first().total
                         s.muscles.forEach { m ->
