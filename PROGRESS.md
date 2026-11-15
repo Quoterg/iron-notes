@@ -3,8 +3,8 @@
 ## Next up
 
 - **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 merged (#59). Q2 split:
-  Q1, Q2a, Q2b merged (#59–#61). Q3 PR #62, Q4 PR stacked on it (`milestone/q4-first-run`). Next: **Q5 Automatic
-  backups** on `milestone/q5-backups`, stacked on Q4; then Q6.
+  Q1, Q2a, Q2b merged (#59–#61). Q3 #62, Q4 #63 and Q5 (`milestone/q5-backups`) open, each stacked on the one
+  before. Next: **Q6 The CSV trap** on `milestone/q6-csv`, stacked on Q5.
 - Follow-ups: the web has the mode lines but not the tap-to-explain overlay (review of #61); the keyboard can stay
   up after leaving a screen with a focused text field (seen on the routine day editor, emulator).
 - Review nits left from #59 (not done): Dorian after-failure reps could be an Enter stop before Save.
@@ -33,6 +33,26 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q5 Automatic backups (native)
+
+- Settings → Automatic backup: Choose folder (system folder picker, `OpenDocumentTree`, persisted grant — no
+  permission), then the folder ("Phone storage/…" on the phone's own storage, the provider's name elsewhere), the
+  last backup's date and time, Back up now, Stop. A manual export counts as the last backup too.
+- When: the data only changes while the app is in use, so `MainActivity.onStop` writes a backup if the last one
+  is 30+ minutes old — one file a day (`iron-notes-auto-<date>.json`, rewritten that day), the newest 7 kept
+  (AutoBackup.kt, DocumentsContract only; no WorkManager, no new library). Choice: no background alarm, since
+  nothing changes while the app isn't used.
+- Restore (Settings, and a backup shared/opened from outside) first saves the current data — in the app's storage
+  and, with a folder, as `iron-notes-before-restore-<date>.json`; if that copy can't be saved nothing is restored.
+  Settings then offers "Undo the last restore" (itself a restore, so it can be undone too).
+- `Actions` rows wrap (FlowRow): long Swedish buttons ("Återställ säkerhetskopia", confirm buttons) no longer squeeze.
+- Verified on the emulator (Swedish): folder chosen (this emulator's picker ignores taps on subfolders, so the
+  storage root), backup written at once, label "Telefonens lagring", date shown; a backup opened through the app's
+  VIEW intent → confirm → "Återställt. Din data från innan finns kvar …", the before-restore file in the folder,
+  "Ångra senaste återställningen" → confirm → restored. Not verifiable here: the onStop timing (unit-tested `due`)
+  and a cloud folder (Drive) — worth a check on the owner's phone.
+- Web: unchanged (a browser can't write to a folder on a schedule; it has Export backup).
 
 ## 2026-11-15 — Q4 First run for a friend
 
