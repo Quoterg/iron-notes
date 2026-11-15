@@ -19,7 +19,7 @@ test('training modes: warm-up and reps after failure, RIR, estimated effective r
   // Dorian HIT: a warm-up counts nothing, a working set to failure counts every heavy rep plus the
   // reps after failure.
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await expect(page.getByText('Working sets to failure')).toBeVisible();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
   await page.getByRole('button', { name: 'Start a workout' }).click();
@@ -44,7 +44,7 @@ test('training modes: warm-up and reps after failure, RIR, estimated effective r
   await page.getByRole('button', { name: /Back/ }).click();
 
   // Lyle: 8 reps with 2 in reserve ≈ 3 effective reps.
-  await mode(page, 'Lyle effective reps');
+  await mode(page, 'Volume');
   await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
   await sheet.getByRole('button', { name: '2', exact: true }).click();
   await sheet.getByRole('button', { name: 'Save' }).click();

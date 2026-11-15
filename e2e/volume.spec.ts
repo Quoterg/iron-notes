@@ -9,7 +9,7 @@ test('effective reps per muscle: day chips vs goal, extra work, Muscles screen',
   await page.goto('./');
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
 
   // Bench to failure: 8 + 8 + 6 heavy reps = 22 for chest.

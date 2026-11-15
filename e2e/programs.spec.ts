@@ -10,8 +10,8 @@ test('start Lyle’s upper/lower: mode, cycle, rotation and the training days', 
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Programs', exact: true }).click();
-  await sheet.getByRole('button', { name: 'Start: Lyle’s upper/lower (GBR)' }).click();
-  await expect(page.getByRole('status')).toContainText('“Lyle’s upper/lower (GBR)” started.');
+  await sheet.getByRole('button', { name: 'Start: Upper/lower (GBR)' }).click();
+  await expect(page.getByRole('status')).toContainText('“Upper/lower (GBR)” started.');
 
   // The program and its schedule (Mon, Tue, Thu, Fri).
   await expect(sheet.getByLabel('Program')).toHaveValue(/.+/);
@@ -22,14 +22,14 @@ test('start Lyle’s upper/lower: mode, cycle, rotation and the training days', 
   await page.getByRole('button', { name: /Back/ }).click();
 
   // Lyle mode with a cycle running.
-  await expect(page.getByRole('button', { name: 'Lyle effective reps', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Volume', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.cycle').first()).toContainText('Week 1 of 6 (run-up)');
 
   // An empty day offers the first workout; logging it moves the rotation on.
   await page.getByRole('button', { name: 'Log', exact: true }).click();
-  await page.getByRole('button', { name: 'Next: Lower (Lyle’s upper/lower (GBR))' }).click();
+  await page.getByRole('button', { name: 'Next: Lower (Upper/lower (GBR))' }).click();
   await expect(page.locator('.ex-card')).toHaveCount(5);
   await expect(page.locator('.ex-card').first()).toContainText('Barbell Squat');
   await page.getByRole('button', { name: 'Next day' }).click();
-  await expect(page.getByRole('button', { name: 'Next: Upper (Lyle’s upper/lower (GBR))' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next: Upper (Upper/lower (GBR))' })).toBeVisible();
 });

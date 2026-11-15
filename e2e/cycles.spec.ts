@@ -20,7 +20,7 @@ async function settingsTab(page: Page) {
 test('Dorian lighter week: ~10 % lighter, short of failure, and progression skips it afterwards', async ({ page }) => {
   await page.goto('./');
   await settingsTab(page);
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
 
   // A normal session yesterday: 100 kg × 10 to failure.

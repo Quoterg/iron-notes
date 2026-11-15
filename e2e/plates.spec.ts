@@ -9,7 +9,7 @@ test('targets round to the bar and plates: a weight increase rounds up, plates p
   await page.goto('./');
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByText('Round targets and warm-ups to my bar and plates').click();
 
   // A home gym without the small plates: 25, 20, 15, 10, 5 kg.

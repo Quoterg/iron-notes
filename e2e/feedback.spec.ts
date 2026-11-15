@@ -9,7 +9,7 @@ const sheet = (page: Page) => page.locator('div:not([hidden]) > .sheet');
 
 async function dorian(page: Page) {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
 }
 
