@@ -2,7 +2,7 @@
 // opens exercises and categories for editing.
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { recentExerciseIds } from '../lib/db';
-import { allLabels, catName, exName, gymEnglish, type Key, lang, t } from '../lib/i18n';
+import { allLabels, catName, exName, gymEnglish, type Key, lang, t, tn } from '../lib/i18n';
 import type { Exercise, Routine, RoutineDay } from '../lib/model';
 import { fold, searchIndex, searchIndexed } from '../lib/muscles';
 import { open, replaceTop } from '../nav';
@@ -174,7 +174,7 @@ function WorkoutList({ list, onPick }: { list: { r: Routine; d: RoutineDay }[]; 
                 <span class="muted small"> · {r.name}</span>
               </span>
               <span class="count">
-                {d.items.length} {t('exercises').toLowerCase()}
+                {tn('oneExercise', 'nExercises', d.items.length)}
               </span>
             </button>
           </li>

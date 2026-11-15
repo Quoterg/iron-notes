@@ -74,7 +74,7 @@ fun DayTools(state: AppState, day: DayData, groups: List<Pair<Exercise, List<Wor
     }
     if (confirmDelete) {
         Card {
-            Txt(state.t("deleteWorkoutQ", "n" to day.sets.size))
+            Txt(state.t("deleteWorkoutQ", "sets" to state.tn("oneSet", "nSets", day.sets.size)))
             Actions {
                 Btn(state.t("deleteWorkout"), {
                     confirmDelete = false

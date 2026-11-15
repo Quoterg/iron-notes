@@ -1,10 +1,10 @@
 // Shared app state as Preact signals. Screens read these; writes go through the functions here so the
 // day view, records and the open exercise stay in step.
 import { computed, effect, signal } from '@preact/signals';
-import { byOrder, isoDate, recordIds } from './lib/calc';
+import { byOrder, isoDate, recordIds, withoutFirst } from './lib/calc';
 import * as db from './lib/db';
 import { applyLang, byShownName, gymEnglish, lang } from './lib/i18n';
-import { DEFAULT_SETTINGS, type Category, type Exercise, type Routine, type Settings, type WorkoutSet } from './lib/model';
+import { DEFAULT_SETTINGS, type Category, type Exercise, type ExerciseType, type Routine, type Settings, type WorkoutSet } from './lib/model';
 
 export type View = 'log' | 'calendar' | 'routines' | 'body' | 'settings';
 export const view = signal<View>('log');
@@ -181,9 +181,9 @@ export async function loadRecords(ids: string[]): Promise<void> {
   const found = await Promise.all(
     todo.map(async (id) => {
       const stored = await db.getRecords(id);
-      if (stored) return [id, new Set(stored.ids)] as const;
-      const r = recordIds(await loadedSetsOf(id), exById.value.get(id)!.type, true);
-      void db.putRecordsIfAbsent({ exerciseId: id, ids: [...r] }); // never over a fresher refresh
+      if (stored?.v === db.RECORDS_V) return [id, new Set(stored.ids)] as const;
+      const r = shownRecords(await loadedSetsOf(id), exById.value.get(id)!.type);
+      void db.putRecordsIfAbsent({ exerciseId: id, ids: [...r], v: db.RECORDS_V }); // never over a fresher refresh
       return [id, r] as const;
     }),
   );
@@ -192,12 +192,15 @@ export async function loadRecords(ids: string[]): Promise<void> {
   records.value = m;
 }
 
+/** The record ids shown as trophies: `recordIds` without the first-ever set (calc.ts `withoutFirst`). */
+const shownRecords = (sets: readonly WorkoutSet[], type: ExerciseType): Set<string> => withoutFirst(recordIds(sets, type, true), sets);
+
 /** Recomputes an exercise's records from its (cached) history and stores them: after any write. */
 async function refreshRecords(exerciseId: string): Promise<void> {
   const ex = exById.value.get(exerciseId);
   if (!ex) return;
-  const r = recordIds(await loadedSetsOf(exerciseId), ex.type, true);
-  await db.putRecords({ exerciseId, ids: [...r] });
+  const r = shownRecords(await loadedSetsOf(exerciseId), ex.type);
+  await db.putRecords({ exerciseId, ids: [...r], v: db.RECORDS_V });
   records.value = new Map(records.value).set(exerciseId, r);
 }
 

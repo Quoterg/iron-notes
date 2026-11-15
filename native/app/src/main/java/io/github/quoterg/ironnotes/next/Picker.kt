@@ -174,7 +174,7 @@ fun PickerScreen(state: AppState, date: String, manage: Boolean = false) {
                         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Txt(buildString { append(item.d.name); append(" · "); append(item.r.name) }, Modifier.weight(1f))
-                        Txt("${item.d.items.size} ${state.t("exercises").lowercase()}", muted = true, small = true)
+                        Txt(state.tn("oneExercise", "nExercises", item.d.items.size), muted = true, small = true)
                     }
                     is Item.Ex -> Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 16.dp),

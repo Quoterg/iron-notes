@@ -193,7 +193,7 @@ fun AnalysisScreen(state: AppState) {
                             Column(Modifier.weight(1f)) {
                                 Txt(state.i18n.shown("exercises", ex.name), bold = true)
                                 val orm = if (last != null) " · ${state.t("est1rm")} ${state.i18n.dnum(wToUser(last, st.unit), 1)} ${unitLabel(st.unit)}" else ""
-                                Txt("${e.workouts} × · ${e.sets} ${state.t("sets")}$orm", muted = true, small = true)
+                                Txt("${e.workouts} × · ${state.tn("oneSet", "nSets", e.sets.toInt())}$orm", muted = true, small = true)
                                 if (change != null) {
                                     val up = change > 0
                                     Txt((if (up) "+" else "−") + state.i18n.dnum(Math.abs(change), 1) + " %", small = true, bold = true, color = if (up) LocalPalette.current.accent else LocalPalette.current.over)

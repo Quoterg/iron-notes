@@ -82,6 +82,7 @@ h3 { font-size: 1.05rem; margin-bottom: 12px; }
 .num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .small { font-size: 0.85rem; }
+.axis-title { margin: 8px 0 0; }
 .center { text-align: center; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 a { color: var(--accent); }

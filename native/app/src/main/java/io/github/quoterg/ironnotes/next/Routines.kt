@@ -96,7 +96,7 @@ fun RoutinesTab(state: AppState) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Txt(r.name, Modifier.weight(1f), bold = true)
-                        Txt("${r.days.size} ${state.t("days")}", muted = true, small = true)
+                        Txt(state.tn("oneDay", "nDays", r.days.size), muted = true, small = true)
                     }
                 }
             }

@@ -31,6 +31,16 @@ pub fn record_ids_loaded(sets: &[LoadedSet], kind: ExerciseType, sorted: bool) -
     record_ids_inner(v, kind, sorted)
 }
 
+/// Record ids as shown (trophies, record counts): without the exercise's first-ever set — the first that
+/// isn't planned or a warm-up — since it beat nothing (Q2a). `chrono`: the whole history in `by_order` order.
+/// state.ts `shownRecords` does the same on the web.
+pub fn without_first(ids: Vec<String>, chrono: &[WorkoutSet]) -> Vec<String> {
+    match chrono.iter().find(|s| !s.is_planned() && !s.is_warmup()) {
+        Some(first) => ids.into_iter().filter(|id| *id != first.id).collect(),
+        None => ids,
+    }
+}
+
 fn record_ids_inner(mut chrono: Vec<(&WorkoutSet, bool)>, kind: ExerciseType, sorted: bool) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut add = |id: &str| {

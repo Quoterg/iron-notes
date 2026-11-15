@@ -28,6 +28,9 @@ class I18n internal constructor(
         return s
     }
 
+    /** A count with its noun (i18n.ts `tn`): `one` for exactly 1, else `many`: "1 set", "3 sets". */
+    fun tn(one: String, many: String, n: Int): String = t(if (n == 1) one else many, "n" to n)
+
     /** A stored name as shown: the Swedish starter name in Swedish (table: exercises, categories, metrics). */
     fun shown(table: String, name: String): String =
         if (lang == "sv" && !(gymEnglish && table == "exercises")) svNames[table]?.get(name) ?: name else name

@@ -254,7 +254,8 @@ mod tests {
         assert_eq!((s.sets, s.exercises), (5, 1));
         assert_eq!(s.duration, Some(44.0 * 60.0));
         assert_eq!(s.volume, 5.0 * 80.0 * 6.0);
-        assert!(s.effective > 0.0 && s.records >= 1);
+        // Five equal sets on the first-ever day: the first holds the record but beat nothing, the rest don't beat it.
+        assert!(s.effective > 0.0 && s.records == 0);
         assert!(s.goals_met.iter().any(|g| g.muscle == MuscleId::Chest));
         // In a zone where those times are on another date, nothing counts as logged that day.
         assert_eq!(core.workout_summary("2026-11-12".into(), 60 + 24 * 60).unwrap().duration, None);

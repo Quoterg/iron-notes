@@ -4,7 +4,7 @@ import { durationOf, fmtDuration } from '../lib/summary';
 import { loadOf, volumeWeight } from '../lib/load';
 import { useMemo, useState } from 'preact/hooks';
 import { dayTotals } from '../lib/calc';
-import { exName, t } from '../lib/i18n';
+import { exName, t, tn } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { setText, weight } from '../lib/units';
 import { open } from '../nav';
@@ -76,7 +76,7 @@ export function Log() {
       ) : (
         <>
           <p class="summary muted small num">
-            {groups.size} {t('exercises').toLowerCase()} · {totals.sets} {t('sets')}
+            {tn('oneExercise', 'nExercises', groups.size)} · {tn('oneSet', 'nSets', totals.sets)}
             {totals.volume > 0 && ` · ${weight(totals.volume, s)} ${t('volume')}`}
             {duration != null && ` · ${fmtDuration(duration)}`}
           </p>

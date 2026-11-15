@@ -87,7 +87,7 @@ fun SummaryScreen(state: AppState, date: String) {
     /** "Bench press — 3 sets · 100 kg × 8" per exercise. */
     val lines = groups.map { (ex, ss) ->
         val best = ss.filter { it.weight != null }.sortedWith(compareByDescending<WorkoutSet> { it.weight }.thenByDescending { it.reps ?: 0.0 }).firstOrNull()
-        "${i.shown("exercises", ex.name)} — ${ss.size} ${state.t("sets")}" +
+        "${i.shown("exercises", ex.name)} — ${state.tn("oneSet", "nSets", ss.size)}" +
             if (best != null && best.weight!! > 0) " · ${i.weight(best.weight!!, st)} × ${best.reps?.let { num(it) } ?: "–"}" else ""
     }
 

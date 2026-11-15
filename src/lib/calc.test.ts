@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, dayTotals, fillEmpty, fmtTime, isComplete, oneRM, previousWorkout, recordIds } from './calc';
+import { addDays, dayTotals, fillEmpty, fmtTime, isComplete, oneRM, previousWorkout, recordIds, withoutFirst } from './calc';
 import type { WorkoutSet } from './model';
 
 let n = 0;
@@ -116,5 +116,19 @@ describe('records ignore warm-ups', () => {
     expect(ids.has('w')).toBe(false);
     expect(ids.has('a')).toBe(true);
     expect(recordIds([{ id: 'r', date: '2026-10-08', exerciseId: 'e', order: 1, reps: 30, warmup: true }], 'reps').size).toBe(0);
+  });
+});
+
+describe('withoutFirst (trophies as shown)', () => {
+  it('drops the first-ever set, which beat nothing, and keeps later records', () => {
+    const warm = set('2026-01-01', 40, 10, { warmup: true });
+    const a = set('2026-01-01', 60, 8);
+    const b = set('2026-01-08', 62.5, 8);
+    expect([...withoutFirst(recordIds([warm, a], 'weight,reps'), [warm, a])]).toEqual([]);
+    expect([...withoutFirst(recordIds([warm, a, b], 'weight,reps'), [warm, a, b])]).toEqual([b.id]);
+  });
+  it('a planned-only history changes nothing', () => {
+    const p = set('2026-01-01', 60, 8, { planned: true });
+    expect([...withoutFirst(new Set(['x']), [p])]).toEqual(['x']);
   });
 });

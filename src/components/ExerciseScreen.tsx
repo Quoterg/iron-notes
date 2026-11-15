@@ -524,11 +524,11 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
               }}
             >
               {fields.includes('weight') && (
-                <Stepper id="f-weight" label={`${t(WEIGHT_LABEL[load])} (${st.unit})`} value={form.weight} onChange={set('weight')} step={inc} />
+                <Stepper id="f-weight" label={`${t(WEIGHT_LABEL[load])} (${st.unit})`} value={form.weight} onChange={set('weight')} step={inc} placeholder={st.unit} />
               )}
-              {fields.includes('reps') && <Stepper id="f-reps" label={t('reps')} value={form.reps} onChange={set('reps')} step={1} integer />}
+              {fields.includes('reps') && <Stepper id="f-reps" label={t('reps')} value={form.reps} onChange={set('reps')} step={1} integer placeholder={t('reps').toLowerCase()} />}
               {fields.includes('distance') && (
-                <Stepper id="f-distance" label={`${t('distance')} (${st.dist})`} value={form.distance} onChange={set('distance')} step={distStep} />
+                <Stepper id="f-distance" label={`${t('distance')} (${st.dist})`} value={form.distance} onChange={set('distance')} step={distStep} placeholder={st.dist} />
               )}
               {fields.includes('time') && <TimeField form={form} setForm={setForm} />}
               {hasReps && st.mode === 'dorian' && (
@@ -543,7 +543,7 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
                       </button>
                     ))}
                   </div>
-                  {!form.warmup && <Stepper id="f-after" label={t('afterFailure')} value={form.after} onChange={set('after')} step={1} integer />}
+                  {!form.warmup && <Stepper id="f-after" label={t('afterFailure')} value={form.after} onChange={set('after')} step={1} integer placeholder="0" />}
                 </>
               )}
               {hasReps && st.mode === 'lyle' && (
@@ -691,7 +691,7 @@ function daySetsFor(d: string) {
   return d === shownDate.value ? daySets.value : [];
 }
 
-function Stepper(p: { id: string; label: string; value: string; onChange: (v: string) => void; step: number; integer?: boolean }) {
+function Stepper(p: { id: string; label: string; value: string; onChange: (v: string) => void; step: number; integer?: boolean; placeholder?: string }) {
   const bump = (dir: number) => {
     const n = parse(p.value) ?? 0;
     const next = Math.max(0, n + dir * p.step);
@@ -704,7 +704,7 @@ function Stepper(p: { id: string; label: string; value: string; onChange: (v: st
         <button type="button" class="btn icon" aria-label={`${p.label} −${num(p.step, 3)}`} onClick={() => bump(-1)}>
           −
         </button>
-        <input id={p.id} type="text" inputMode={p.integer ? 'numeric' : 'decimal'} autoComplete="off" value={p.value} onInput={(e) => p.onChange(e.currentTarget.value)} />
+        <input id={p.id} type="text" inputMode={p.integer ? 'numeric' : 'decimal'} autoComplete="off" placeholder={p.placeholder} value={p.value} onInput={(e) => p.onChange(e.currentTarget.value)} />
         <button type="button" class="btn icon" aria-label={`${p.label} +${num(p.step, 3)}`} onClick={() => bump(1)}>
           +
         </button>

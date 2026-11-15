@@ -105,7 +105,7 @@ fun DayLog(state: AppState) {
         val duration = remember(day) { durationOfSets(day.sets, tzOffsetMin(day.date)) }
         val volume = if (day.volume > 0) " · ${state.i18n.weight(day.volume, s)} ${state.t("volume")}" else ""
         Txt(
-            "${entries.size} ${state.t("exercises").lowercase()} · ${day.setCount} ${state.t("sets")}$volume" +
+            "${state.tn("oneExercise", "nExercises", entries.size)} · ${state.tn("oneSet", "nSets", day.setCount.toInt())}$volume" +
                 (duration?.let { " · ${fmtDuration(it)}" } ?: ""),
             Modifier.padding(bottom = 8.dp),
             muted = true,

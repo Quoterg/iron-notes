@@ -38,7 +38,7 @@ fun SaveWorkoutScreen(state: AppState, date: String) {
 
     Sheet(state.t("saveAsWorkout"), { state.back() }, state.t("back")) {
         SheetBody {
-            Txt(if (count > 0) state.t("saveWorkoutHint", "n" to count) else state.t("nothingToSave"), muted = true, small = true)
+            Txt(if (count > 0) state.t("saveWorkoutHint", "exercises" to state.tn("oneExercise", "nExercises", count)) else state.t("nothingToSave"), muted = true, small = true)
             Txt(state.t("workoutName"), Modifier.padding(top = 12.dp, bottom = 4.dp), muted = true, small = true)
             Field(name, { name = it }, state.t("workoutName"), Modifier.fillMaxWidth())
             Txt(state.t("folder"), Modifier.padding(top = 12.dp, bottom = 4.dp), muted = true, small = true)

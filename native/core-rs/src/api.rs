@@ -1213,14 +1213,17 @@ fn records_of(s: &Store, ex: &Exercise, sets: Option<&[WorkoutSet]>, bw: &mut Op
         }
     };
     let t = load::load_of(Some(ex));
-    if t == crate::model::LoadType::Total {
-        return Ok(records::record_ids(sets, ex.kind, true));
-    }
-    if bw.is_none() {
-        *bw = Some(body_weights(s)?);
-    }
-    let bw = bw.as_ref().unwrap();
-    Ok(records::record_ids_loaded(&load::with_real_load(sets, t, |d| bw.at(d)), ex.kind, true))
+    let ids = if t == crate::model::LoadType::Total {
+        records::record_ids(sets, ex.kind, true)
+    } else {
+        if bw.is_none() {
+            *bw = Some(body_weights(s)?);
+        }
+        let bw = bw.as_ref().unwrap();
+        records::record_ids_loaded(&load::with_real_load(sets, t, |d| bw.at(d)), ex.kind, true)
+    };
+    // No trophy for the first-ever set: it beat nothing.
+    Ok(records::without_first(ids, sets))
 }
 
 /// state.ts `loadedSetsOf`: sets as calculations see them — the real load (body weight ± for body-weight
@@ -1313,7 +1316,8 @@ mod tests {
         let log = core.exercise_log(bench.clone(), "2026-11-12".into()).unwrap();
         assert_eq!(log.sets.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["b", "c"]);
         assert_eq!(log.previous.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), ["a"]);
-        assert!(log.records.contains(&"a".to_string()) && !log.records.contains(&"b".to_string()));
+        // a still holds the 5-rep record but is bench's first-ever set: it beat nothing, so no trophy.
+        assert_eq!(log.records, ["c"]);
         let (a, b) = (next_order(), next_order());
         assert!(b > a);
     }
@@ -1324,13 +1328,16 @@ mod tests {
         let ex = core.library().unwrap().exercises.into_iter().find(|e| e.name == "Flat Barbell Bench Press").unwrap().id;
         let set = |id: &str, w: f64| WorkoutSet { id: id.into(), date: "2026-11-12".into(), exercise_id: ex.clone(), order: next_order(), weight: Some(w), reps: Some(5.0), ..Default::default() };
         core.put_set(set("a", 100.0)).unwrap();
-        assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["a"]);
+        let none: [&str; 0] = [];
+        assert_eq!(core.day("2026-11-12".into()).unwrap().records, none); // the first-ever set beats nothing
         core.put_set(set("b", 110.0)).unwrap(); // beats a
         assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["b"]);
-        core.delete_set("b".into()).unwrap(); // a is the record again
-        assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["a"]);
-        core.put_set(set("a", 90.0)).unwrap(); // edited in place: still the only set, still a record
-        assert_eq!(core.exercise_log(ex.clone(), "2026-11-12".into()).unwrap().records, ["a"]);
+        core.delete_set("b".into()).unwrap(); // a holds the record again, but is the first set: no trophy
+        assert_eq!(core.day("2026-11-12".into()).unwrap().records, none);
+        core.put_set(set("c", 120.0)).unwrap();
+        assert_eq!(core.day("2026-11-12".into()).unwrap().records, ["c"]);
+        core.put_set(set("c", 90.0)).unwrap(); // edited in place: no longer beats a
+        assert_eq!(core.exercise_log(ex.clone(), "2026-11-12".into()).unwrap().records, none);
     }
 
     #[test]
@@ -1540,7 +1547,8 @@ mod tests {
         assert_eq!(gone.iter().map(|s| s.id.as_str()).collect::<Vec<_>>(), [a.id.as_str(), b.id.as_str()]);
         let day = core.day("2026-11-12".into()).unwrap();
         assert!(day.sets.is_empty() && day.comment.is_none());
-        assert_eq!(core.exercise_log(bench.id.clone(), "2026-11-13".into()).unwrap().records, [keep.id.clone()]); // cache followed
+        let none: [String; 0] = [];
+        assert_eq!(core.exercise_log(bench.id.clone(), "2026-11-13".into()).unwrap().records, none); // cache followed: keep is now the first set
         assert_eq!(core.day("2026-11-13".into()).unwrap().sets.len(), 1);
 
         core.put_sets(gone).unwrap(); // undo

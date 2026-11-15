@@ -25,6 +25,10 @@ const core = {
   workoutComment: 'Workout comment',
   editComment: 'Edit comment',
   sets: 'sets',
+  oneSet: '1 set',
+  nSets: '{n} sets',
+  oneExercise: '1 exercise',
+  nExercises: '{n} exercises',
   volume: 'volume',
   record: 'Personal record',
   exercises: 'Exercises',
@@ -137,6 +141,9 @@ export const decimalComma = (): boolean => lang.value === 'sv';
 
 /** The pack's exercise-type names (strings-later falls back to English). */
 export const packTypes = (): Record<string, string> | undefined => (lang.value === 'sv' ? sv?.types : undefined);
+
+/** A count with its noun: `one` for exactly 1, else `many` (both with `{n}`): "1 set", "3 sets". */
+export const tn = (one: Key, many: Key, n: number): string => t(n === 1 ? one : many, { n });
 
 export function t(key: Key, vars?: Record<string, string | number>): string {
   const pack = lang.value === 'sv' ? sv?.strings : undefined;

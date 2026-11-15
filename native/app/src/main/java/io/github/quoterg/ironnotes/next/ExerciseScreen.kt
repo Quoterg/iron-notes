@@ -585,14 +585,17 @@ private fun Track(
             val unit = unitLabel(st.unit)
             Stepper(
                 "${state.t(weightLabelKey(load))} ($unit)", form.weight, { form.weight = it }, ex.increment ?: defaultIncrement(st.unit),
-                focus = focus.getValue(Slot.WEIGHT), enter = enter(Slot.WEIGHT),
+                focus = focus.getValue(Slot.WEIGHT), enter = enter(Slot.WEIGHT), placeholder = unit,
             )
         }
-        if (Field.REPS in fields) Stepper(state.t("reps"), form.reps, { form.reps = it }, 1.0, integer = true, focus = focus.getValue(Slot.REPS), enter = enter(Slot.REPS))
+        if (Field.REPS in fields) Stepper(
+            state.t("reps"), form.reps, { form.reps = it }, 1.0, integer = true, focus = focus.getValue(Slot.REPS), enter = enter(Slot.REPS),
+            placeholder = state.t("reps").lowercase(),
+        )
         if (Field.DISTANCE in fields) {
             Stepper(
                 "${state.t("distance")} (${distLabel(st.dist)})", form.distance, { form.distance = it }, if (st.dist == DistUnit.M) 100.0 else 0.1,
-                focus = focus.getValue(Slot.DISTANCE), enter = enter(Slot.DISTANCE),
+                focus = focus.getValue(Slot.DISTANCE), enter = enter(Slot.DISTANCE), placeholder = distLabel(st.dist),
             )
         }
         if (Field.TIME in fields) TimeField(state, form, focus.getValue(Slot.MIN), focus.getValue(Slot.SEC), enter(Slot.MIN), enter(Slot.SEC))
@@ -602,7 +605,7 @@ private fun Track(
                     Chip(state.t(if (w) "warmup" else "working"), form.warmup == w, { onWorking(w) }, Modifier.semantics { this.selected = form.warmup == w })
                 }
             }
-            if (!form.warmup) Stepper(state.t("afterFailure"), form.after, { form.after = it }, 1.0, integer = true, enter = submit)
+            if (!form.warmup) Stepper(state.t("afterFailure"), form.after, { form.after = it }, 1.0, integer = true, enter = submit, placeholder = "0")
         }
         if (hasReps && st.mode == TrainingMode.LYLE) RirChips(state, form)
         if (showComment) {
@@ -629,7 +632,7 @@ private fun Track(
 @Composable
 private fun Stepper(
     label: String, value: String, onChange: (String) -> Unit, step: Double, integer: Boolean = false,
-    focus: FocusRequester? = null, enter: Enter? = null,
+    focus: FocusRequester? = null, enter: Enter? = null, placeholder: String? = null,
 ) {
     fun bump(dir: Int) {
         val next = maxOf(0.0, (parse(value) ?: 0.0) + dir * step)
@@ -642,6 +645,7 @@ private fun Stepper(
             Field(
                 value, onChange, label, Modifier.weight(1f).then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
                 number = true, imeAction = enter?.action ?: ImeAction.Default, onImeAction = enter?.run, selectOnFocus = true,
+                placeholder = placeholder,
             )
             IconBtn("+", "$label +${num(step, 3)}", { bump(1) })
         }
@@ -664,12 +668,12 @@ private fun TimeField(state: AppState, form: Form, minFocus: FocusRequester, sec
             IconBtn("−", "$time −15 s", { bump(-15) })
             Field(
                 form.min, { form.min = it }, "$time (${state.t("min")})", Modifier.weight(1f).focusRequester(minFocus),
-                number = true, imeAction = minEnter.action, onImeAction = minEnter.run, selectOnFocus = true,
+                number = true, imeAction = minEnter.action, onImeAction = minEnter.run, selectOnFocus = true, placeholder = state.t("min"),
             )
             Txt(":", bold = true, size = 22.sp)
             Field(
                 form.sec, { form.sec = it }, "$time (${state.t("sec")})", Modifier.weight(1f).focusRequester(secFocus),
-                number = true, imeAction = secEnter.action, onImeAction = secEnter.run, selectOnFocus = true,
+                number = true, imeAction = secEnter.action, onImeAction = secEnter.run, selectOnFocus = true, placeholder = state.t("sec"),
             )
             IconBtn("+", "$time +15 s", { bump(15) })
         }
