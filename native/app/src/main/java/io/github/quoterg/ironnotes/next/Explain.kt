@@ -54,12 +54,13 @@ fun ExplainOverlay(state: AppState) {
     val topic = state.explaining ?: return
     val p = LocalPalette.current
     Box(
-        Modifier.fillMaxSize().background(p.bg.copy(alpha = 0.8f))
+        Modifier.fillMaxSize().background(p.bg.copy(alpha = 0.92f))
             .pointerInput(Unit) { detectTapGestures { state.explaining = null } }
             .navigationBarsPadding().padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Card(Modifier.widthIn(max = 480.dp)) {
+        // Opaque under the glass card, so the screen behind doesn't show through the text.
+        Card(Modifier.widthIn(max = 480.dp).background(p.bg, androidx.compose.foundation.shape.RoundedCornerShape(18.dp))) {
             Heading(state.t(topic.title), Modifier.padding(bottom = 8.dp))
             Txt(state.t(topic.text))
             Actions { Btn(state.t("ok"), { state.explaining = null }, kind = BtnKind.PRIMARY) }

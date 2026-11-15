@@ -251,7 +251,7 @@ internal fun EffBadge(state: AppState, e: io.github.quoterg.ironnotes.core.SetEf
     // Tap: what effective reps are (Q2b).
     Txt(
         state.t("effShort", "n" to (if (e.est) "≈" else "") + state.i18n.dnum(e.n)),
-        Modifier.explains(state, Topic.EFF).padding(horizontal = 4.dp, vertical = 12.dp),
+        Modifier.explains(state, Topic.EFF).padding(horizontal = 4.dp, vertical = 4.dp),
         size = 12.sp, color = if (e.n > 0) p.accent else p.muted,
     )
 }
