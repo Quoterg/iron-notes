@@ -160,7 +160,7 @@ Native first (it is the app in use); the website gets a change only where it has
 is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names stay English** in every language
 (owner's choice) — do not translate the library.
 
-- [ ] **Q1 Gym-floor fixes** — (a) The rest-timer pill gets its own space: it must never cover the set just
+- [x] **Q1 Gym-floor fixes** — (a) The rest-timer pill gets its own space: it must never cover the set just
   logged on the exercise screen or the buttons on the day screen (content scrolls clear of it). (b) Keyboard:
   Enter on weight moves to reps, Enter on reps saves; Save stays reachable with the keyboard open. (c) Deleting
   a set shows "Undo" (as deleting a workout does); a one-time hint that tapping a set edits it.

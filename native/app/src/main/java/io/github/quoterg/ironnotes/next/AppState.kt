@@ -220,6 +220,7 @@ class AppState(context: Context, val scope: CoroutineScope) {
 
     fun seen(hint: String) = hint in seenHints
 
+    @android.annotation.SuppressLint("UseKtx") // no core-ktx dependency
     fun markSeen(hint: String) {
         if (hint in seenHints) return
         seenHints.add(hint)
