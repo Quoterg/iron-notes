@@ -23,6 +23,8 @@ pub struct ImportReport {
     /// The first and last date among the new sets.
     pub first: Option<String>,
     pub last: Option<String>,
+    /// The file is Iron Notes' own CSV export: say that Restore backup brings back much more (Q6).
+    pub iron_notes: bool,
 }
 
 /// What an Iron Log backup holds and, after an import, what it added.
@@ -75,6 +77,7 @@ fn report(p: &csv::ImportPlan) -> ImportReport {
         skipped: p.skipped,
         first: p.first.clone(),
         last: p.last.clone(),
+        iron_notes: p.iron_notes == Some(true),
     }
 }
 
@@ -148,6 +151,7 @@ impl IronCore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::WorkoutSet;
 
     const CSV: &str = "\u{FEFF}Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment\r\n\
 2026-11-02,Zercher Squat,Legs,100,kgs,5,,,,\"felt, heavy\"\r\n\
@@ -155,6 +159,27 @@ mod tests {
 2026-11-03,Running,Cardio,,,,5,km,0:25:00,\r\n\
 2026-11-03,=cmd,Odd,,,10,,,,\r\n\
 not a date,Squat,Legs,1,kgs,1,,,,\r\n";
+
+    #[test]
+    fn own_csv_round_trip_keeps_the_effort_and_says_what_it_is() {
+        // The trap the owner hit (Q6): the app's own CSV into a fresh app. Warm-ups stay warm-ups, RIR and
+        // reps after failure come back, and the report says it is our export (the app then points to Restore).
+        let a = IronCore::in_memory().unwrap();
+        let bench = a.library().unwrap().exercises.into_iter().find(|e| e.name == "Flat Barbell Bench Press").unwrap();
+        let set = |id: &str, w: f64, r: f64| WorkoutSet { id: id.into(), date: "2026-11-10".into(), exercise_id: bench.id.clone(), order: crate::api::next_order(), weight: Some(w), reps: Some(r), ..Default::default() };
+        a.put_sets(vec![
+            WorkoutSet { warmup: Some(true), ..set("w", 40.0, 10.0) },
+            WorkoutSet { rir: Some(0.0), after: Some(2.0), ..set("x", 80.0, 8.0) },
+            WorkoutSet { rir: Some(3.0), ..set("y", 75.0, 10.0) },
+        ]).unwrap();
+        let csv = a.export_csv().unwrap();
+        let b = IronCore::in_memory().unwrap();
+        let r = b.import_fitnotes_csv(csv).unwrap();
+        assert!(r.iron_notes);
+        let back = b.sets_between("2026-11-10".into(), "2026-11-10".into()).unwrap();
+        assert_eq!(back.iter().map(|s| (s.warmup, s.rir, s.after)).collect::<Vec<_>>(), [(Some(true), None, None), (None, Some(0.0), Some(2.0)), (None, Some(3.0), None)]);
+        assert!(!b.preview_fitnotes_csv(CSV.into()).unwrap().iron_notes); // a FitNotes file
+    }
 
     #[test]
     fn imports_once_and_skips_what_is_there() {
