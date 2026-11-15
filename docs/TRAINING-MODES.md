@@ -1,5 +1,9 @@
 # Training modes and effective reps — design
 
+**Names in the app** (owner 2026-11-15): the modes are called **HIT** (Dorian HIT below) and **Volume** /
+"Volym" (Lyle effective reps below). This design keeps the source names, crediting Dorian Yates and Lyle
+McDonald; code, stored settings and backups keep `dorian` / `lyle`.
+
 Status: **owner's direction set 2026-10-28**, answers to the first questions folded in the same day;
 details marked *open* are still to confirm. Phase 2 milestones in [ROADMAP.md](ROADMAP.md).
 
