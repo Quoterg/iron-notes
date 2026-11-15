@@ -1,6 +1,6 @@
 // A routine: rename it, add/remove/reorder days, open a day, or log a day into the shown date.
 import { useState } from 'preact/hooks';
-import { dayLabel } from '../app';
+import { logDayLabel } from '../app';
 import { uid } from '../lib/calc';
 import { exName, t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
@@ -59,6 +59,8 @@ export default function RoutineSheet({ id }: { id: string }) {
             <div class="title-row">
               <button class="ex-head day-open" onClick={() => open({ kind: 'routineDay', routineId: r.id, dayId: d.id })}>
                 <h2>{d.name}</h2>
+                {/* Says the card opens: the day's exercises are edited there. */}
+                <span class="open-hint">{t('edit')} ›</span>
               </button>
               {r.days.length > 1 && (
                 <span class="move">
@@ -76,7 +78,7 @@ export default function RoutineSheet({ id }: { id: string }) {
             </p>
             {d.items.length > 0 && (
               <button class="btn primary wide" onClick={() => void log(d.id)}>
-                {t('logTo', { day: dayLabel(date.value) })}
+                {t('logTo', { day: logDayLabel(date.value) })}
               </button>
             )}
           </section>

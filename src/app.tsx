@@ -173,6 +173,15 @@ function DateNav() {
   );
 }
 
+/** The day a routine is logged to, named so a day other than today can't be missed: "today", "tomorrow, Mon 16 Nov", "Thu 19 Nov". */
+export function logDayLabel(d: string): string {
+  const label = dayLabel(d);
+  const today = isoDate(new Date());
+  if (d === today) return label.toLowerCase();
+  const date = parseIso(d).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
+  return d === addDays(today, -1) || d === addDays(today, 1) ? `${label.toLowerCase()}, ${date}` : date;
+}
+
 export function dayLabel(d: string): string {
   const today = isoDate(new Date());
   if (d === today) return t('today');

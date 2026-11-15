@@ -1,7 +1,7 @@
 // One routine day: its exercises with planned sets (count, reps, weight/distance/time for all sets),
 // reorder/remove them, add exercises, rename or delete the day, log it into the shown date.
 import { useState } from 'preact/hooks';
-import { dayLabel } from '../app';
+import { logDayLabel } from '../app';
 import { exName, t } from '../lib/i18n';
 import { fieldsOf, type Exercise, type PlannedSet, type Routine, type RoutineDay, type RoutineItem } from '../lib/model';
 import { planSummary } from '../lib/routines';
@@ -113,7 +113,7 @@ export default function RoutineDaySheet({ routineId, dayId }: { routineId: strin
         </div>
         {day.items.length > 0 && (
           <button class="btn primary wide" onClick={() => void log()}>
-            {t('logTo', { day: dayLabel(date.value) })}
+            {t('logTo', { day: logDayLabel(date.value) })}
           </button>
         )}
       </div>

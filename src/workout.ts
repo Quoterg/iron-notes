@@ -156,6 +156,17 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   await db.putSets(sets);
   if (d !== date.value) date.value = d;
   await afterWrite(sets);
+  // Added to a day that already has sets: the routine's exercises stay together at the first one's place
+  // (the core's log_routine_day does the same).
+  if (sameDay.length) {
+    const { dayOrder, pullTogether } = await import('./lib/groups');
+    const current = dayOrder(daySets.value);
+    const order = pullTogether(current.map((o) => o.exerciseId), new Set(sets.map((s) => s.exerciseId)));
+    if (order.some((id, i) => id !== current[i].exerciseId)) {
+      const groupOf = new Map(current.map((o) => [o.exerciseId, o.group]));
+      await rewriteDay(order, (id) => groupOf.get(id));
+    }
+  }
   // A workout of the program: the next one comes after it.
   const program = settings.value.program;
   if (program && routines.value?.find((r) => r.id === program.routineId)?.days.some((x) => x.id === day.id)) {

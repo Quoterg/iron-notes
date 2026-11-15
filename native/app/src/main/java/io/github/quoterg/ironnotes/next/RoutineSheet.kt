@@ -81,7 +81,9 @@ fun RoutineScreen(state: AppState, id: String?) {
                                 .clickable(role = Role.Button) { state.open(Screen.RoutineDay(r.id, d.id)) },
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Txt(d.name, Modifier.semantics { heading() }, bold = true, size = 17.sp)
+                            Txt(d.name, Modifier.weight(1f).semantics { heading() }, bold = true, size = 17.sp)
+                            // Says the card opens (Q3): the day's exercises are edited there.
+                            Txt("${state.t("edit")} ›", Modifier.padding(horizontal = 8.dp), color = LocalPalette.current.accent)
                         }
                         if (r.days.size > 1) {
                             IconBtn("↑", "${state.t("moveUp")}: ${d.name}", {
@@ -95,7 +97,7 @@ fun RoutineScreen(state: AppState, id: String?) {
                     Txt(if (d.items.isEmpty()) state.t("emptyRoutineDay") else names, muted = true, small = true)
                     if (d.items.isNotEmpty()) {
                         Btn(
-                            state.t("logTo", "day" to state.i18n.dayLabel(state.date)),
+                            state.t("logTo", "day" to state.i18n.logDayLabel(state.date)),
                             { logRoutineDay(state, r.id, d.id) },
                             Modifier.fillMaxWidth().padding(top = 8.dp),
                             kind = BtnKind.PRIMARY,
