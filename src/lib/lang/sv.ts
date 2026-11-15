@@ -238,6 +238,7 @@ const strings: Record<Key, string> = {
   imported: '{n} set importerade.',
   deleteAll: 'Radera all data',
   moveToApp: 'Flytta till Android-appen',
+  iosInstall: 'Installera på iPhone: tryck på Dela och sedan Lägg till på hemskärmen.',
   moveToAppHint: 'Sparar dina data som en säkerhetskopia. Sedan i appen Iron Notes: Inställningar → Återställ säkerhetskopia, och välj filen (i Nedladdningar). Dina data finns kvar här också.',
   moveToAppDownloaded: 'Säkerhetskopian laddades ner. I appen Iron Notes: Inställningar → Återställ säkerhetskopia, och välj filen.',
   moveIncomingQ: 'Återställa den här säkerhetskopian i appen? Den ersätter appens data; datan i webbläsaren lämnas som den är.',
