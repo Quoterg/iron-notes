@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { byOrder, parseIso } from '../lib/calc';
 import { recentWorkoutDates, setsBetween } from '../lib/db';
-import { exName, locale, t } from '../lib/i18n';
+import { exName, locale, t, tn } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { back } from '../nav';
 import { catById, exById, toast } from '../state';
@@ -77,7 +77,7 @@ export default function CopySheet({ date }: { date: string }) {
               >
                 <h2>{label(day.date)}</h2>
                 <span class="muted small">
-                  {day.groups.length} {t('exercises').toLowerCase()}
+                  {tn('oneExercise', 'nExercises', day.groups.length)}
                 </span>
               </button>
               {!isOpen && <p class="muted small copy-names">{day.groups.map(([id]) => exName(exById.value.get(id)!)).join(', ')}</p>}
@@ -99,7 +99,7 @@ export default function CopySheet({ date }: { date: string }) {
                         />
                         <Dot color={catById.value.get(ex.categoryId)?.color} />
                         <span>
-                          {exName(ex)} <span class="muted small">· {sets.length} {t('sets')}</span>
+                          {exName(ex)} <span class="muted small">· {tn('oneSet', 'nSets', sets.length)}</span>
                         </span>
                       </label>
                     );

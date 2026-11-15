@@ -1,7 +1,7 @@
 // The Routines tab: the user's routines; tap one to edit its days or log a day.
 import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { t, tn } from '../lib/i18n';
 import { open } from '../nav';
 import { routines } from '../state';
 import { loadRoutines, saveRoutine } from '../workout';
@@ -35,7 +35,7 @@ export default function Routines() {
               <button class="entry" onClick={() => open({ kind: 'routine', id: r.id })}>
                 <span class="entry-name">{r.name}</span>
                 <span class="count">
-                  {r.days.length} {t('days')}
+                  {tn('oneDay', 'nDays', r.days.length)}
                 </span>
               </button>
             </li>

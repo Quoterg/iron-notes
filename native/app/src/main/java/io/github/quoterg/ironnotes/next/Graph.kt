@@ -187,6 +187,8 @@ fun GraphTab(state: AppState, ex: Exercise) {
             }
         }
         if (points.size >= 2) {
+            // The y-axis's measure and unit ("Estimated 1RM (kg)"), over the axis labels.
+            Txt(title, Modifier.padding(top = 6.dp), muted = true, small = true)
             GraphChart(state, title, points, fmt, timeAxis, active) { active = it }
         } else if (loaded || m == null) {
             Txt(state.t("notEnoughData"), muted = true, align = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))

@@ -228,6 +228,7 @@ class AppState(context: Context, val scope: CoroutineScope) {
     }
 
     fun t(key: String, vararg vars: Pair<String, Any>) = i18n.t(key, *vars)
+    fun tn(one: String, many: String, n: Int) = i18n.tn(one, many, n)
 
     private companion object {
         const val HINTS = "hints"

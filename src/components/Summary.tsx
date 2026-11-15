@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { byOrder, dayTotals, parseIso } from '../lib/calc';
 import { effectiveOf } from '../effort';
 import { setsOn } from '../lib/db';
-import { catName, exName, type Key, locale, t } from '../lib/i18n';
+import { catName, exName, type Key, locale, t, tn } from '../lib/i18n';
 import { loadOf, volumeWeight } from '../lib/load';
 import type { WorkoutSet } from '../lib/model';
 import { workoutText } from '../lib/share';
@@ -103,7 +103,7 @@ export default function Summary({ date }: { date: string }) {
     () =>
       groups.map(({ ex, sets: ss }) => {
       const best = ss.filter((s) => s.weight != null).sort((a, b) => b.weight! - a.weight! || (b.reps ?? 0) - (a.reps ?? 0))[0];
-      return `${exName(ex)} — ${ss.length} ${t('sets')}${best && best.weight! > 0 ? ` · ${weight(best.weight!, st)} × ${best.reps ?? '–'}` : ''}`;
+      return `${exName(ex)} — ${tn('oneSet', 'nSets', ss.length)}${best && best.weight! > 0 ? ` · ${weight(best.weight!, st)} × ${best.reps ?? '–'}` : ''}`;
       }),
     [groups, st.unit],
   );

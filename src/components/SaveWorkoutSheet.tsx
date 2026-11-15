@@ -1,7 +1,7 @@
 // Save the shown day as a reusable workout (sets × reps, no weights) into a folder (a routine).
 import { useEffect, useState } from 'preact/hooks';
 import { uid } from '../lib/calc';
-import { t } from '../lib/i18n';
+import { t, tn } from '../lib/i18n';
 import { workoutFromDay } from '../lib/routines';
 import { back } from '../nav';
 import { daySets, exById, routines, toast } from '../state';
@@ -45,7 +45,7 @@ export default function SaveWorkoutSheet() {
   return (
     <Sheet title={t('saveAsWorkout')}>
       <form class="pad form" onSubmit={save}>
-        <p class="muted small">{exercisesCount ? t('saveWorkoutHint', { n: exercisesCount }) : t('nothingToSave')}</p>
+        <p class="muted small">{exercisesCount ? t('saveWorkoutHint', { exercises: tn('oneExercise', 'nExercises', exercisesCount) }) : t('nothingToSave')}</p>
         <label>
           {t('workoutName')}
           <input type="text" value={name} placeholder={t('workoutNameExample')} onInput={(e) => setName(e.currentTarget.value)} autoFocus />

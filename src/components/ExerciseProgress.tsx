@@ -103,7 +103,15 @@ export function Graph({ ex, all, st }: { ex: Exercise; all: readonly WorkoutSet[
           </button>
         ))}
       </div>
-      {points.length >= 2 ? <LineChart title={title} points={points} fmt={fmt} timeAxis={kind === 'time' || kind === 'pace'} /> : <p class="muted center">{t('notEnoughData')}</p>}
+      {points.length >= 2 ? (
+        <>
+          {/* The y-axis's measure and unit ("Estimated 1RM (kg)"), over the axis labels. */}
+          <p class="muted small axis-title">{title}</p>
+          <LineChart title={title} points={points} fmt={fmt} timeAxis={kind === 'time' || kind === 'pace'} />
+        </>
+      ) : (
+        <p class="muted center">{t('notEnoughData')}</p>
+      )}
     </div>
   );
 }

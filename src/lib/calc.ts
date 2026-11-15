@@ -76,6 +76,17 @@ export function recordIds(sets: readonly WorkoutSet[], type: ExerciseType, sorte
   return out;
 }
 
+/**
+ * Record ids as shown (trophies, record counts): without the exercise's first-ever set — the first that isn't
+ * planned or a warm-up — since it beat nothing. `chrono`: the whole history in byOrder order. The core's
+ * records.rs `without_first` does the same.
+ */
+export function withoutFirst(ids: Set<string>, chrono: readonly WorkoutSet[]): Set<string> {
+  const first = chrono.find((s) => !s.planned && !s.warmup);
+  if (first) ids.delete(first.id);
+  return ids;
+}
+
 /** The latest workout before `date` that has sets of the exercise, with those sets. */
 export function previousWorkout(sets: readonly WorkoutSet[], date: string): WorkoutSet[] {
   let last = '';

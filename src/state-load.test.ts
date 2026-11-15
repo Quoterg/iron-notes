@@ -18,6 +18,8 @@ describe('load types for existing installs', () => {
     );
     await db.markSeeded();
     await db.putSets([
+      // The first-ever set never shows a trophy (it beat nothing): an earlier one keeps `a` comparable.
+      { id: 'z', date: '2026-09-30', exerciseId: 'dips', order: 0, reps: 10 },
       { id: 'a', date: '2026-10-01', exerciseId: 'dips', order: 1, reps: 15 },
       { id: 'b', date: '2026-10-02', exerciseId: 'dips', order: 2, reps: 12 },
     ]);

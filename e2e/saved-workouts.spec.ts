@@ -51,7 +51,7 @@ test('save a day as a workout, then add it to another day from the picker', asyn
 
   // It lives in the Routines tab as a folder with the workout as a day.
   await page.getByRole('button', { name: 'Routines', exact: true }).click();
-  await expect(page.getByRole('button', { name: /My workouts/ })).toContainText('1 days');
+  await expect(page.getByRole('button', { name: /My workouts/ })).toContainText('1 day');
 });
 
 test('an empty day cannot be saved as a workout', async ({ page }) => {

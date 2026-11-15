@@ -2,11 +2,13 @@
 
 ## Next up
 
-- **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 done (PR open,
-  `milestone/q1-gym-flow`). Next: **Q2 Plain words** on `milestone/q2-plain-words`, stacked on Q1 — it also
-  renames the guided modes in the UI only (owner 2026-11-15): "Dorian HIT" → "HIT", "Lyle effective reps" →
-  a plain name ("Volume"/"Volym" unless docs/TRAINING-MODES.md suggests a better word); stored values, backup
-  fields, fixtures and code names (dorian/lyle) stay. Web strings change too → run the web gates.
+- **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 merged (#59). Q2 split:
+  Q2a (small words) PR open on `milestone/q2a-small-words`. Next: **Q2b Explanations and mode names** on
+  `milestone/q2b-explain`, stacked on Q2a — it also renames the guided modes in the UI only (owner 2026-11-15):
+  "Dorian HIT" → "HIT", "Lyle effective reps" → a plain name ("Volume"/"Volym" unless docs/TRAINING-MODES.md
+  suggests a better word); stored values, backup fields, fixtures and code names (dorian/lyle) stay. Web strings
+  change too → run the web gates. Then Q3–Q6.
+- Review nits left from #59 (not done): Dorian after-failure reps could be an Enter stop before Save.
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
@@ -32,6 +34,24 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q2a Small words (both apps)
+
+- Counts say "1 exercise · 1 set" / "1 övning · 1 set": `tn(one, many, n)` in both apps (day summary, share
+  summary, statistics, saved workouts, copy list, routines' days, delete-workout and save-workout texts).
+- No trophy on an exercise's first-ever set (the first that isn't planned or a warm-up): it beat nothing. Done
+  where trophies are shown — core `records_of` (`records::without_first`) and web `shownRecords` — so `recordIds`
+  and the golden fixtures keep FitNotes' rule. The web's stored record cache got a version (`RECORDS_V` = 2):
+  older entries are recomputed once. Record counts in the summary follow (a first-ever workout of equal sets
+  shows no record).
+- Graph: the measure and unit ("Estimated 1RM (kg)") over the y-axis labels, both apps.
+- Placeholders in empty inputs: weight unit, "reps", distance unit, min / sec, "0" for after-failure reps.
+- Found on the way: the app never showed starter categories / body measures in Swedish (`I18n.shown` looked up
+  the exact name; the tables are lower case). Fixed for categories and measures; exercise names stay English
+  (owner's choice), so the app's "gym English" checkbox is hidden (the setting stays stored).
+- Review of #59: the keyboard inset is read through `derivedStateOf` (no App recomposition per animation frame).
+- Verified on the emulator (English Day, Swedish Night): placeholders, "1 exercise · 1 set" / "1 övning · 1 set",
+  no trophy on the first-ever set but on a heavier later one, graph caption "Estimated 1RM (kg)".
 
 ## 2026-11-15 — Q1 Gym-floor fixes (native; web: set Undo)
 

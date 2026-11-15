@@ -7,7 +7,7 @@ import { effectiveOf } from '../effort';
 import { GOALS, periodMuscles } from '../lib/volume';
 import { fmtTime, isoDate, parseIso } from '../lib/calc';
 import { setsBetween } from '../lib/db';
-import { catName, exName, type Key, locale, t } from '../lib/i18n';
+import { catName, exName, type Key, locale, t, tn } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { distance, num, weight, wToUser } from '../lib/units';
 import { open } from '../nav';
@@ -158,7 +158,7 @@ export default function Analysis() {
                         <Dot color={catById.value.get(ex.categoryId)?.color} />
                         <span class="entry-name">{exName(ex)}</span>
                         <span class="muted small num">
-                          {e.workouts} × · {e.sets} {t('sets')}
+                          {e.workouts} × · {tn('oneSet', 'nSets', e.sets)}
                           {e.lastOrm != null && ` · ${t('est1rm')} ${num(wToUser(e.lastOrm, st.unit), 1)} ${st.unit}`}
                           {change != null && <b class={change > 0 ? 'delta up' : 'delta down'}> {change > 0 ? '+' : '−'}{num(Math.abs(change), 1)} %</b>}
                         </span>

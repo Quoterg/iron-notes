@@ -51,7 +51,11 @@ function stamp(tx: MetaTx, store: SyncStore, key: string, del = false): Promise<
 export interface StoredRecords {
   exerciseId: string;
   ids: string[];
+  /** RECORDS_V when computed with today's rules; older entries are recomputed once. */
+  v?: number;
 }
+/** 2: the first-ever set holds no trophy (Q2a). */
+export const RECORDS_V = 2;
 
 export const DB_NAME = 'iron-notes';
 let dbp: Promise<IDBPDatabase<Schema>> | undefined;
@@ -412,10 +416,10 @@ export async function getRecords(exerciseId: string): Promise<StoredRecords | un
 export async function putRecords(r: StoredRecords): Promise<void> {
   await (await db()).put('records', r);
 }
-/** Stores records only if none are stored yet (a lazy fill must never overwrite a fresher write). */
+/** Stores records only if none (or only outdated ones) are stored yet: a lazy fill must never overwrite a fresher write. */
 export async function putRecordsIfAbsent(r: StoredRecords): Promise<void> {
   const tx = (await db()).transaction('records', 'readwrite');
-  if (!(await tx.store.get(r.exerciseId))) await tx.store.put(r);
+  if ((await tx.store.get(r.exerciseId))?.v !== RECORDS_V) await tx.store.put(r);
   await tx.done;
 }
 export async function deleteRecords(exerciseId: string): Promise<void> {

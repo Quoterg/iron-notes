@@ -1,6 +1,6 @@
 // The day's workout tools under the log: copy, reorder, superset, share, delete. A lazy chunk: it
 // isn't needed to show the day, so it loads right after the first paint.
-import { t } from '../lib/i18n';
+import { t, tn } from '../lib/i18n';
 import type { WorkoutSet } from '../lib/model';
 import { open } from '../nav';
 import { date, daySets, toast } from '../state';
@@ -22,7 +22,7 @@ export default function DayTools({ groups, reordering, setReordering, grouping, 
 
   async function remove() {
     // Every set of the day goes, including sets of exercises deleted since (hidden in the log).
-    if (!confirm(t('deleteWorkoutQ', { n: daySets.value.length }))) return;
+    if (!confirm(t('deleteWorkoutQ', { sets: tn('oneSet', 'nSets', daySets.value.length) }))) return;
     setReordering(false);
     setGrouping(false);
     const undo = await deleteWorkout(d);

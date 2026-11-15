@@ -215,6 +215,7 @@ fun Field(
     imeAction: ImeAction = ImeAction.Default,
     onImeAction: (() -> Unit)? = null,
     selectOnFocus: Boolean = false,
+    placeholder: String? = null,
 ) {
     val p = LocalPalette.current
     val shape = RoundedCornerShape(12.dp)
@@ -229,10 +230,17 @@ fun Field(
     val keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else KeyboardType.Unspecified, imeAction = imeAction)
     // The keyboard's Enter key (the exercise screen: weight → reps → save).
     val keyboardActions = if (onImeAction != null) KeyboardActions(onAny = { onImeAction() }) else KeyboardActions.Default
+    // A muted hint in an empty input (what goes there: "kg", "reps" …).
+    val decoration: @Composable (@Composable () -> Unit) -> Unit = { inner ->
+        Box {
+            if (placeholder != null && value.isEmpty()) Txt(placeholder, muted = true, size = 17.sp, maxLines = 1)
+            inner()
+        }
+    }
     if (!selectOnFocus) {
         BasicTextField(
             value, onChange, mod, textStyle = style, cursorBrush = SolidColor(p.accent), singleLine = singleLine, minLines = minLines,
-            keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
+            keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, decorationBox = decoration,
         )
         return
     }
@@ -245,7 +253,7 @@ fun Field(
         { field = it; if (it.text != value) onChange(it.text) },
         mod.onFocusChanged { if (it.isFocused) field = field.copy(selection = TextRange(0, field.text.length)) },
         textStyle = style, cursorBrush = SolidColor(p.accent), singleLine = singleLine, minLines = minLines,
-        keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
+        keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, decorationBox = decoration,
     )
 }
 

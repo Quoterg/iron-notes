@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
@@ -55,7 +57,12 @@ fun App(state: AppState) {
     val timer = RestTimer.get(LocalContext.current)
     // A running timer gets its own strip at the bottom: the content ends above it, so the pill never covers
     // the set just logged or the day's buttons. Not while the keyboard is up (the pill is under it then).
-    val docked = timer.endsAt != 0L && WindowInsets.ime.getBottom(LocalDensity.current) == 0
+    // Read through derivedStateOf: App recomposes only when the keyboard goes up or down, not on every
+    // frame of its animation (review of #59).
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val imeUp by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
+    val docked = timer.endsAt != 0L && !imeUp
     val onStack = state.stack.isNotEmpty()
     Box(Modifier.fillMaxSize().background(p.bg).glow(p)) {
         if (state.ready) {

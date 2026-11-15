@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { coreKeys, t } from './i18n';
+import { coreKeys, t, tn } from './i18n';
 import { later } from './strings-later';
 
 const keysIn = (file: string) => [...readFileSync(file, 'utf8').matchAll(/\bt\('([A-Za-z0-9_]+)'/g)].map((m) => m[1]);
@@ -52,5 +52,14 @@ describe('strings', () => {
     for (const k of Object.keys(later)) expect(coreKeys()).not.toContain(k);
     expect(t('settings')).toBe('Settings');
     expect(t('est1rm')).toBe('Estimated 1RM'); // strings-later is imported above, so it registered itself
+  });
+});
+
+describe('tn', () => {
+  it('uses the singular for exactly one', () => {
+    expect(tn('oneSet', 'nSets', 1)).toBe('1 set');
+    expect(tn('oneSet', 'nSets', 3)).toBe('3 sets');
+    expect(tn('oneExercise', 'nExercises', 1)).toBe('1 exercise');
+    expect(tn('oneExercise', 'nExercises', 0)).toBe('0 exercises');
   });
 });

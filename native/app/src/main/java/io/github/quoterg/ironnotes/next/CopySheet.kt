@@ -75,7 +75,7 @@ fun CopyScreen(state: AppState, date: String) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Txt(fmt.format(parseIso(day.date).time), Modifier.weight(1f).semantics { heading() }, bold = true, size = 17.sp)
-                        Txt("${day.groups.size} ${state.t("exercises").lowercase()}", muted = true, small = true)
+                        Txt(state.tn("oneExercise", "nExercises", day.groups.size), muted = true, small = true)
                     }
                     if (!isOpen) {
                         Txt(day.groups.joinToString(", ") { state.i18n.shown("exercises", exById.getValue(it.first).name) }, Modifier.padding(top = 4.dp), muted = true, small = true)
@@ -92,7 +92,7 @@ fun CopyScreen(state: AppState, date: String) {
                             ) {
                                 Txt(if (on) "☑" else "☐", size = 22.sp)
                                 Dot(catById[ex.categoryId]?.color)
-                                Txt("${state.i18n.shown("exercises", ex.name)} · ${sets.size} ${state.t("sets")}", Modifier.weight(1f))
+                                Txt("${state.i18n.shown("exercises", ex.name)} · ${state.tn("oneSet", "nSets", sets.size)}", Modifier.weight(1f))
                             }
                         }
                         val chosen = day.groups.filter { it.first !in skip }

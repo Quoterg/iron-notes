@@ -35,7 +35,8 @@ test('workout summary: duration on the day log, stats, share as text and as an i
   await expect(stat('Sets')).toHaveText('3');
   await expect(stat('Volume')).toHaveText('2400 kg');
   await expect(stat('Effective reps')).toHaveText('24');
-  await expect(stat('Records')).toHaveText('1');
+  // Three equal sets of a first-ever bench: the first beat nothing, the others don't beat it.
+  await expect(stat('Records')).toHaveCount(0);
   await expect(stat('Duration')).toHaveText('1 min');
   await expect(sheet.locator('.chip.mu')).toHaveText(['Chest 24']);
 
