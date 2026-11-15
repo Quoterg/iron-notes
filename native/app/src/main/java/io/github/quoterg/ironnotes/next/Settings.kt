@@ -128,7 +128,7 @@ fun parsePlate(text: String): Double? = text.trim().replace(',', '.').toDoubleOr
 // ---- Screen ----
 
 @Composable
-private fun <T> Choice(label: String, options: List<Pair<T, String>>, value: T, onPick: (T) -> Unit, hideLabel: Boolean = false) {
+internal fun <T> Choice(label: String, options: List<Pair<T, String>>, value: T, onPick: (T) -> Unit, hideLabel: Boolean = false) {
     if (!hideLabel) Txt(label, Modifier.padding(top = 8.dp, bottom = 4.dp), muted = true, small = true)
     FlowRow(
         Modifier.padding(vertical = if (hideLabel) 4.dp else 0.dp).semantics { contentDescription = label },
