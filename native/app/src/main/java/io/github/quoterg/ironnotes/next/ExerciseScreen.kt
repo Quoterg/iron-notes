@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,10 +28,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.Role
@@ -267,6 +270,16 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     // Validity is recomputed only when a field (or the exercise/settings) changes, not on every recomposition.
     val values by remember(ex, st) { derivedStateOf { fromForm(form, ex, st) } }
     var saving by remember(id, date) { mutableStateOf(false) }
+    // The set just logged is scrolled into view (only as far as needed), clear of the timer's strip.
+    var justSaved by remember(id, date) { mutableStateOf<String?>(null) }
+    val savedRow = remember(id, date) { BringIntoViewRequester() }
+    LaunchedEffect(justSaved, current) {
+        if (justSaved == null || current?.sets?.none { it.id == justSaved } != false) return@LaunchedEffect
+        withFrameNanos { } // laid out first (the timer's strip may just have appeared)
+        withFrameNanos { }
+        savedRow.bringIntoView()
+        justSaved = null
+    }
 
     fun afterWrite() {
         state.loadDay(state.date)
@@ -322,6 +335,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             showComment = false
             reload { nl ->
                 afterWrite()
+                justSaved = s.id
                 if (hadOthers && s.id in nl.records) state.showToast(state.t("newRecord"))
             }
             // In a superset: on to the next exercise; rest only after the round's last one.
@@ -491,7 +505,9 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
                             Txt(state.t("effToday", "n" to state.i18n.dnum(total)), Modifier.padding(start = 4.dp, bottom = 4.dp), muted = true, small = true)
                         }
                         todays.forEachIndexed { i, s ->
-                            SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records, if (hasReps) effortText(state, s) else "", if (hasReps) eff[s.id] else null, st.markDone || s.planned == true, { tick(s, it) }) { select(s) }
+                            Box(if (s.id == justSaved) Modifier.bringIntoViewRequester(savedRow) else Modifier) {
+                                SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records, if (hasReps) effortText(state, s) else "", if (hasReps) eff[s.id] else null, st.markDone || s.planned == true, { tick(s, it) }) { select(s) }
+                            }
                         }
                     }
                 } else {
@@ -551,17 +567,20 @@ private fun Track(
     val hasReps = Field.REPS in fields
     val slots = slotsOf(fields)
     val focus = remember { Slot.entries.associateWith { FocusRequester() } }
-    val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    // Saved: the keyboard goes so the set and the timer show, and focus moves to the card (no highlight),
+    // so the next tap on an input selects its value again. (Clearing focus instead moved it to the Back
+    // button, which then showed as highlighted.)
+    val sink = remember { FocusRequester() }
     val submit = Enter(ImeAction.Done) {
         if (canSave) {
             save()
-            focusManager.clearFocus()
+            sink.requestFocus()
             keyboard?.hide()
         }
     }
     fun enter(s: Slot): Enter = nextSlot(slots, s)?.let { n -> Enter(ImeAction.Next) { focus.getValue(n).requestFocus() } } ?: submit
-    Card(Modifier.padding(top = 2.dp)) {
+    Card(Modifier.padding(top = 2.dp).focusRequester(sink).focusable()) {
         if (Field.WEIGHT in fields) {
             val unit = unitLabel(st.unit)
             Stepper(
@@ -622,7 +641,7 @@ private fun Stepper(
             IconBtn("−", "$label −${num(step, 3)}", { bump(-1) })
             Field(
                 value, onChange, label, Modifier.weight(1f).then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
-                number = true, imeAction = enter?.action ?: ImeAction.Default, onImeAction = enter?.run,
+                number = true, imeAction = enter?.action ?: ImeAction.Default, onImeAction = enter?.run, selectOnFocus = true,
             )
             IconBtn("+", "$label +${num(step, 3)}", { bump(1) })
         }
@@ -645,12 +664,12 @@ private fun TimeField(state: AppState, form: Form, minFocus: FocusRequester, sec
             IconBtn("−", "$time −15 s", { bump(-15) })
             Field(
                 form.min, { form.min = it }, "$time (${state.t("min")})", Modifier.weight(1f).focusRequester(minFocus),
-                number = true, imeAction = minEnter.action, onImeAction = minEnter.run,
+                number = true, imeAction = minEnter.action, onImeAction = minEnter.run, selectOnFocus = true,
             )
             Txt(":", bold = true, size = 22.sp)
             Field(
                 form.sec, { form.sec = it }, "$time (${state.t("sec")})", Modifier.weight(1f).focusRequester(secFocus),
-                number = true, imeAction = secEnter.action, onImeAction = secEnter.run,
+                number = true, imeAction = secEnter.action, onImeAction = secEnter.run, selectOnFocus = true,
             )
             IconBtn("+", "$time +15 s", { bump(15) })
         }
