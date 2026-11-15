@@ -32,6 +32,43 @@ export function pullTogether(order: readonly string[], members: ReadonlySet<stri
   return [...rest.slice(0, before), ...inGroup, ...rest.slice(before)];
 }
 
+/** Like `pullTogether`, but a superset moves as one unit, so pulling never splits one (groups.rs `pull_units`). */
+export function pullUnits(order: readonly { exerciseId: string; group?: string }[], members: ReadonlySet<string>): string[] {
+  const units = new Map<string, string[]>();
+  for (const o of order) {
+    const key = o.group ? `g:${o.group}` : `e:${o.exerciseId}`;
+    (units.get(key) ?? units.set(key, []).get(key)!).push(o.exerciseId);
+  }
+  const keys = [...units.keys()];
+  const pulled = new Set(keys.filter((k) => units.get(k)!.some((id) => members.has(id))));
+  return pullTogether(keys, pulled).flatMap((k) => units.get(k)!);
+}
+
+/**
+ * A routine's sets added to a day that already has sets: the routine's exercises go together at the first one's
+ * place (whole supersets moving as one), worked out before anything is written. Returns what to write: the new
+ * sets and the existing ones whose `order` changed. `existing` in byOrder order.
+ */
+export function placeTogether(existing: readonly WorkoutSet[], added: readonly WorkoutSet[]): WorkoutSet[] {
+  if (!existing.length) return [...added];
+  const all = [...existing, ...added];
+  const current = dayOrder(all);
+  const order = pullUnits(current, new Set(added.map((s) => s.exerciseId)));
+  if (order.every((id, i) => id === current[i].exerciseId)) return [...added];
+  const by = new Map<string, WorkoutSet[]>();
+  for (const s of all) (by.get(s.exerciseId) ?? by.set(s.exerciseId, []).get(s.exerciseId)!).push(s);
+  const fresh = new Set(added.map((s) => s.id));
+  const base = existing[0].order; // the day's own key range, as rewriteDay
+  const out: WorkoutSet[] = [];
+  let k = 0;
+  for (const id of order)
+    for (const s of by.get(id)!) {
+      const o = base + k++;
+      if (fresh.has(s.id) || s.order !== o) out.push({ ...s, order: o });
+    }
+  return out;
+}
+
 /** The exercises of `exerciseId`'s group, in day order (empty if it isn't grouped). */
 export function groupMembers(sets: readonly WorkoutSet[], exerciseId: string): string[] {
   const order = dayOrder(sets);
