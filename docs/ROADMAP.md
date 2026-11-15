@@ -177,7 +177,7 @@ is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names st
 - [x] **Q3 Routines that read right** — Planned sets can be ticked off on the day screen (or the toast stops
   promising it); "Log to <date>" names the day clearly when it isn't today; routine day cards look tappable;
   planned sets added to a day that already has sets stay grouped.
-- [ ] **Q4 First run for a friend** — Language and units offered on the empty first screen (they sit far down
+- [x] **Q4 First run for a friend** — Language and units offered on the empty first screen (they sit far down
   in Settings today); a hint in the first, empty exercise search. No tutorial.
 - [ ] **Q5 Automatic backups** — A scheduled backup to a folder the user chooses (Storage Access Framework, no
   new permission), the date of the last backup in Settings, and Restore saves a safety copy of the current
