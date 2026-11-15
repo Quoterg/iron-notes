@@ -41,11 +41,12 @@ test('import a FitNotes CSV, re-import skips duplicates, export CSV, delete all'
 
   // Export CSV: same columns, same values.
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export CSV' }).click()]);
+  const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export CSV (spreadsheet)' }).click()]);
   const text = readFileSync((await csv.path())!, 'utf8');
-  expect(text.split('\r\n')[0]).toBe('Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment');
-  expect(text).toContain('2024-01-08,Flat Barbell Bench Press,Chest,85,kgs,5,,,,"heavy, good"');
-  expect(text).toContain('2024-01-09,Running (Treadmill),Cardio,,,,5,km,25:30,');
+  // FitNotes' columns, then the set's effort (Q6).
+  expect(text.split('\r\n')[0]).toBe('Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment,RIR,After failure,Warm-up');
+  expect(text).toContain('2024-01-08,Flat Barbell Bench Press,Chest,85,kgs,5,,,,"heavy, good",,,');
+  expect(text).toContain('2024-01-09,Running (Treadmill),Cardio,,,,5,km,25:30,,,,');
 
   // Delete all: a backup downloads first; then a fresh start with the starter library.
   const [backup] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Delete all data' }).click()]);
@@ -59,6 +60,14 @@ test('import a FitNotes CSV, re-import skips duplicates, export CSV, delete all'
   await page.getByRole('button', { name: 'Log', exact: true }).click();
   await page.getByRole('button', { name: 'Start a workout' }).click();
   await expect(page.getByRole('button', { name: /Chest/ })).toBeVisible();
+
+  // The CSV trap (Q6): the app's own CSV into the emptied app is recognised, and the confirm points to Restore.
+  await page.locator('div:not([hidden]) > .sheet .sheet-head button').first().click(); // out of the picker
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByLabel('Import from FitNotes (CSV)').setInputFiles({ name: 'iron-notes.csv', mimeType: 'text/csv', buffer: Buffer.from(text) });
+  await expect(page.getByRole('status')).toContainText('sets imported.');
+  expect(dialog).toContain('This is an Iron Notes export.');
+  expect(dialog).toContain('Restore backup');
 });
 
 test('move to the Android app: the backup is shared, or downloaded where sharing is unavailable', async ({ page }) => {

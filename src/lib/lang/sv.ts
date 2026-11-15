@@ -229,7 +229,7 @@ const strings: Record<Key, string> = {
   statWorkouts: 'Pass',
   statSets: 'Set',
   statVolume: 'Volym',
-  exportCsv: 'Exportera CSV',
+  exportCsv: 'Exportera CSV (kalkylark)',
   importFitNotes: 'Importera från FitNotes (CSV)',
   fitNotesHint: 'FitNotes: Inställningar → Spreadsheet export → Export workouts, importera sedan CSV-filen här. Set som redan finns hoppas över.',
   notFitNotes: 'Filen är inte en CSV-export från FitNotes.',

@@ -183,7 +183,7 @@ export const later = {
   statWorkouts: 'Workouts',
   statSets: 'Sets',
   statVolume: 'Volume',
-  exportCsv: 'Export CSV',
+  exportCsv: 'Export CSV (spreadsheet)',
   importFitNotes: 'Import from FitNotes (CSV)',
   fitNotesHint: 'FitNotes: Settings → Spreadsheet export → Export workouts, then import the CSV file here. Sets you already have are skipped.',
   notFitNotes: "That file isn't a FitNotes CSV export.",
