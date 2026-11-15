@@ -20,7 +20,7 @@ const BACKUP = {
 test('Iron Log backup: body measurements imported, diet phase from its energy target', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Lyle effective reps', exact: true }).click();
+  await page.getByRole('button', { name: 'Volume', exact: true }).click();
   let dialog = '';
   page.on('dialog', (d) => {
     dialog = d.message();

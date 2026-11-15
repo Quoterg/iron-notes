@@ -9,7 +9,7 @@ test('body map: muscles coloured by the week, tap for what trained it and what c
   await page.goto('./');
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
   await page.getByRole('button', { name: 'Start a workout' }).click();
   await page.getByRole('searchbox').fill('flat barbell');

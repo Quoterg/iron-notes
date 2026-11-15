@@ -99,7 +99,7 @@ fun HistoryTab(state: AppState, ex: Exercise) {
                         Txt(state.i18n.setText(s, ex.kind, state.settings, load), size = 15.sp)
                         if (!s.comment.isNullOrEmpty()) Txt(s.comment!!, small = true, muted = true)
                     }
-                    if (s.id in records) Trophy(state.t("record"))
+                    if (s.id in records) Trophy(state.t("record"), Modifier.explains(state, Topic.RECORD).padding(4.dp))
                 }
             }
         }
@@ -141,7 +141,10 @@ fun RecordsTab(state: AppState, ex: Exercise) {
     val orm = if (strength) progress.bestOrm else null
     if (orm != null) {
         Card(Modifier.padding(top = 12.dp)) {
-            Txt(state.t("est1rm"), muted = true, small = true, bold = true)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Txt(state.t("est1rm"), muted = true, small = true, bold = true)
+                InfoBtn(state, Topic.E1RM)
+            }
             Txt("${state.i18n.dnum(wToUser(orm.value, st.unit), 1)} ${unitLabel(st.unit)}", Modifier.padding(vertical = 4.dp), bold = true, size = 32.sp)
             Txt(
                 "${state.i18n.setText(orm.set, ex.kind, st)} · ${dates.text(orm.set.date, false)}",

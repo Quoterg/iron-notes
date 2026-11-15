@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -71,5 +72,7 @@ fun DayMuscles(state: AppState, date: String) {
                 Txt(text, size = 13.sp, color = color)
             }
         }
+        // The chips open the Muscles screen; the "?" says what the numbers are (Q2b).
+        InfoBtn(state, Topic.EFF, Modifier.height(32.dp))
     }
 }

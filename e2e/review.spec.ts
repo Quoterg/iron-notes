@@ -27,7 +27,7 @@ async function bench(page: Page, w: string, r: string) {
 test('review the last weeks: strength, muscles, and a one-tap swap in the program', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
 
   // Three sessions of 100 × 10: no progress.

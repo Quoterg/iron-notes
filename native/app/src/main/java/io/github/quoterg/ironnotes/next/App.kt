@@ -54,6 +54,7 @@ fun App(state: AppState) {
     BackHandler(enabled = state.stack.isNotEmpty()) { state.back() }
     // Registered after the stack's handler, so it wins: Back dismisses the restore confirm first.
     BackHandler(enabled = state.incomingBackup != null) { state.incomingBackup = null }
+    BackHandler(enabled = state.explaining != null) { state.explaining = null }
     val timer = RestTimer.get(LocalContext.current)
     // A running timer gets its own strip at the bottom: the content ends above it, so the pill never covers
     // the set just logged or the day's buttons. Not while the keyboard is up (the pill is under it then).
@@ -94,6 +95,7 @@ fun App(state: AppState) {
                 ConfirmCard(state, state.t("moveIncomingQ"), state.t("importBackup"), { state.restoreIncoming() }, { state.incomingBackup = null })
             }
         }
+        ExplainOverlay(state)
         state.toast?.let { ToastView(state, it, Modifier.align(Alignment.BottomCenter)) }
     }
 }

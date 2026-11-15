@@ -65,14 +65,14 @@ deploy.
 ## Store listing (Google Play)
 
 - **Name:** Iron Notes – training log
-- **Short description (≤ 80):** Workout log with effective reps, Dorian HIT and Lyle modes. Free, offline.
+- **Short description (≤ 80):** Workout log with effective reps, HIT and Volume modes. Free, offline.
 - **Full description:**
   - Log sets, reps and weights fast; records, 1RM, graphs, history, calendar, routines and saved workouts.
-  - Two evidence-based training modes: Dorian Yates' HIT (to failure, double progression to 12 reps, then
-    more weight) and Lyle McDonald's effective reps (reps in reserve, 6-week cycles with a run-up).
+  - Two evidence-based training modes: HIT, after Dorian Yates (to failure, double progression to 12 reps,
+    then more weight), and Volume, after Lyle McDonald (reps in reserve, 6-week cycles with a run-up).
   - Effective reps per muscle against your mode's goal; targets for every set with the reason.
   - Feedback that finds the cause (a long gap, a cut, one exercise, real fatigue) before suggesting a fix.
-  - Ready-made programs: Dorian's 4-day split and Lyle's upper/lower; or your own with training weekdays.
+  - Ready-made programs: a HIT 4-day split and an upper/lower (GBR); or your own with training weekdays.
   - Body measurements, plate and warm-up calculators, rest timer, FitNotes CSV import.
   - No account, no ads, no tracking: everything stays on your phone; export any time. Fast on older
     phones, works offline. Open source.

@@ -157,7 +157,7 @@ fun DayLog(state: AppState) {
                         Column(Modifier.fillMaxWidth().padding(vertical = 4.dp).alpha(if (dim) 0.55f else 1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Txt(state.i18n.setText(set, ex.kind, s, ex.load ?: LoadType.TOTAL))
-                                if (set.id in records) Trophy(state.t("record"))
+                                if (set.id in records) Trophy(state.t("record"), Modifier.explains(state, Topic.RECORD).padding(4.dp))
                             }
                             val note = set.comment.orEmpty()
                             if (note.isNotEmpty()) Txt(note, muted = true, small = true)

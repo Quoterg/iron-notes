@@ -167,7 +167,7 @@ is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names st
 - **Q2 Plain words** (split in two PRs):
   - [x] **Q2a Small words** — singular/plural ("1 exercise", "1 övning", "1 set"), no trophy on an exercise's
     first-ever set, a unit on the graph's y-axis, placeholders in the empty weight/reps boxes.
-  - [ ] **Q2b Explanations and mode names** — Tap "≈ eff." (set, muscle chip, statistics) for a short
+  - [x] **Q2b Explanations and mode names** — Tap "≈ eff." (set, muscle chip, statistics) for a short
     explanation of effective reps, including why one set shows 3 and another 8; the same for the trophy,
     estimated 1RM and RIR. Training modes show a plain one-line description before one is chosen. Rename the
     guided modes in the UI (owner 2026-11-15): "Dorian HIT" → "HIT"; "Lyle effective reps" → a descriptive name

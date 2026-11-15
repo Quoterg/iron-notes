@@ -248,14 +248,22 @@ internal fun effortText(state: AppState, s: WorkoutSet): String {
 @Composable
 internal fun EffBadge(state: AppState, e: io.github.quoterg.ironnotes.core.SetEffort) {
     val p = LocalPalette.current
-    Txt(state.t("effShort", "n" to (if (e.est) "≈" else "") + state.i18n.dnum(e.n)), size = 12.sp, color = if (e.n > 0) p.accent else p.muted)
+    // Tap: what effective reps are (Q2b).
+    Txt(
+        state.t("effShort", "n" to (if (e.est) "≈" else "") + state.i18n.dnum(e.n)),
+        Modifier.explains(state, Topic.EFF).padding(horizontal = 4.dp, vertical = 4.dp),
+        size = 12.sp, color = if (e.n > 0) p.accent else p.muted,
+    )
 }
 
 /** The Lyle RIR chips (0–5+), chosen per set. */
 @Composable
 internal fun RirChips(state: AppState, form: Form) {
     Column(Modifier.padding(bottom = 10.dp)) {
-        Txt("${state.t("rir")} (${state.t("rirHint")})", Modifier.padding(bottom = 4.dp), muted = true, small = true)
+        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Txt("${state.t("rir")} (${state.t("rirHint")})", muted = true, small = true)
+            InfoBtn(state, Topic.RIR)
+        }
         Chips {
             listOf("0", "1", "2", "3", "4", "5").forEach { r ->
                 Chip(if (r == "5") "5+" else r, form.rir == r, { form.rir = if (form.rir == r) "" else r }, Modifier.semantics { this.selected = form.rir == r })

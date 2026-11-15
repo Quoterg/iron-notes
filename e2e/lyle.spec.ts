@@ -9,7 +9,7 @@ test('Lyle: a cycle starts with a run-up from the best weight for the rep range'
   await page.goto('./');
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Lyle effective reps', exact: true }).click();
+  await page.getByRole('button', { name: 'Volume', exact: true }).click();
   await expect(page.getByText('none yet')).toBeVisible();
   await expect(page.getByRole('group', { name: 'Cycle length' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Log', exact: true }).click();

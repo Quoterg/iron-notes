@@ -58,7 +58,7 @@ test('statistics: totals, categories and top exercises for a period', async ({ p
 test('statistics: effective reps for the period and per muscle', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
   // Three heavy sets to failure: 8 effective reps each (chest direct; triceps and front delts half).
   await log(page, 'flat barbell', 'Flat Barbell Bench Press', [['100', '8'], ['100', '8'], ['100', '8']]);

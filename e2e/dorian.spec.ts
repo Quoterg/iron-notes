@@ -9,7 +9,7 @@ test('Dorian HIT: per-set targets, warm-ups, next set prefilled, too-soon hint',
   await page.goto('./');
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Dorian HIT', exact: true }).click();
+  await page.getByRole('button', { name: 'HIT', exact: true }).click();
   await page.getByRole('button', { name: 'Log', exact: true }).click();
 
   // Yesterday: a reverse pyramid, top set at the top of the range (12), back-off set at 10.
@@ -30,7 +30,7 @@ test('Dorian HIT: per-set targets, warm-ups, next set prefilled, too-soon hint',
   await page.getByRole('button', { name: 'Start a workout' }).click();
   await page.getByRole('searchbox').fill('flat barbell');
   await page.getByRole('button', { name: 'Flat Barbell Bench Press', exact: true }).click();
-  await expect(sheet.locator('.hint')).toHaveText('Chest was trained yesterday. Dorian rests a muscle about a week.');
+  await expect(sheet.locator('.hint')).toHaveText('Chest was trained yesterday. HIT rests a muscle about a week.');
   await expect(sheet.locator('.target')).toContainText('Set 1 target: 102.5 kg');
   await expect(sheet.locator('.target')).toContainText('top 12 reached');
   await expect(sheet.getByLabel('Weight (kg)', { exact: true })).toHaveValue('102.5');

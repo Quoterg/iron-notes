@@ -419,7 +419,7 @@ export async function putRecords(r: StoredRecords): Promise<void> {
 /** Stores records only if none (or only outdated ones) are stored yet: a lazy fill must never overwrite a fresher write. */
 export async function putRecordsIfAbsent(r: StoredRecords): Promise<void> {
   const tx = (await db()).transaction('records', 'readwrite');
-  if ((await tx.store.get(r.exerciseId))?.v !== RECORDS_V) await tx.store.put(r);
+  if (((await tx.store.get(r.exerciseId))?.v ?? 0) < RECORDS_V) await tx.store.put(r); // never over a newer tab's version
   await tx.done;
 }
 export async function deleteRecords(exerciseId: string): Promise<void> {

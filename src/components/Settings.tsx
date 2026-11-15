@@ -175,6 +175,17 @@ export default function Settings() {
           value={s.mode}
           onPick={(mode) => void saveSettings({ mode })}
         />
+        {/* Every mode in one plain line, so it can be understood before it is chosen; then how to log in the chosen one. */}
+        <ul class="mode-lines small">
+          {(['standard', 'dorian', 'lyle'] as const).map((m) => {
+            const k = m === 'dorian' ? 'modeDorian' : m === 'lyle' ? 'modeLyle' : 'modeStandard';
+            return (
+              <li key={m} class={m === s.mode ? 'on' : 'muted'}>
+                {t(k)}: {t(`${k}Line` as Key)}
+              </li>
+            );
+          })}
+        </ul>
         <p class="muted small">{t(s.mode === 'dorian' ? 'modeDorianHint' : s.mode === 'lyle' ? 'modeLyleHint' : 'modeStandardHint')}</p>
         {s.mode !== 'standard' && (
           <Choice<'build' | 'maintain' | 'cut'>
