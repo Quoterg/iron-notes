@@ -2,6 +2,11 @@
 
 ## Next up
 
+- **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 done (PR open,
+  `milestone/q1-gym-flow`). Next: **Q2 Plain words** on `milestone/q2-plain-words`, stacked on Q1 — it also
+  renames the guided modes in the UI only (owner 2026-11-15): "Dorian HIT" → "HIT", "Lyle effective reps" →
+  a plain name ("Volume"/"Volym" unless docs/TRAINING-MODES.md suggests a better word); stored values, backup
+  fields, fixtures and code names (dorian/lyle) stay. Web strings change too → run the web gates.
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
 - Live: https://iron-notes.pages.dev (Cloudflare Pages, deployed after CI on main; secrets set by the owner).
@@ -27,6 +32,27 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q1 Gym-floor fixes (native; web: set Undo)
+
+- Rest timer: while it runs it gets its own strip at the bottom — the content (tabs and stacked screens) ends
+  above it instead of under it. Over a stacked screen (no tab bar) the pill moved down to 8 dp above the
+  navigation bar; over the tabs it stays above the tab bar. No strip while the keyboard is up. After a save the
+  new set is scrolled into view (only as far as needed), so it is never under the pill or below the fold.
+- Keyboard: Enter on weight → reps (→ distance → min → sec), Enter on the last input (or after-failure reps,
+  or the set comment) saves and hides the keyboard. Save/Clear moved right under the inputs (above "+ Add
+  comment" · "Calculators", now one row), so Save shows with the keyboard open. The number inputs select their
+  value on focus (as a browser does): Enter onto a prefilled reps box replaced, not prepended (the walkthrough
+  test typed "9" into "12" → 912). After an Enter-save focus parks on the input card: `clearFocus()` moved it to
+  the Back button, which then showed highlighted.
+- Deleting a set shows "Set deleted. Undo" (puts the stored set back, same id). One-time hint above today's
+  sets, "Tip: tap a set to change or delete it." (OK, or tapping a set, hides it for good; per device).
+- Web: deleting a set shows Undo too (+ e2e). Not changed on the web: the timer pill (a fixed overlay over a
+  scrolling page — the same reserve isn't a cheap change); the web form already saves on Enter.
+- Verified on the Android 7.0 emulator (release build), English Day and Swedish Night: screenshots in the
+  session's ux-notes/q folder (pill under the saved set; day buttons clear; Enter → reps → save; Undo).
+- Gates: Kotlin 35 tests, lint 0 errors; APKs 3.6 / 4.2 MB, universal 7.1 MB; web 293 tests, initial JS
+  23.0 KB, e2e 43/43, Lighthouse passed.
 
 ## 2026-11-12 — N4 Exercise screen (native)
 

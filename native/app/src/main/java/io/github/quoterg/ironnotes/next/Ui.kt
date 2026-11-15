@@ -20,8 +20,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -38,6 +46,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -203,24 +212,40 @@ fun Field(
     number: Boolean = false,
     singleLine: Boolean = true,
     minLines: Int = 1,
+    imeAction: ImeAction = ImeAction.Default,
+    onImeAction: (() -> Unit)? = null,
+    selectOnFocus: Boolean = false,
 ) {
     val p = LocalPalette.current
     val shape = RoundedCornerShape(12.dp)
+    val mod = modifier
+        .heightIn(min = 44.dp)
+        .clip(shape)
+        .background(p.inner, shape)
+        .border(1.dp, p.line, shape)
+        .padding(horizontal = 12.dp, vertical = 10.dp)
+        .semantics { contentDescription = label }
+    val style = TextStyle(color = p.text, fontSize = 17.sp)
+    val keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Decimal else KeyboardType.Unspecified, imeAction = imeAction)
+    // The keyboard's Enter key (the exercise screen: weight → reps → save).
+    val keyboardActions = if (onImeAction != null) KeyboardActions(onAny = { onImeAction() }) else KeyboardActions.Default
+    if (!selectOnFocus) {
+        BasicTextField(
+            value, onChange, mod, textStyle = style, cursorBrush = SolidColor(p.accent), singleLine = singleLine, minLines = minLines,
+            keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
+        )
+        return
+    }
+    // Focus selects the whole value (as a browser does), so a prefilled number reached with Enter is
+    // replaced by typing instead of typed in front of.
+    var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    if (field.text != value) field = TextFieldValue(value, TextRange(value.length))
     BasicTextField(
-        value,
-        onChange,
-        modifier
-            .heightIn(min = 44.dp)
-            .clip(shape)
-            .background(p.inner, shape)
-            .border(1.dp, p.line, shape)
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            .semantics { contentDescription = label },
-        textStyle = TextStyle(color = p.text, fontSize = 17.sp),
-        cursorBrush = SolidColor(p.accent),
-        singleLine = singleLine,
-        minLines = minLines,
-        keyboardOptions = if (number) KeyboardOptions(keyboardType = KeyboardType.Decimal) else KeyboardOptions.Default,
+        field,
+        { field = it; if (it.text != value) onChange(it.text) },
+        mod.onFocusChanged { if (it.isFocused) field = field.copy(selection = TextRange(0, field.text.length)) },
+        textStyle = style, cursorBrush = SolidColor(p.accent), singleLine = singleLine, minLines = minLines,
+        keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
     )
 }
 

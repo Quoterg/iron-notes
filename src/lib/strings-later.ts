@@ -479,6 +479,8 @@ export const later = {
   needBodyWeight: 'Log your body weight on the Body screen: until then only the added load counts here.',
   new_12a: 'Load types: dumbbells per hand (volume counts both), body weight + added load, assisted. Records, 1RM and graphs use the real load.',
   setCopied: 'Set copied into the form.',
+  setDeleted: 'Set deleted.',
+  tapSetHint: 'Tip: tap a set to change or delete it.',
   new_11a: 'Svenska: choose the language in Settings (Auto follows the phone).',
 } as const;
 

@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -32,6 +34,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -48,11 +52,16 @@ fun App(state: AppState) {
     BackHandler(enabled = state.stack.isNotEmpty()) { state.back() }
     // Registered after the stack's handler, so it wins: Back dismisses the restore confirm first.
     BackHandler(enabled = state.incomingBackup != null) { state.incomingBackup = null }
+    val timer = RestTimer.get(LocalContext.current)
+    // A running timer gets its own strip at the bottom: the content ends above it, so the pill never covers
+    // the set just logged or the day's buttons. Not while the keyboard is up (the pill is under it then).
+    val docked = timer.endsAt != 0L && WindowInsets.ime.getBottom(LocalDensity.current) == 0
+    val onStack = state.stack.isNotEmpty()
     Box(Modifier.fillMaxSize().background(p.bg).glow(p)) {
         if (state.ready) {
             Column(Modifier.fillMaxSize()) {
                 TopBar(state)
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.weight(1f).fillMaxWidth().reserve(docked, TAB_TIMER_SPACE), contentAlignment = Alignment.TopCenter) {
                     TabContent(state)
                 }
             }
@@ -60,9 +69,10 @@ fun App(state: AppState) {
             // Only the top screen is composed. The ones under it are not kept alive (cheap on a slow phone);
             // their remembered-saveable state (the picker's search and category) is held per stack position
             // and restored when going back, and dropped once the screen is popped.
-            StackTop(state)
-            // Above the sheets, under the toast; draws nothing without a running timer.
-            RestTimerBar(state, RestTimer.get(LocalContext.current), Modifier.align(Alignment.BottomCenter))
+            StackTop(state, docked)
+            // Above the sheets, under the toast; draws nothing without a running timer. Over the tabs it
+            // sits above the tab bar; over a stacked screen (no tab bar) at the bottom.
+            RestTimerBar(state, timer, Modifier.align(Alignment.BottomCenter), bottom = if (onStack) STACK_TIMER_GAP else TAB_TIMER_GAP)
         }
         // A backup handed over from the web app ("Move to the Android app"): ask before replacing this app's data.
         if (state.incomingBackup != null) {
@@ -81,9 +91,21 @@ fun App(state: AppState) {
     }
 }
 
+// The rest-timer pill (RestTimerBar) is TIMER_PILL tall; over the tabs it sits TAB_TIMER_GAP above the
+// navigation bar (clear of the tab bar), over a stacked screen STACK_TIMER_GAP. While it runs, the
+// content ends 8 dp above it.
+private val TIMER_PILL = 56.dp
+private val TAB_TIMER_GAP = 86.dp
+private val STACK_TIMER_GAP = 8.dp
+private val TAB_TIMER_SPACE = TAB_TIMER_GAP + TIMER_PILL + 8.dp
+private val STACK_TIMER_SPACE = STACK_TIMER_GAP + TIMER_PILL + 8.dp
+
+/** Keeps `space` (above the navigation bar) free at the bottom while `on`. */
+private fun Modifier.reserve(on: Boolean, space: Dp) = if (on) navigationBarsPadding().padding(bottom = space) else this
+
 /** The top stacked screen, with its saveable state kept while other screens are opened over it. */
 @Composable
-private fun StackTop(state: AppState) {
+private fun StackTop(state: AppState, docked: Boolean) {
     val holder = rememberSaveableStateHolder()
     val keys = state.stack.mapIndexed { i, screen -> "$i:$screen" }
     val known = remember { HashSet<String>() }
@@ -93,7 +115,10 @@ private fun StackTop(state: AppState) {
     }
     val top = state.stack.lastOrNull() ?: return
     holder.SaveableStateProvider(keys.last()) {
-        Box(Modifier.fillMaxSize()) { ScreenView(state, top) }
+        // Opaque to the bottom, so the tab bar doesn't show through the timer's strip.
+        Box(Modifier.fillMaxSize().background(LocalPalette.current.bg)) {
+            Box(Modifier.fillMaxSize().reserve(docked, STACK_TIMER_SPACE)) { ScreenView(state, top) }
+        }
     }
 }
 

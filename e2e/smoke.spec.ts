@@ -41,6 +41,14 @@ test('log sets, see records, survive reload and offline', async ({ page, context
   await page.getByRole('button', { name: 'Update' }).click();
   await expect(page.locator('.sets li').first()).toContainText('60 kg × 10');
 
+  // Delete a set, then Undo brings it back in its place.
+  await page.locator('.set-row').first().click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.locator('.sets li')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('.sets li')).toHaveCount(2);
+  await expect(page.locator('.sets li').first()).toContainText('60 kg × 10');
+
   // Back on the log: the exercise with its sets.
   await page.getByRole('button', { name: /Back/ }).click();
   const card = page.locator('.ex-card');

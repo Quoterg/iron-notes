@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -141,6 +149,9 @@ internal fun fromForm(f: Form, ex: Exercise, st: Settings): Values? {
     }
     return if (listOfNotNull(weight, reps, distance, time).any { it > 0 }) Values(weight, reps, distance, time) else null
 }
+
+/** The one-time "tap a set to change or delete it" hint (AppState.seen). */
+private const val HINT_TAP_SET = "tapSet"
 
 /** The weight field's label by load type. */
 private fun weightLabelKey(load: LoadType?) = when (load) {
@@ -259,6 +270,16 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     // Validity is recomputed only when a field (or the exercise/settings) changes, not on every recomposition.
     val values by remember(ex, st) { derivedStateOf { fromForm(form, ex, st) } }
     var saving by remember(id, date) { mutableStateOf(false) }
+    // The set just logged is scrolled into view (only as far as needed), clear of the timer's strip.
+    var justSaved by remember(id, date) { mutableStateOf<String?>(null) }
+    val savedRow = remember(id, date) { BringIntoViewRequester() }
+    LaunchedEffect(justSaved, current) {
+        if (justSaved == null || current?.sets?.none { it.id == justSaved } != false) return@LaunchedEffect
+        withFrameNanos { } // laid out first (the timer's strip may just have appeared)
+        withFrameNanos { }
+        savedRow.bringIntoView()
+        justSaved = null
+    }
 
     fun afterWrite() {
         state.loadDay(state.date)
@@ -314,6 +335,7 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             showComment = false
             reload { nl ->
                 afterWrite()
+                justSaved = s.id
                 if (hadOthers && s.id in nl.records) state.showToast(state.t("newRecord"))
             }
             // In a superset: on to the next exercise; rest only after the round's last one.
@@ -338,15 +360,21 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
 
     fun clearOrDelete() {
         if (selected == null) { form.clear(); showComment = false; return }
-        state.run({ it.deleteSet(selected.id) }) {
+        val gone = selected
+        state.run({ it.deleteSet(gone.id) }) {
             sel = null
             form.comment = ""
             showComment = false
             reload { afterWrite() }
+            // As deleting a workout: the set comes back as it was stored (same id, so records and order hold).
+            state.showToast(state.t("setDeleted"), state.t("undo")) {
+                state.run({ it.putSet(gone) }) { reload { afterWrite() } }
+            }
         }
     }
 
     fun select(s: WorkoutSet) {
+        state.markSeen(HINT_TAP_SET)
         if (sel == s.id) {
             sel = null
             form.comment = ""
@@ -465,12 +493,21 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             if (tab == "track" && current != null) {
                 if (todays.isNotEmpty()) {
                     Card(Modifier.padding(top = 12.dp), padding = 8.dp) {
+                        // Once, until a set is tapped or the hint is closed.
+                        if (!state.seen(HINT_TAP_SET)) {
+                            Row(Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Txt(state.t("tapSetHint"), Modifier.weight(1f), small = true, color = LocalPalette.current.accent)
+                                Btn(state.t("ok"), { state.markSeen(HINT_TAP_SET) }, small = true)
+                            }
+                        }
                         val total = guide?.effectiveToday ?: 0.0
                         if (hasReps && total > 0) {
                             Txt(state.t("effToday", "n" to state.i18n.dnum(total)), Modifier.padding(start = 4.dp, bottom = 4.dp), muted = true, small = true)
                         }
                         todays.forEachIndexed { i, s ->
-                            SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records, if (hasReps) effortText(state, s) else "", if (hasReps) eff[s.id] else null, st.markDone || s.planned == true, { tick(s, it) }) { select(s) }
+                            Box(if (s.id == justSaved) Modifier.bringIntoViewRequester(savedRow) else Modifier) {
+                                SetRow(state, ex, load, i + 1, s, sel == s.id, s.id in records, if (hasReps) effortText(state, s) else "", if (hasReps) eff[s.id] else null, st.markDone || s.planned == true, { tick(s, it) }) { select(s) }
+                            }
                         }
                     }
                 } else {
@@ -500,7 +537,26 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
     }
 }
 
-/** The input card: fields, comment, Save/Clear. */
+/** The number inputs in the order Enter moves through them (weight → reps → distance → min → sec). */
+internal enum class Slot { WEIGHT, REPS, DISTANCE, MIN, SEC }
+
+internal fun slotsOf(fields: List<Field>): List<Slot> = buildList {
+    if (Field.WEIGHT in fields) add(Slot.WEIGHT)
+    if (Field.REPS in fields) add(Slot.REPS)
+    if (Field.DISTANCE in fields) add(Slot.DISTANCE)
+    if (Field.TIME in fields) { add(Slot.MIN); add(Slot.SEC) }
+}
+
+/** Where Enter goes from an input: the next input, or null for the last one (Enter saves). */
+internal fun nextSlot(slots: List<Slot>, s: Slot): Slot? = slots.getOrNull(slots.indexOf(s) + 1)
+
+/** The Enter key of an input: the action the keyboard shows, and what it does. */
+private class Enter(val action: ImeAction, val run: () -> Unit)
+
+/**
+ * The input card: fields, Save/Clear right under them (reachable with the keyboard open), then the
+ * comment and calculator links. Enter moves weight → reps (→ distance → time) and saves from the last input.
+ */
 @Composable
 private fun Track(
     state: AppState, ex: Exercise, form: Form, fields: List<Field>, load: LoadType,
@@ -509,47 +565,72 @@ private fun Track(
 ) {
     val st = state.settings
     val hasReps = Field.REPS in fields
-    Card(Modifier.padding(top = 2.dp)) {
+    val slots = slotsOf(fields)
+    val focus = remember { Slot.entries.associateWith { FocusRequester() } }
+    val keyboard = LocalSoftwareKeyboardController.current
+    // Saved: the keyboard goes so the set and the timer show, and focus moves to the card (no highlight),
+    // so the next tap on an input selects its value again. (Clearing focus instead moved it to the Back
+    // button, which then showed as highlighted.)
+    val sink = remember { FocusRequester() }
+    val submit = Enter(ImeAction.Done) {
+        if (canSave) {
+            save()
+            sink.requestFocus()
+            keyboard?.hide()
+        }
+    }
+    fun enter(s: Slot): Enter = nextSlot(slots, s)?.let { n -> Enter(ImeAction.Next) { focus.getValue(n).requestFocus() } } ?: submit
+    Card(Modifier.padding(top = 2.dp).focusRequester(sink).focusable()) {
         if (Field.WEIGHT in fields) {
             val unit = unitLabel(st.unit)
-            Stepper("${state.t(weightLabelKey(load))} ($unit)", form.weight, { form.weight = it }, ex.increment ?: defaultIncrement(st.unit))
+            Stepper(
+                "${state.t(weightLabelKey(load))} ($unit)", form.weight, { form.weight = it }, ex.increment ?: defaultIncrement(st.unit),
+                focus = focus.getValue(Slot.WEIGHT), enter = enter(Slot.WEIGHT),
+            )
         }
-        if (Field.REPS in fields) Stepper(state.t("reps"), form.reps, { form.reps = it }, 1.0, integer = true)
+        if (Field.REPS in fields) Stepper(state.t("reps"), form.reps, { form.reps = it }, 1.0, integer = true, focus = focus.getValue(Slot.REPS), enter = enter(Slot.REPS))
         if (Field.DISTANCE in fields) {
-            Stepper("${state.t("distance")} (${distLabel(st.dist)})", form.distance, { form.distance = it }, if (st.dist == DistUnit.M) 100.0 else 0.1)
+            Stepper(
+                "${state.t("distance")} (${distLabel(st.dist)})", form.distance, { form.distance = it }, if (st.dist == DistUnit.M) 100.0 else 0.1,
+                focus = focus.getValue(Slot.DISTANCE), enter = enter(Slot.DISTANCE),
+            )
         }
-        if (Field.TIME in fields) TimeField(state, form)
+        if (Field.TIME in fields) TimeField(state, form, focus.getValue(Slot.MIN), focus.getValue(Slot.SEC), enter(Slot.MIN), enter(Slot.SEC))
         if (hasReps && st.mode == TrainingMode.DORIAN) {
             Chips(Modifier.padding(bottom = 10.dp)) {
                 listOf(false, true).forEach { w ->
                     Chip(state.t(if (w) "warmup" else "working"), form.warmup == w, { onWorking(w) }, Modifier.semantics { this.selected = form.warmup == w })
                 }
             }
-            if (!form.warmup) Stepper(state.t("afterFailure"), form.after, { form.after = it }, 1.0, integer = true)
+            if (!form.warmup) Stepper(state.t("afterFailure"), form.after, { form.after = it }, 1.0, integer = true, enter = submit)
         }
         if (hasReps && st.mode == TrainingMode.LYLE) RirChips(state, form)
         if (showComment) {
             Column(Modifier.padding(bottom = 8.dp)) {
                 Txt(state.t("setComment"), muted = true, small = true, modifier = Modifier.padding(bottom = 4.dp))
-                Field(form.comment, { form.comment = it }, state.t("setComment"), Modifier.fillMaxWidth())
+                Field(form.comment, { form.comment = it }, state.t("setComment"), Modifier.fillMaxWidth(), imeAction = submit.action, onImeAction = submit.run)
             }
-        } else {
-            LinkBtn("+ ${state.t("addComment")}", openComment)
-        }
-        if (Field.WEIGHT in fields) {
-            val v = fromForm(form, ex, state.settings)
-            LinkBtn(state.t("tools"), { state.open(Screen.Tools(v?.weight, v?.reps)) })
         }
         Actions {
             Btn(state.t(if (editing) "update" else "save"), save, kind = BtnKind.PRIMARY, enabled = canSave)
             Btn(state.t(if (editing) "delete" else "clear"), clearOrDelete, kind = if (editing) BtnKind.DANGER else BtnKind.NORMAL)
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            if (!showComment) LinkBtn("+ ${state.t("addComment")}", openComment)
+            if (Field.WEIGHT in fields) {
+                val v = fromForm(form, ex, state.settings)
+                LinkBtn(state.t("tools"), { state.open(Screen.Tools(v?.weight, v?.reps)) })
+            }
+        }
     }
 }
 
-/** A labelled number input with −/+ buttons (ExerciseScreen.tsx `Stepper`). */
+/** A labelled number input with −/+ buttons (ExerciseScreen.tsx `Stepper`); `enter` = the keyboard's Enter key. */
 @Composable
-private fun Stepper(label: String, value: String, onChange: (String) -> Unit, step: Double, integer: Boolean = false) {
+private fun Stepper(
+    label: String, value: String, onChange: (String) -> Unit, step: Double, integer: Boolean = false,
+    focus: FocusRequester? = null, enter: Enter? = null,
+) {
     fun bump(dir: Int) {
         val next = maxOf(0.0, (parse(value) ?: 0.0) + dir * step)
         onChange(if (integer) Math.round(next).toString() else num(next, 3))
@@ -558,7 +639,10 @@ private fun Stepper(label: String, value: String, onChange: (String) -> Unit, st
         Txt(label, Modifier.padding(bottom = 4.dp), muted = true, small = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn("−", "$label −${num(step, 3)}", { bump(-1) })
-            Field(value, onChange, label, Modifier.weight(1f), number = true)
+            Field(
+                value, onChange, label, Modifier.weight(1f).then(if (focus != null) Modifier.focusRequester(focus) else Modifier),
+                number = true, imeAction = enter?.action ?: ImeAction.Default, onImeAction = enter?.run, selectOnFocus = true,
+            )
             IconBtn("+", "$label +${num(step, 3)}", { bump(1) })
         }
     }
@@ -566,7 +650,7 @@ private fun Stepper(label: String, value: String, onChange: (String) -> Unit, st
 
 /** Minutes and seconds, with ±15 s buttons (ExerciseScreen.tsx `TimeField`). */
 @Composable
-private fun TimeField(state: AppState, form: Form) {
+private fun TimeField(state: AppState, form: Form, minFocus: FocusRequester, secFocus: FocusRequester, minEnter: Enter, secEnter: Enter) {
     val time = state.t("time")
     fun bump(d: Int) {
         val total = maxOf(0.0, (parse(form.min) ?: 0.0) * 60 + (parse(form.sec) ?: 0.0) + d)
@@ -578,9 +662,15 @@ private fun TimeField(state: AppState, form: Form) {
         Txt(if (total > 0) "$time (${fmtTime(total)})" else time, Modifier.padding(bottom = 4.dp), muted = true, small = true)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconBtn("−", "$time −15 s", { bump(-15) })
-            Field(form.min, { form.min = it }, "$time (${state.t("min")})", Modifier.weight(1f), number = true)
+            Field(
+                form.min, { form.min = it }, "$time (${state.t("min")})", Modifier.weight(1f).focusRequester(minFocus),
+                number = true, imeAction = minEnter.action, onImeAction = minEnter.run, selectOnFocus = true,
+            )
             Txt(":", bold = true, size = 22.sp)
-            Field(form.sec, { form.sec = it }, "$time (${state.t("sec")})", Modifier.weight(1f), number = true)
+            Field(
+                form.sec, { form.sec = it }, "$time (${state.t("sec")})", Modifier.weight(1f).focusRequester(secFocus),
+                number = true, imeAction = secEnter.action, onImeAction = secEnter.run, selectOnFocus = true,
+            )
             IconBtn("+", "$time +15 s", { bump(15) })
         }
     }
