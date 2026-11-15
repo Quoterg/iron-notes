@@ -324,9 +324,12 @@ export default function ExerciseScreen({ id, date }: { id: string; date: string 
 
   async function clearOrDelete() {
     if (selected) {
-      await removeSet(selected);
+      const gone = selected;
+      await removeSet(gone);
       setSel(null);
       setForm((f) => ({ ...f, comment: '' }));
+      // As deleting a workout: the set comes back as stored (same id, so order and records hold).
+      toast(t('setDeleted'), { label: t('undo'), run: () => void saveSet(gone) });
     } else setForm(EMPTY);
   }
 
