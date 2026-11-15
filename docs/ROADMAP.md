@@ -151,3 +151,36 @@ sync last (it has to carry every field the milestones before it add).
 
 Plan, reasoning and the never-offline switch in [NATIVE.md](NATIVE.md); milestones N0–N11 are tracked
 there. The PWA and the TWA stay live until the native app reaches parity.
+
+## Phase 5 — Quality of life (owner, 2026-11-15)
+
+The app is used by the owner and friends. This phase removes friction found by walking through the native app
+on the emulator as a first-time friend and as a daily user (2026-11-15); nothing here is a new feature area.
+Native first (it is the app in use); the website gets a change only where it has the same problem and the fix
+is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names stay English** in every language
+(owner's choice) — do not translate the library.
+
+- [ ] **Q1 Gym-floor fixes** — (a) The rest-timer pill gets its own space: it must never cover the set just
+  logged on the exercise screen or the buttons on the day screen (content scrolls clear of it). (b) Keyboard:
+  Enter on weight moves to reps, Enter on reps saves; Save stays reachable with the keyboard open. (c) Deleting
+  a set shows "Undo" (as deleting a workout does); a one-time hint that tapping a set edits it.
+- [ ] **Q2 Plain words** — Tap "≈ eff." (set, muscle chip, statistics) for a short explanation of effective
+  reps, including why one set shows 3 and another 8; the same for the trophy, estimated 1RM and RIR. Training
+  modes show a plain one-line description before one is chosen. Small fixes: singular/plural ("1 exercise",
+  "1 övning", "1 set"), no trophy on an exercise's first-ever set, a unit on the graph's y-axis, placeholders in
+  the empty weight/reps boxes.
+- [ ] **Q3 Routines that read right** — Planned sets can be ticked off on the day screen (or the toast stops
+  promising it); "Log to <date>" names the day clearly when it isn't today; routine day cards look tappable;
+  planned sets added to a day that already has sets stay grouped.
+- [ ] **Q4 First run for a friend** — Language and units offered on the empty first screen (they sit far down
+  in Settings today); a hint in the first, empty exercise search. No tutorial.
+- [ ] **Q5 Automatic backups** — A scheduled backup to a folder the user chooses (Storage Access Framework, no
+  new permission), the date of the last backup in Settings, and Restore saves a safety copy of the current
+  data first.
+- [ ] **Q6 The CSV trap** — Importing the app's own CSV export must not damage data (the owner hit this
+  2026-11-15): find what the round trip loses, then either make it lossless or recognise the app's own export
+  and point to Restore backup instead.
+
+Left out after challenge: moving the "Last time" panel (the pre-filled weight and reps cover it), the
+translucent bottom bar (the shared look with Iron Log), an in-app update check (a network request), listing in
+app catalogues, and device sync in the native app (not needed while one phone is used).
