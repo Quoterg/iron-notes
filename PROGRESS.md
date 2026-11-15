@@ -3,8 +3,10 @@
 ## Next up
 
 - **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 merged (#59). Q2 split:
-  Q2a PR #60 (`milestone/q2a-small-words`), Q2b PR stacked on it (`milestone/q2b-explain`). Next: **Q3 Routines
-  that read right** on `milestone/q3-routines`, stacked on Q2b; then Q4–Q6.
+  Q1, Q2a, Q2b merged (#59–#61). Q3 PR open (`milestone/q3-routines`). Next: **Q4 First run for a friend** on
+  `milestone/q4-first-run`, stacked on Q3; then Q5, Q6.
+- Follow-ups: the web has the mode lines but not the tap-to-explain overlay (review of #61); the keyboard can stay
+  up after leaving a screen with a focused text field (seen on the routine day editor, emulator).
 - Review nits left from #59 (not done): Dorian after-failure reps could be an Enter stop before Save.
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
@@ -31,6 +33,21 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q3 Routines that read right
+
+- The toast no longer promises ticking on the day screen: "Routine day added: open an exercise to log its sets,
+  or tick the planned ones off there." (planned sets have their tick box on the exercise screen). Choice: change
+  the words rather than add ticks to the day log, which keeps the day log a read-only summary.
+- "Log to …" names the day: "Log to today", "Log to tomorrow, Mon 16 Nov", "Log to Thu 19 Nov" (both apps).
+- Routine day cards say "Edit ›" at the right of the title (both apps): the card opens the day's editor.
+- A routine day logged into a day that already has sets keeps its exercises together at the first one's place
+  (core `log_routine_day` and web `logRoutineDay`, with `pull_together`): before, a routine exercise already
+  logged that day stayed where it was and the others landed after everything else. Tests in both.
+- Review of #61 nits: the explanation is a compose-ui `Dialog` (TalkBack stays inside, Back / outside close it)
+  with an opaque panel; the records-cache read uses a local instead of `stored!`.
+- Verified on the emulator: a day with pushdown + squat, routine "Push" (bench, pushdown) logged to tomorrow →
+  pushdown, bench, squat; the new toast; "Edit ›"; "Log to tomorrow, Mon 16 Nov"; the dialog.
 
 ## 2026-11-15 — Q2b Explanations and mode names
 
