@@ -3,11 +3,8 @@
 ## Next up
 
 - **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 merged (#59). Q2 split:
-  Q2a (small words) PR open on `milestone/q2a-small-words`. Next: **Q2b Explanations and mode names** on
-  `milestone/q2b-explain`, stacked on Q2a — it also renames the guided modes in the UI only (owner 2026-11-15):
-  "Dorian HIT" → "HIT", "Lyle effective reps" → a plain name ("Volume"/"Volym" unless docs/TRAINING-MODES.md
-  suggests a better word); stored values, backup fields, fixtures and code names (dorian/lyle) stay. Web strings
-  change too → run the web gates. Then Q3–Q6.
+  Q2a PR #60 (`milestone/q2a-small-words`), Q2b PR stacked on it (`milestone/q2b-explain`). Next: **Q3 Routines
+  that read right** on `milestone/q3-routines`, stacked on Q2b; then Q4–Q6.
 - Review nits left from #59 (not done): Dorian after-failure reps could be an Enter stop before Save.
 - **Merging:** the "Iron Notes milestone review" routine reviews every milestone PR; fix its Blockers and
   Should-fix items (CLAUDE.md step 0), and the reviewer merges. Never merge yourself.
@@ -34,6 +31,24 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q2b Explanations and mode names
+
+- Mode names (owner): "Dorian HIT" → **HIT**, "Lyle effective reps" → **Volume** / **Volym** — the plain word
+  for what it does (more sets, stopped short of failure, in cycles) and the counterpart to HIT's one all-out set.
+  Every user-visible string in both apps (settings, hints, programs, What's new, muscles text), the store listing
+  in docs/ANDROID.md and a naming note in docs/TRAINING-MODES.md (which keeps crediting Dorian Yates and Lyle
+  McDonald). Keys, stored settings (`dorian`/`lyle`), backups, fixtures and code names unchanged. Program
+  templates: "HIT 4-day split", "Upper/lower (GBR)"; routines already started keep the name they were given.
+- Native explanations: one overlay (Explain.kt, `AppState.explaining`; tap anywhere, OK or Back closes it). Tap
+  a set's "≈ eff." or a trophy (exercise screen, history, day log); a "?" by the day's muscle chips (the chips
+  still open Muscles), on Muscles and Statistics (effective reps per muscle), by Records' estimated 1RM and by
+  the RIR chips. The effective-reps text explains 8 at failure ≈8 vs 10 of a possible 12 ≈3 (effective.ts).
+- Settings: all three modes in one plain line each, before one is chosen (both apps), then the chosen mode's
+  logging hint.
+- Web: the explanations are not ported (no modal component there; native is the app in use).
+- Verified on the emulator: Swedish Night (mode lines, "?" by muscle chips, RIR, badge, trophy), English Day
+  (mode names, Records e1RM).
 
 ## 2026-11-15 — Q2a Small words (both apps)
 
