@@ -4,7 +4,17 @@ Open-source, local-first training log for strength and cardio. Log sets in secon
 records, rest between sets with a timer — offline, with no account, fast on old phones.
 Same design as its sister app [Iron Log](https://github.com/Quoterg/iron-log).
 
-Status: early (milestone M1 of [the roadmap](docs/ROADMAP.md)).
+**Try it: https://iron-notes.pages.dev/** — or install it:
+
+- **iPhone:** open the link in Safari → Share → *Add to Home Screen*.
+- **Android:** download the **Android app (APK)** from the [releases page](https://github.com/Quoterg/iron-notes/releases)
+  (v2.0.0; pick `arm64-v8a` for most phones), or open the link in Chrome → ⋮ → *Install app*.
+- **Desktop:** just open the link.
+
+Your data stays on the device. On iPhone it lives in Safari's storage for the Home Screen app, so
+export a backup now and then (Settings → Export backup).
+
+Status: the web app and the native Android app (2.0.0) are both released; see [the roadmap](docs/ROADMAP.md).
 
 ## Features (M1)
 
