@@ -35,4 +35,18 @@ describe('routines in the log', () => {
       [bench, 85, 8, true],
     ]);
   });
+
+  it('a routine day added to a logged day keeps its exercises together', async () => {
+    const push = exercises.value.find((e) => e.name === 'Cable Pushdown')!.id;
+    const dl = exercises.value.find((e) => e.name === 'Deadlift')!.id;
+    await db.putSets([
+      { id: 'p1', date: '2026-02-12', exerciseId: push, order: 10, weight: 30, reps: 12 },
+      { id: 'd1', date: '2026-02-12', exerciseId: dl, order: 11, weight: 140, reps: 5 },
+    ]);
+    await loadDay('2026-02-12');
+    await logRoutineDay({ id: 'e', name: 'B', items: [{ exerciseId: bench, sets: [{ reps: 8 }] }, { exerciseId: push, sets: [{ reps: 10 }] }] }, '2026-02-12');
+    // Bench joins pushdown at its place instead of landing after the deadlift (the core does the same).
+    const order = [...new Set(daySets.value.map((s) => s.exerciseId))];
+    expect(order).toEqual([push, bench, dl]);
+  });
 });

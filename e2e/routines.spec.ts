@@ -36,7 +36,7 @@ test('build a routine, log a day, fill in its planned sets', async ({ page }) =>
   await expect(sheet.locator('.plan-line').nth(1)).toHaveText('3 × 10');
 
   // Log it into today: planned sets, greyed out, bench at last time's 80 kg.
-  await sheet.getByRole('button', { name: 'Log to Today' }).click();
+  await sheet.getByRole('button', { name: 'Log to today' }).click();
   await expect(page.getByRole('button', { name: 'Today' })).toBeVisible();
   const bench = page.locator('main .ex-card').first();
   await expect(bench).toContainText('Flat Barbell Bench Press');

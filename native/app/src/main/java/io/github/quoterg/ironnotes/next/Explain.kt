@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 /** The terms the app explains on a tap (Q2b): a title key and a text key. */
 enum class Topic(val title: String, val text: String) {
@@ -48,19 +49,20 @@ fun InfoBtn(state: AppState, topic: Topic, modifier: Modifier = Modifier) {
 fun Modifier.explains(state: AppState, topic: Topic): Modifier =
     clickable(role = Role.Button) { state.explaining = topic }
 
-/** The explanation over everything (tap outside, OK or Back closes it). */
+/**
+ * The explanation in a dialog window (compose-ui, not Material): it dims the screen, keeps TalkBack inside
+ * (review of #61), and closes on OK, Back or a tap outside.
+ */
 @Composable
 fun ExplainOverlay(state: AppState) {
     val topic = state.explaining ?: return
     val p = LocalPalette.current
-    Box(
-        Modifier.fillMaxSize().background(p.bg.copy(alpha = 0.92f))
-            .pointerInput(Unit) { detectTapGestures { state.explaining = null } }
-            .navigationBarsPadding().padding(16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        // Opaque under the glass card, so the screen behind doesn't show through the text.
-        Card(Modifier.widthIn(max = 480.dp).background(p.bg, androidx.compose.foundation.shape.RoundedCornerShape(18.dp))) {
+    Dialog(onDismissRequest = { state.explaining = null }) {
+        // An opaque panel (not the glass card), so nothing behind shows through the text.
+        val shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp)
+        androidx.compose.foundation.layout.Column(
+            Modifier.widthIn(max = 480.dp).background(p.bg, shape).border(1.dp, p.cardBorder, shape).padding(16.dp),
+        ) {
             Heading(state.t(topic.title), Modifier.padding(bottom = 8.dp))
             Txt(state.t(topic.text))
             Actions { Btn(state.t("ok"), { state.explaining = null }, kind = BtnKind.PRIMARY) }

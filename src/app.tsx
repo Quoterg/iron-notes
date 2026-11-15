@@ -1,5 +1,6 @@
-import { addDays, isoDate, parseIso } from './lib/calc';
-import { locale, t } from './lib/i18n';
+import { addDays, isoDate } from './lib/calc';
+import { t } from './lib/i18n';
+import { dayLabel } from './lib/days';
 import { Log } from './components/Log';
 import { RestTimer } from './components/RestTimer';
 import { lazyView } from './lazy';
@@ -173,10 +174,4 @@ function DateNav() {
   );
 }
 
-export function dayLabel(d: string): string {
-  const today = isoDate(new Date());
-  if (d === today) return t('today');
-  if (d === addDays(today, -1)) return t('yesterday');
-  if (d === addDays(today, 1)) return t('tomorrow');
-  return parseIso(d).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
-}
+export { dayLabel };

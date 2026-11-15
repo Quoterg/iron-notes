@@ -945,7 +945,17 @@ impl IronCore {
         if sets.is_empty() {
             return Ok(());
         }
+        let members: HashSet<String> = sets.iter().map(|s| s.exercise_id.clone()).collect();
         self.put_sets(sets)?;
+        // Added to a day that already has sets: the routine's exercises stay together (at the first one's
+        // place), so a routine exercise already logged that day doesn't split the routine's block (Q3).
+        let day = self.with(|s| s.sets_on(&date))?;
+        let current = groups::day_order(&day);
+        let order = groups::pull_units(&current, &members);
+        if order.iter().zip(&current).any(|(id, c)| *id != c.exercise_id) {
+            let group_of: HashMap<String, Option<String>> = current.into_iter().map(|o| (o.exercise_id, o.group)).collect();
+            self.rewrite_day(&day, &order, &group_of)?;
+        }
         // A workout of the program: the next one comes after it.
         self.with(|s| {
             let mut st = s.settings()?;
@@ -1611,6 +1621,42 @@ mod tests {
         core.log_routine_day(r.id.clone(), r.days[0].id.clone(), "2026-11-14".into()).unwrap();
         let second = core.day("2026-11-14".into()).unwrap().sets;
         assert_ne!(second.iter().find(|s| s.exercise_id == curl.id).unwrap().group, new[0]); // a second logging, a second superset
+    }
+
+    #[test]
+    fn routine_day_added_to_a_logged_day_stays_together() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, squat, push) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Barbell Squat"), exercise(&core, "Cable Pushdown"));
+        let d = "2026-11-12";
+        // Already logged: pushdown, then squat. The routine: bench, pushdown.
+        core.put_sets(vec![logged(&push, d, 30.0, 12.0), logged(&squat, d, 100.0, 5.0)]).unwrap();
+        let r = routine_of(&core, vec![("Push", vec![item(&bench, 2), item(&push, 1)])]);
+        core.log_routine_day(r.id.clone(), r.days[0].id.clone(), d.into()).unwrap();
+        let order = groups::day_order(&core.day(d.into()).unwrap().sets).into_iter().map(|o| o.exercise_id).collect::<Vec<_>>();
+        // Bench joins pushdown at its place instead of landing after squat; squat keeps its own place.
+        assert_eq!(order, [push.id.clone(), bench.id.clone(), squat.id.clone()]);
+        let day = core.day(d.into()).unwrap();
+        assert_eq!(day.sets.len(), 5);
+        assert_eq!(day.sets.iter().filter(|s| s.planned != Some(true)).count(), 2); // logged sets unchanged
+    }
+
+    #[test]
+    fn routine_day_added_never_splits_a_superset() {
+        let core = IronCore::in_memory().unwrap();
+        let (bench, fly, squat) = (exercise(&core, "Flat Barbell Bench Press"), exercise(&core, "Dumbbell Fly"), exercise(&core, "Barbell Squat"));
+        let d = "2026-11-12";
+        // A superset bench + fly, then squat. The routine: bench, squat.
+        core.put_sets(vec![
+            WorkoutSet { group: Some("g".into()), ..logged(&bench, d, 100.0, 8.0) },
+            WorkoutSet { group: Some("g".into()), ..logged(&fly, d, 20.0, 12.0) },
+            logged(&squat, d, 100.0, 5.0),
+        ]).unwrap();
+        let r = routine_of(&core, vec![("Mix", vec![item(&bench, 1), item(&squat, 1)])]);
+        core.log_routine_day(r.id.clone(), r.days[0].id.clone(), d.into()).unwrap();
+        let order = groups::day_order(&core.day(d.into()).unwrap().sets);
+        let ids = order.iter().map(|o| o.exercise_id.clone()).collect::<Vec<_>>();
+        assert_eq!(ids, [bench.id.clone(), fly.id.clone(), squat.id.clone()]); // bench and fly stay side by side
+        assert_eq!(order[0].group, order[1].group);
     }
 
     #[test]

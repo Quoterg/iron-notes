@@ -134,7 +134,7 @@ export const later = {
   deleteDayQ: 'Delete this day of the routine?',
   emptyRoutineDay: 'No exercises yet.',
   logTo: 'Log to {day}',
-  routineLogged: 'Routine day added: tick off the sets as you do them.',
+  routineLogged: 'Routine day added: open an exercise to log its sets, or tick the planned ones off there.',
   setsCount: 'Sets',
   repsPlan: 'Reps',
   weightPlan: 'Weight ({unit}, empty = last time)',

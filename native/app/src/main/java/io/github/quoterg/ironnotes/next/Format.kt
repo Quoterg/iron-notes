@@ -107,6 +107,16 @@ fun I18n.dayLabel(d: String): String {
     }
 }
 
+/** The day a routine is logged to (app.tsx `logDayLabel`): "today", "tomorrow, Mon 16 Nov", "Thu 19 Nov". */
+fun I18n.logDayLabel(d: String): String {
+    val t0 = today()
+    val label = dayLabel(d)
+    if (d == t0) return label.lowercase()
+    val date = SimpleDateFormat("EEE d MMM", if (lang == "sv") Locale("sv", "SE") else Locale.getDefault()).format(parseIso(d).time)
+    val near = d == io.github.quoterg.ironnotes.core.addDays(t0, -1) || d == io.github.quoterg.ironnotes.core.addDays(t0, 1)
+    return if (near) "${label.lowercase()}, $date" else date
+}
+
 /** Days since 1970-01-01 of a civil date (H. Hinnant's algorithm; java.time needs Android 8). */
 fun epochDay(year: Int, m: Int, d: Int): Long {
     val y = (if (m <= 2) year - 1 else year).toLong()

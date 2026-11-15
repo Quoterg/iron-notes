@@ -176,7 +176,7 @@ const strings: Record<Key, string> = {
   deleteDayQ: 'Radera den här dagen i rutinen?',
   emptyRoutineDay: 'Inga övningar än.',
   logTo: 'Logga till {day}',
-  routineLogged: 'Rutindagen är tillagd: bocka av seten när du gör dem.',
+  routineLogged: 'Rutindagen är tillagd: öppna en övning för att logga seten, eller bocka av de planerade där.',
   setsCount: 'Set',
   repsPlan: 'Reps',
   weightPlan: 'Vikt ({unit}, tomt = förra gången)',

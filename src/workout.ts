@@ -153,9 +153,13 @@ export async function logRoutineDay(day: RoutineDay, d: string): Promise<void> {
   // Sets of an exercise already in a superset that day join it.
   const sets = plannedSets({ ...day, items }, d, (id) => last.get(id) ?? [], nextOrder, settings.value.mode === 'dorian').map((s) => ({ ...s, group: groupOf(sameDay, s.exerciseId) ?? s.group }));
   if (!sets.length) return;
-  await db.putSets(sets);
+  // Added to a day that already has sets: the routine's exercises stay together at the first one's place,
+  // supersets moving whole (the core's log_routine_day does the same), in one write.
+  const { placeTogether } = await import('./lib/groups');
+  const write = placeTogether([...sameDay].sort(byOrder), sets);
+  await db.putSets(write);
   if (d !== date.value) date.value = d;
-  await afterWrite(sets);
+  await afterWrite(write);
   // A workout of the program: the next one comes after it.
   const program = settings.value.program;
   if (program && routines.value?.find((r) => r.id === program.routineId)?.days.some((x) => x.id === day.id)) {

@@ -174,7 +174,7 @@ is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names st
     without a person's name ("Volume" / "Volym" unless docs/TRAINING-MODES.md suggests a clearly better word) —
     every user-visible string in both apps (en + sv) and the docs' user-facing wording; internal identifiers,
     stored setting values, backup fields, golden fixtures and code names (dorian/lyle) stay unchanged.
-- [ ] **Q3 Routines that read right** — Planned sets can be ticked off on the day screen (or the toast stops
+- [x] **Q3 Routines that read right** — Planned sets can be ticked off on the day screen (or the toast stops
   promising it); "Log to <date>" names the day clearly when it isn't today; routine day cards look tappable;
   planned sets added to a day that already has sets stay grouped.
 - [ ] **Q4 First run for a friend** — Language and units offered on the empty first screen (they sit far down

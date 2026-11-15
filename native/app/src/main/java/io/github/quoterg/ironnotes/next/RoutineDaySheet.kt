@@ -193,7 +193,7 @@ fun RoutineDayScreen(state: AppState, routineId: String, dayId: String?) {
             }
             if (day.items.isNotEmpty() && r.days.any { it.id == id }) {
                 Btn(
-                    state.t("logTo", "day" to state.i18n.dayLabel(state.date)),
+                    state.t("logTo", "day" to state.i18n.logDayLabel(state.date)),
                     { logRoutineDay(state, r.id, id) },
                     Modifier.fillMaxWidth(),
                     kind = BtnKind.PRIMARY,
