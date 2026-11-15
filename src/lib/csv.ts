@@ -41,7 +41,9 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim() !== ''));
 }
 
-const HEADER = ['Date', 'Exercise', 'Category', 'Weight', 'Weight Unit', 'Reps', 'Distance', 'Distance Unit', 'Time', 'Comment'];
+// After FitNotes' columns, the set's effort (RIR, reps after failure, warm-up): what effective reps are worked
+// out from, so a CSV round trip keeps them (Q6). FitNotes never writes these, so they also mark our own export.
+const HEADER = ['Date', 'Exercise', 'Category', 'Weight', 'Weight Unit', 'Reps', 'Distance', 'Distance Unit', 'Time', 'Comment', 'RIR', 'After failure', 'Warm-up'];
 
 /** All done sets as CSV in FitNotes' layout, in the user's units (kgs/lbs, km/mi/m). */
 export function toCsv(sets: readonly WorkoutSet[], exercise: (id: string) => Exercise | undefined, category: (id: string) => Category | undefined, st: Settings): string {
@@ -63,6 +65,9 @@ export function toCsv(sets: readonly WorkoutSet[], exercise: (id: string) => Exe
         f.includes('distance') ? st.dist : '',
         f.includes('time') && s.time != null ? fmtTime(s.time) : '',
         safeText(s.comment ?? ''),
+        f.includes('reps') && s.rir != null ? s.rir : '',
+        f.includes('reps') && (s.after ?? 0) > 0 ? s.after : '',
+        f.includes('reps') && s.warmup ? 'yes' : '',
       ]
         .map(csvEscape)
         .join(','),
@@ -117,6 +122,8 @@ export interface ImportPlan {
   skipped: number;
   first?: string;
   last?: string;
+  /** The file is Iron Notes' own export (it has the effort columns): Restore backup brings back far more. */
+  ironNotes?: boolean;
 }
 
 const COLORS = ['#3b8df5', '#8c5aff', '#e05fb8', '#f0566a', '#f29a38', '#e0c43a', '#2bd4e0', '#2bcf9a', '#9aa4b2'];
@@ -147,6 +154,9 @@ export function planImport(
     distanceUnit: col(/^distance unit$/),
     time: col(/^(time|duration)( \(.*\))?$/),
     comment: col(/^(comment|notes?)$/),
+    rir: col(/^rir$/),
+    after: col(/^after failure$/),
+    warmup: col(/^warm-?up$/),
   };
   if (c.date < 0 || c.exercise < 0) throw new Error('Not a FitNotes CSV (needs Date and Exercise columns)');
   // A unit in the header ("Weight (lbs)") applies to every row without a unit column.
@@ -160,7 +170,7 @@ export function planImport(
   let catOrder = Math.max(-1, ...current.categories.map((x) => x.order)) + 1;
 
   // First pass: read rows; collect which fields each new exercise uses (to choose its type).
-  interface Row { date: string; name: string; cat: string; weight?: number; reps?: number; distance?: number; time?: number; comment?: string }
+  interface Row { date: string; name: string; cat: string; weight?: number; reps?: number; distance?: number; time?: number; comment?: string; rir?: number; after?: number; warmup?: boolean }
   const read: Row[] = [];
   const present = new Map<string, Set<Field>>();
   let skipped = 0;
@@ -181,6 +191,9 @@ export function planImport(
       distance: parseNum(r[c.distance]) != null ? toKm(parseNum(r[c.distance])!, c.distanceUnit >= 0 ? r[c.distanceUnit] ?? '' : dHead) : undefined,
       time: c.time >= 0 ? parseDuration(r[c.time] ?? '') : undefined,
       comment: c.comment >= 0 ? unsafeText((r[c.comment] ?? '').trim()) || undefined : undefined,
+      rir: c.rir >= 0 && parseNum(r[c.rir]) != null ? Math.round(parseNum(r[c.rir])!) : undefined,
+      after: c.after >= 0 && (parseNum(r[c.after]) ?? 0) > 0 ? Math.round(parseNum(r[c.after])!) : undefined,
+      warmup: c.warmup >= 0 && /^(yes|true|1|x)$/i.test((r[c.warmup] ?? '').trim()) ? true : undefined,
     };
     const vals = (['weight', 'reps', 'distance', 'time'] as const).filter((f) => (row[f] ?? 0) > 0);
     if (!vals.length) {
@@ -223,6 +236,12 @@ export function planImport(
     const f = fieldsOf(ex.type);
     const s: WorkoutSet = { id: uid(), date: row.date, exerciseId: ex.id, order: order++, comment: row.comment };
     for (const k of f) if (row[k] != null) s[k] = k === 'weight' ? Math.round(row[k]! * 1000) / 1000 : row[k];
+    // The effort, for exercises with reps (what effective reps are counted from).
+    if (f.includes('reps')) {
+      if (row.rir != null) s.rir = row.rir;
+      if (row.after != null) s.after = row.after;
+      if (row.warmup) s.warmup = true;
+    }
     const k = key(s);
     if (!f.some((x) => (s[x] ?? 0) > 0)) {
       skipped++; // e.g. a time-only row for an existing reps exercise: nothing it records
@@ -237,5 +256,6 @@ export function planImport(
     sets.push(s);
   }
   const dates = sets.map((s) => s.date).sort();
-  return { categories: newCats, exercises: newExs, sets, duplicates, skipped, first: dates[0], last: dates[dates.length - 1] };
+  const ironNotes = c.warmup >= 0 && c.rir >= 0 ? true : undefined;
+  return { categories: newCats, exercises: newExs, sets, duplicates, skipped, first: dates[0], last: dates[dates.length - 1], ironNotes };
 }
