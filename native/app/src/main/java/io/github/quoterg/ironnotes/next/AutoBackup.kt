@@ -22,6 +22,7 @@ object AutoBackup {
     private const val FOLDER = "folder"
     private const val LAST_AT = "lastAt"
     private const val SAFETY_AT = "safetyAt"
+    private const val FAILED_AT = "failedAt"
     const val PREFIX = "iron-notes-auto-"
     const val KEEP = 7
     private const val MIN_GAP_MS = 30 * 60 * 1000L
@@ -79,43 +80,111 @@ object AutoBackup {
     /** Whether an automatic backup is due (a folder is set and the last one is old enough). Pure, for tests. */
     fun due(hasFolder: Boolean, lastAt: Long, now: Long): Boolean = hasFolder && (lastAt == 0L || now - lastAt >= MIN_GAP_MS || now < lastAt)
 
-    /** The automatic backups to delete: names of ours beyond the newest [keep] (the date sorts them). Pure. */
-    fun toPrune(names: List<String>, keep: Int = KEEP): List<String> =
-        names.filter { it.startsWith(PREFIX) && it.endsWith(".json") }.sortedDescending().drop(keep)
+    /**
+     * The automatic backups to delete: ours beyond the newest [keep] (the date sorts them), and any leftover of
+     * ours that isn't a finished backup (a `.tmp`, a provider's `name (1).json`). Pure.
+     */
+    fun toPrune(names: List<String>, keep: Int = KEEP): List<String> {
+        val ours = names.filter { it.startsWith(PREFIX) }
+        val good = ours.filter { Regex("""${PREFIX}\d{4}-\d{2}-\d{2}\.json""").matches(it) }
+        return good.sortedDescending().drop(keep) + (ours - good.toSet())
+    }
+
+    /** The day file's name, by the phone's local date (the stamp inside stays UTC, as exports). Pure. */
+    fun dayFileName(now: Long, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): String =
+        PREFIX + java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT).apply { timeZone = zone }.format(java.util.Date(now)) + ".json"
+
+    // One writer at a time: onStop threads and Back up now never write the same file together.
+    private val lock = Any()
 
     /** Writes today's automatic backup if due. Off the main thread. True when one was written. */
-    fun runIfDue(ctx: Context, now: Long = System.currentTimeMillis()): Boolean {
+    fun runIfDue(ctx: Context, now: Long = System.currentTimeMillis()): Boolean = synchronized(lock) {
         val tree = folder(ctx) ?: return false
-        if (!due(true, lastAt(ctx), now)) return false
-        return runCatching {
-            val stamp = backupStamp(java.util.Date(now))
-            write(ctx, tree, "$PREFIX${stamp.take(10)}.json", Core.get(ctx).exportBackupJson(stamp))
-            markBackedUp(ctx, now)
-            prune(ctx, tree)
+        if (!due(true, lastAt(ctx), now)) return false // checked again inside the lock
+        runCatching {
+            writeBackup(ctx, tree, now)
             true
-        }.getOrElse { android.util.Log.w("IronNotes", "auto backup failed", it); false }
+        }.getOrElse {
+            android.util.Log.w("IronNotes", "auto backup failed", it)
+            prefs(ctx).edit().putLong(FAILED_AT, now).apply()
+            false
+        }
     }
 
     /** Writes now, whatever the time since the last one (Settings → Back up now). Throws on failure. */
-    fun backupNow(ctx: Context) {
-        val tree = folder(ctx) ?: error("no folder")
-        val now = System.currentTimeMillis()
-        val stamp = backupStamp(java.util.Date(now))
-        write(ctx, tree, "$PREFIX${stamp.take(10)}.json", Core.get(ctx).exportBackupJson(stamp))
-        markBackedUp(ctx, now)
-        prune(ctx, tree)
+    fun backupNow(ctx: Context) = synchronized(lock) {
+        writeBackup(ctx, folder(ctx) ?: error("no folder"), System.currentTimeMillis())
     }
 
+    private fun writeBackup(ctx: Context, tree: Uri, now: Long) {
+        val json = Core.get(ctx).exportBackupJson(backupStamp(java.util.Date(now)))
+        val kids = children(ctx, tree) // one listing for the write and the pruning (slow on cloud folders)
+        write(ctx, tree, kids, dayFileName(now), json)
+        markBackedUp(ctx, now)
+        prefs(ctx).edit().remove(FAILED_AT).apply()
+        val gone = toPrune(kids.map { it.first } + dayFileName(now)).toHashSet()
+        for ((name, uri) in kids) if (name in gone) runCatching { DocumentsContract.deleteDocument(ctx.contentResolver, uri) }
+    }
+
+    /** When the last automatic backup failed (folder gone, access revoked …), ms; 0 = the last one worked. */
+    fun failedAt(ctx: Context): Long = prefs(ctx).getLong(FAILED_AT, 0L)
+
     /**
-     * The data as it is now, saved before a restore replaces it: in the app's storage (for "Undo the last
-     * restore") and in the folder if one is chosen. Throws if it can't be saved — then don't restore.
+     * Step 1 of a restore: the data as it is now, into a temporary file in the app's storage. Throws if it can't
+     * be saved — then don't restore. The safety copy itself only changes once the restore worked ([commitSafety]),
+     * so a failed or refused restore never replaces it.
      */
-    fun saveSafetyCopy(ctx: Context) {
-        val stamp = backupStamp()
-        val json = Core.get(ctx).exportBackupJson(stamp)
-        File(ctx.filesDir, SAFETY_FILE).writeText(json, Charsets.UTF_8)
-        prefs(ctx).edit().putLong(SAFETY_AT, System.currentTimeMillis()).apply()
-        folder(ctx)?.let { tree -> runCatching { write(ctx, tree, "iron-notes-before-restore-${stamp.take(10)}.json", json) } }
+    fun prepareSafety(ctx: Context): File {
+        val tmp = File(ctx.filesDir, "$SAFETY_FILE.tmp")
+        tmp.writeText(Core.get(ctx).exportBackupJson(backupStamp()), Charsets.UTF_8)
+        return tmp
+    }
+
+    /** Step 2, after the restore worked: the new safety copy, the one before it kept as `prev`; a copy in the folder. */
+    fun commitSafety(ctx: Context, tmp: File) {
+        rotateSafety(ctx.filesDir, tmp)
+        val now = System.currentTimeMillis()
+        prefs(ctx).edit().putLong(SAFETY_AT, now).apply()
+        folder(ctx)?.let { tree ->
+            // The time in the name: two restores on one day keep both copies.
+            val name = "iron-notes-before-restore-" + java.text.SimpleDateFormat("yyyy-MM-dd-HHmm", java.util.Locale.ROOT).format(java.util.Date(now)) + ".json"
+            runCatching { synchronized(lock) { write(ctx, tree, children(ctx, tree), name, File(ctx.filesDir, SAFETY_FILE).readText(Charsets.UTF_8)) } }
+        }
+    }
+
+    /** The copy of the current data couldn't be saved, so nothing was restored. */
+    class SafetyFailed(cause: Throwable) : Exception(cause)
+
+    /**
+     * A restore with its safety copy (off the main thread): the current data saved aside, the backup imported,
+     * then the copy kept — or, if the import refuses the file or fails, the copy dropped and the old safety copy
+     * left as it was. Throws [SafetyFailed] (nothing restored) or the import's error.
+     */
+    fun restoreWithSafety(ctx: Context, json: String) {
+        val tmp = try { prepareSafety(ctx) } catch (e: Exception) { throw SafetyFailed(e) }
+        try {
+            Core.get(ctx).importBackupJson(json)
+        } catch (e: Exception) {
+            discardSafety(tmp)
+            throw e
+        }
+        commitSafety(ctx, tmp)
+    }
+
+    /** A restore that didn't happen: the temporary copy goes, the safety copy stays as it was. */
+    fun discardSafety(tmp: File) {
+        tmp.delete()
+    }
+
+    /** `current` → `prev`, `tmp` → `current` (plain files; unit-tested). */
+    fun rotateSafety(dir: File, tmp: File) {
+        val current = File(dir, SAFETY_FILE)
+        val prev = File(dir, "$SAFETY_FILE.prev")
+        if (current.exists()) {
+            prev.delete()
+            current.renameTo(prev)
+        }
+        if (!tmp.renameTo(current)) error("can't keep the safety copy")
     }
 
     /** When the safety copy was saved, ms; 0 = there is none. */
@@ -123,10 +192,6 @@ object AutoBackup {
 
     fun safetyCopy(ctx: Context): String? = File(ctx.filesDir, SAFETY_FILE).takeIf { it.exists() }?.readText(Charsets.UTF_8)
 
-    fun dropSafetyCopy(ctx: Context) {
-        File(ctx.filesDir, SAFETY_FILE).delete()
-        prefs(ctx).edit().remove(SAFETY_AT).apply()
-    }
 
     // ---- The folder (DocumentsContract, no androidx.documentfile) ----
 
@@ -141,20 +206,32 @@ object AutoBackup {
         return out
     }
 
-    /** Writes `name` in the folder, over a file of that name if there is one. */
-    private fun write(ctx: Context, tree: Uri, name: String, json: String) {
-        val existing = children(ctx, tree).firstOrNull { it.first == name }?.second
-        val target = existing ?: DocumentsContract.createDocument(
-            ctx.contentResolver,
-            DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree)),
-            "application/json", name,
-        ) ?: error("can't create $name")
-        (ctx.contentResolver.openOutputStream(target, "wt") ?: error("no output")).use { it.write(json.toByteArray(Charsets.UTF_8)) }
-    }
-
-    private fun prune(ctx: Context, tree: Uri) {
-        val kids = children(ctx, tree)
-        val gone = toPrune(kids.map { it.first }).toHashSet()
-        for ((name, uri) in kids) if (name in gone) runCatching { DocumentsContract.deleteDocument(ctx.contentResolver, uri) }
+    /**
+     * Writes `name` in the folder (`kids`: its listing). A new file first, as `<name>.tmp`, renamed over the old one
+     * only once it is complete — so a process killed mid-write (onStop is when Android does it) never leaves a cut-off
+     * newest backup. A provider that can't rename gets the old file rewritten in place instead.
+     */
+    private fun write(ctx: Context, tree: Uri, kids: List<Pair<String, Uri>>, name: String, json: String) {
+        val resolver = ctx.contentResolver
+        val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        val existing = kids.firstOrNull { it.first == name }?.second
+        val bytes = json.toByteArray(Charsets.UTF_8)
+        if (existing == null) {
+            val doc = DocumentsContract.createDocument(resolver, parent, "application/json", name) ?: error("can't create $name")
+            (resolver.openOutputStream(doc, "wt") ?: error("no output")).use { it.write(bytes) }
+            return
+        }
+        val tmp = DocumentsContract.createDocument(resolver, parent, "application/octet-stream", "$name.tmp") ?: error("can't create $name.tmp")
+        (resolver.openOutputStream(tmp, "wt") ?: error("no output")).use { it.write(bytes) }
+        val renamed = runCatching {
+            DocumentsContract.deleteDocument(resolver, existing)
+            DocumentsContract.renameDocument(resolver, tmp, name)
+        }.getOrNull()
+        if (renamed == null) {
+            // No rename here (or the old one was already gone): write the file itself, then drop the temporary one.
+            val doc = runCatching { DocumentsContract.createDocument(resolver, parent, "application/json", name) }.getOrNull() ?: existing
+            (resolver.openOutputStream(doc, "wt") ?: error("no output")).use { it.write(bytes) }
+            runCatching { DocumentsContract.deleteDocument(resolver, tmp) }
+        }
     }
 }

@@ -124,13 +124,8 @@ class AppState(context: Context, val scope: CoroutineScope) {
         incomingBackup = null
         scope.launch {
             try {
-                // A copy of the data as it is first (Q5); without it, nothing is restored.
-                val saved = withContext(Dispatchers.IO) { runCatching { AutoBackup.saveSafetyCopy(app) }.isSuccess }
-                if (!saved) {
-                    showToast(t("safetyFailed"))
-                    return@launch
-                }
-                withContext(Dispatchers.IO) { core().importBackupJson(text) }
+                // A copy of the data as it is first, kept only if the restore works (Q5).
+                withContext(Dispatchers.IO) { AutoBackup.restoreWithSafety(app, text) }
                 backupTick++
                 RoutineStore.load(this@AppState)
                 BodyStore.load(this@AppState)
@@ -138,6 +133,9 @@ class AppState(context: Context, val scope: CoroutineScope) {
                 tab = Tab.LOG
                 start().join()
                 showToast(t("restoredSafety"))
+            } catch (e: AutoBackup.SafetyFailed) {
+                showToast(t("safetyFailed"))
+                incomingBackup = text // still there to try again
             } catch (e: io.github.quoterg.ironnotes.core.CoreException.InvalidBackup) {
                 showToast(t("notBackup"))
             } catch (e: kotlinx.coroutines.CancellationException) {

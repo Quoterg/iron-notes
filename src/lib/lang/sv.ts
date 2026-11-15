@@ -547,6 +547,7 @@ const strings: Record<Key, string> = {
   backupNow: 'Säkerhetskopiera nu',
   stopAutoBackup: 'Stäng av',
   backedUp: 'Säkerhetskopian är sparad.',
+  backupFailedAt: 'Den automatiska säkerhetskopian misslyckades ({when}). Säkerhetskopiera nu, eller välj mappen igen.',
   restoredSafety: 'Återställt. Din data från innan finns kvar: Inställningar → Ångra senaste återställningen.',
   safetyFailed: 'Det gick inte att spara en kopia av din nuvarande data först, så inget återställdes.',
   undoRestore: 'Ångra senaste återställningen',

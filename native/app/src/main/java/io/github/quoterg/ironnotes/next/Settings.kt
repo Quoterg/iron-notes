@@ -411,6 +411,9 @@ private fun AutoBackupCard(state: AppState, ctx: Context, restoreNow: (String) -
         Txt(state.t("autoBackupHint"), muted = true, small = true)
         if (folder != null) Txt(state.t("backupFolder", "name" to (folderName ?: "—")), Modifier.padding(top = 8.dp))
         Txt(if (last > 0) state.t("lastBackup", "when" to backupWhen(state, last)) else state.t("noBackupYet"), Modifier.padding(top = 4.dp), small = true)
+        // A failed automatic backup is said, not just logged (folder gone, access revoked, signed out of Drive …).
+        val failed = remember(tick) { AutoBackup.failedAt(ctx) }
+        if (folder != null && failed > 0) Txt(state.t("backupFailedAt", "when" to backupWhen(state, failed)), Modifier.padding(top = 4.dp), small = true, color = LocalPalette.current.over)
         Actions {
             if (folder == null) Btn(state.t("chooseFolder"), { picker.launch(null) }, kind = BtnKind.PRIMARY)
             else {
@@ -489,15 +492,13 @@ private fun BackupCard(state: AppState, ctx: Context) {
     fun restore(json: String) {
         restoreText = null
         state.scope.launch {
-            // A copy of the data as it is first (Q5); without it, nothing is restored.
-            val saved = withContext(Dispatchers.IO) { runCatching { AutoBackup.saveSafetyCopy(ctx) }.isSuccess }
-            if (!saved) {
+            try {
+                // A copy of the data as it is first, kept only if the restore works (Q5).
+                withContext(Dispatchers.IO) { AutoBackup.restoreWithSafety(ctx, json) }
+                state.backupTick++
+            } catch (e: AutoBackup.SafetyFailed) {
                 state.showToast(state.t("safetyFailed"))
                 return@launch
-            }
-            state.backupTick++
-            try {
-                withContext(Dispatchers.IO) { Core.get(ctx).importBackupJson(json) }
             } catch (e: CoreException.InvalidBackup) {
                 state.showToast(state.t("notBackup"))
                 return@launch

@@ -502,6 +502,7 @@ export const later = {
   backupNow: 'Back up now',
   stopAutoBackup: 'Stop',
   backedUp: 'Backup saved.',
+  backupFailedAt: 'The automatic backup failed ({when}). Back up now, or choose the folder again.',
   restoredSafety: 'Restored. Your data from before is kept: Settings → Undo the last restore.',
   safetyFailed: 'Couldn’t save a copy of your current data first, so nothing was restored.',
   undoRestore: 'Undo the last restore',
