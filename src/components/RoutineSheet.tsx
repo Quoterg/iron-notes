@@ -1,6 +1,6 @@
 // A routine: rename it, add/remove/reorder days, open a day, or log a day into the shown date.
 import { useState } from 'preact/hooks';
-import { logDayLabel } from '../app';
+import { logDayLabel } from '../lib/days';
 import { uid } from '../lib/calc';
 import { exName, t } from '../lib/i18n';
 import type { Routine } from '../lib/model';
