@@ -113,6 +113,8 @@ fun PickerScreen(state: AppState, date: String, manage: Boolean = false) {
             val favs = exercises.filter { it.favorite == true }
             val recents = recent.mapNotNull { id -> state.exById[id]?.takeIf { it.favorite != true } }
             buildList {
+                // The first search (nothing recent, no favourites or workouts yet): say how to find one (Q4).
+                if (workouts.isEmpty() && favs.isEmpty() && recents.isEmpty()) add(Item.Empty(state.t("pickerHint")))
                 if (workouts.isNotEmpty()) {
                     add(Item.Title(state.t("workoutsSection")))
                     addAll(workouts)
@@ -132,7 +134,7 @@ fun PickerScreen(state: AppState, date: String, manage: Boolean = false) {
     }
 
     Sheet(state.t(if (manage) "manageExercises" else "addExercise"), { state.back() }, state.t("back")) {
-        Field(q, { q = it }, state.t("searchExercises"), Modifier.fillMaxWidth().padding(16.dp, 12.dp))
+        Field(q, { q = it }, state.t("searchExercises"), Modifier.fillMaxWidth().padding(16.dp, 12.dp), placeholder = state.t("searchExercises") + "…")
         LazyColumn(Modifier.fillMaxWidth().navigationBarsPadding(), contentPadding = PaddingValues(bottom = 96.dp)) {
             items(items, key = { it.key }) { item ->
                 when (item) {

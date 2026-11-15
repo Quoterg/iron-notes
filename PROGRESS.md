@@ -3,8 +3,8 @@
 ## Next up
 
 - **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 merged (#59). Q2 split:
-  Q1, Q2a, Q2b merged (#59–#61). Q3 PR open (`milestone/q3-routines`). Next: **Q4 First run for a friend** on
-  `milestone/q4-first-run`, stacked on Q3; then Q5, Q6.
+  Q1, Q2a, Q2b merged (#59–#61). Q3 PR #62, Q4 PR stacked on it (`milestone/q4-first-run`). Next: **Q5 Automatic
+  backups** on `milestone/q5-backups`, stacked on Q4; then Q6.
 - Follow-ups: the web has the mode lines but not the tap-to-explain overlay (review of #61); the keyboard can stay
   up after leaving a screen with a focused text field (seen on the routine day editor, emulator).
 - Review nits left from #59 (not done): Dorian after-failure reps could be an Enter stop before Save.
@@ -33,6 +33,17 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q4 First run for a friend
+
+- Native: on the empty first screen (today, nothing logged yet) a "Before you start" card with language
+  (Auto / English / Svenska), weight unit and distance unit, "You can change these later in Settings." and Done.
+  It goes for good on Done or when the first set is saved (`AppState.seen("setup")`, per device). No tutorial.
+- The first exercise search: a placeholder in the search box (native) and "Type a name above, or pick a muscle
+  group below." while there are no favourites, recents or saved workouts (both apps).
+- Web: no setup card (the day log is in the 30 KB first-paint bundle and the web isn't the app friends get).
+- Verified on the emulator (fresh install): the card in English, Svenska chosen from it, the Swedish picker hint
+  and placeholder, card gone after the first set.
 
 ## 2026-11-15 — Q3 Routines that read right
 

@@ -182,6 +182,12 @@ impl IronCore {
         self.with(|s| Ok(s.sets_of(&exercise_id)?.len() as u32))
     }
 
+    /// Whether anything has ever been logged (one indexed probe): the app's first-run card is only for an
+    /// empty log (Q4).
+    pub fn has_any_sets(&self) -> R<bool> {
+        self.with(|s| Ok(s.has_sets()?))
+    }
+
     /// Summary.tsx: the day's workout summary. `tz_offset_min`: the device zone's offset on that day.
     pub fn workout_summary(&self, date: String, tz_offset_min: i32) -> R<Summary> {
         let day = self.day(date)?;
@@ -250,6 +256,8 @@ mod tests {
         };
         core.put_sets((0..5).map(|i| set(i, base + i as f64 * 11.0 * 60_000.0)).collect()).unwrap();
         assert_eq!(core.count_sets_of(bench.clone()).unwrap(), 5);
+        assert!(core.has_any_sets().unwrap());
+        assert!(!IronCore::in_memory().unwrap().has_any_sets().unwrap());
         let s = core.workout_summary("2026-11-12".into(), 60).unwrap();
         assert_eq!((s.sets, s.exercises), (5, 1));
         assert_eq!(s.duration, Some(44.0 * 60.0));

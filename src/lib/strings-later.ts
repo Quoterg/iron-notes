@@ -489,6 +489,9 @@ export const later = {
   explainRecord: 'No other set of this exercise has been at least as heavy for at least as many reps (Records shows the best weight per rep count). When a later set beats it, the trophy moves there. Your first set of an exercise has nothing to beat, so it gets none.',
   explainE1rm: 'The most you could lift once, worked out from a set of several reps (the formula is chosen in Settings). It lets you compare sets with different reps; most accurate up to about 10 reps.',
   explainRir: 'How many more reps you could have done with good form: 0 = failure, 1 = one more was possible. It decides how many of the reps count as effective, and when the weight goes up.',
+  setupTitle: 'Before you start',
+  setupHint: 'You can change these later in Settings.',
+  pickerHint: 'Type a name above, or pick a muscle group below.',
   tapSetHint: 'Tip: tap a set to change or delete it.',
   new_11a: 'Svenska: choose the language in Settings (Auto follows the phone).',
 } as const;

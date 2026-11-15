@@ -78,6 +78,8 @@ export default function Picker({ date, manage, routine }: { date?: string; manag
     const recents = recent.map((id) => exById.value.get(id)).filter((e): e is Exercise => !!e && !e.favorite);
     body = (
       <>
+        {/* The first search (nothing recent, no favourites or workouts yet): say how to find one. */}
+        {!workouts.length && !favs.length && !recents.length && <p class="muted pad">{t('pickerHint')}</p>}
         {workouts.length > 0 && <WorkoutList list={workouts} onPick={addWorkout} />}
         {favs.length > 0 && (
           <>

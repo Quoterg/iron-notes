@@ -333,6 +333,8 @@ fun ExerciseScreen(state: AppState, id: String, date: String) {
             else { form.after = ""; if (lyle) form.rir = "" }
             form.comment = ""
             showComment = false
+            // A first set logged: the first-run setup card has done its job.
+            state.markSeen(HINT_SETUP)
             reload { nl ->
                 afterWrite()
                 justSaved = s.id
