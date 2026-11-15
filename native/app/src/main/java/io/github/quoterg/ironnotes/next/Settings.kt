@@ -239,10 +239,8 @@ private fun LanguageCard(state: AppState, s: Settings) {
             listOf<Pair<Lang?, String>>(null to state.t("langAuto"), Lang.EN to "English", Lang.SV to "Svenska"),
             s.lang, { state.putSettings(s.copy(lang = it)) }, hideLabel = true,
         )
-        if (state.i18n.lang == "sv") {
-            Check(state.t("gymEnglish"), s.gymEnglish == true) { state.putSettings(s.copy(gymEnglish = it)) }
-            Txt(state.t("gymEnglishHint"), muted = true, small = true)
-        }
+        // No "gym English" choice here: exercise names are English in every language in the app (owner's
+        // choice, 2026-11-15; I18n.shown). The setting stays stored for the web and backups.
     }
 }
 

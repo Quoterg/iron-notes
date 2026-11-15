@@ -31,9 +31,13 @@ class I18n internal constructor(
     /** A count with its noun (i18n.ts `tn`): `one` for exactly 1, else `many`: "1 set", "3 sets". */
     fun tn(one: String, many: String, n: Int): String = t(if (n == 1) one else many, "n" to n)
 
-    /** A stored name as shown: the Swedish starter name in Swedish (table: exercises, categories, metrics). */
+    /**
+     * A stored name as shown: the Swedish starter name in Swedish for categories and body measures (the
+     * tables are keyed in lower case, as i18n.ts `shown`). Exercise names stay English in every language
+     * (owner's choice, 2026-11-15).
+     */
     fun shown(table: String, name: String): String =
-        if (lang == "sv" && !(gymEnglish && table == "exercises")) svNames[table]?.get(name) ?: name else name
+        if (lang == "sv" && table != "exercises") svNames[table]?.get(name.lowercase()) ?: name else name
 
     /** An exercise type's name in the current language (web: packTypes, English from the later table). */
     fun typeName(type: String): String = (if (lang == "sv") svTypes[type] else null) ?: enTypes[type] ?: type
