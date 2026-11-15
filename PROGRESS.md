@@ -3,8 +3,10 @@
 ## Next up
 
 - **Phase 5 — quality of life** (docs/ROADMAP.md, from the 2026-11-15 walkthrough): Q1 merged (#59). Q2 split:
-  Q1, Q2a, Q2b merged (#59–#61). Q3 #62, Q4 #63 and Q5 (`milestone/q5-backups`) open, each stacked on the one
-  before. Next: **Q6 The CSV trap** on `milestone/q6-csv`, stacked on Q5.
+  Q1–Q3 merged (#59–#62). Open: Q4 #63 (→ main), Q5 #64 (→ Q4), Q6 (→ Q5); after each base merges: merge
+  origin/main, push, retarget, `review: request`. Phase 5 is otherwise done.
+- To check on a real phone: automatic backup to a Drive / subfolder (the emulator's picker only allowed the
+  storage root), and the onStop timing.
 - Follow-ups: the web has the mode lines but not the tap-to-explain overlay (review of #61); the keyboard can stay
   up after leaving a screen with a focused text field (seen on the routine day editor, emulator).
 - Review nits left from #59 (not done): Dorian after-failure reps could be an Enter stop before Save.
@@ -21,8 +23,8 @@
   the TWA's), installed it over the TWA, and restored the website's backup (Settings → Restore backup — Chrome on
   Android can't share .json, so the share sheet never opens: #57 fixes the instructions). Data checked by the owner.
   For later releases: docs/NATIVE.md "Release" (raise versionCode/versionName in the `stable` flavour).
-  Note: importing Iron Notes' own CSV export loses data effective reps need (the owner hit this) — restore the JSON
-  backup instead.
+  Importing Iron Notes' own CSV export lost the set effort (the owner hit this): fixed in Q6 — the CSV now carries it,
+  and the import points to Restore backup for everything a CSV can't hold.
 - Owner tests passed 2026-11-15: "Rest over" arrives on time with the screen locked (native 2.0.0, Moto G30).
 - Native perf follow-ups (from the #45 review): (1) done 2026-11-11: the owner ran the N1a/N1b release
   APK on their phone — runs well, the Rust library (JNA) doesn't noticeably slow opening; (2) when set-history queries move into the core (N2+), benchmark `opt-level = "z"` vs `"s"` for
@@ -33,6 +35,24 @@
   AVD `in24` = Android 7.0 x86_64), Rust in ~/.cargo with cargo-ndk 4.1.2.
 - Perf note: initial JS 20.6 KB; `db.ts` helpers used only by lazy screens could move to a lazy module.
 - Local folder is still `~/Projects/train-log`; rename to `~/Projects/iron-notes` later.
+
+## 2026-11-15 — Q6 The CSV trap
+
+- What the CSV round trip lost (found by exporting and importing into an empty app): per set the effort — RIR,
+  reps after failure, the warm-up flag (warm-ups came back as working sets, so effective reps and progression
+  changed) — and also deload marks, readiness, supersets, done ticks and times (duration); per exercise the load
+  type (body weight / per hand / assisted: added load came back as total load), muscles, increment, rest, rep
+  range, notes; and everything that isn't a set: routines, body measures, day comments, settings. A CSV can't
+  carry all that and stay a FitNotes-style spreadsheet.
+- Done both ways the roadmap allowed: the export gains three columns after FitNotes' ones — RIR, After failure,
+  Warm-up — and the import reads them (both apps, Rust core with golden fixtures), so the effort effective reps
+  are counted from survives a CSV round trip. FitNotes never writes these columns, so they mark our own export:
+  the import confirm then says what a CSV doesn't bring back and points to Restore backup (JSON). The button is
+  now "Export CSV (spreadsheet)".
+- Tests: csv.test (round trip, own-export detection), golden csv fixtures (effort cases), Rust
+  `own_csv_round_trip_keeps_the_effort_and_says_what_it_is`, e2e data.spec (own CSV into an emptied app → hint).
+- Native: built and gated; the import confirm wasn't driven on the emulator (its file picker ignores taps), the
+  logic is covered by the core test.
 
 ## 2026-11-15 — Q5 Automatic backups (native)
 

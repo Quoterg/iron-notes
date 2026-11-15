@@ -182,7 +182,7 @@ is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names st
 - [x] **Q5 Automatic backups** — A scheduled backup to a folder the user chooses (Storage Access Framework, no
   new permission), the date of the last backup in Settings, and Restore saves a safety copy of the current
   data first.
-- [ ] **Q6 The CSV trap** — Importing the app's own CSV export must not damage data (the owner hit this
+- [x] **Q6 The CSV trap** — Importing the app's own CSV export must not damage data (the owner hit this
   2026-11-15): find what the round trip loses, then either make it lossless or recognise the app's own export
   and point to Restore backup instead.
 
