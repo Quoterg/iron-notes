@@ -384,6 +384,51 @@ private fun PlatesEditor(state: AppState, s: Settings) {
     }
 }
 
+/** "15 Nov 12:40": when a backup was written, in the shown language. */
+private fun backupWhen(state: AppState, at: Long): String =
+    SimpleDateFormat("d MMM yyyy HH:mm", if (state.i18n.lang == "sv") Locale("sv", "SE") else Locale.getDefault()).format(Date(at))
+
+/**
+ * Automatic backup (Q5): the folder, the last backup's date, Back up now / Stop; and "Undo the last restore"
+ * while a safety copy from before a restore exists. `restoreNow` restores a backup's text (after its own confirm).
+ */
+@Composable
+private fun AutoBackupCard(state: AppState, ctx: Context, restoreNow: (String) -> Unit) {
+    val tick = state.backupTick
+    val folder = remember(tick) { AutoBackup.folder(ctx) }
+    val folderName = remember(folder) { folder?.let { AutoBackup.folderName(ctx, it) } }
+    val last = remember(tick) { AutoBackup.lastAt(ctx) }
+    val safety = remember(tick) { AutoBackup.safetyAt(ctx) }
+    var undoAsk by remember { mutableStateOf(false) }
+    fun now() = state.run({ AutoBackup.backupNow(ctx) }) { state.backupTick++; state.showToast(state.t("backedUp")) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
+        if (tree == null) return@rememberLauncherForActivityResult
+        runCatching { AutoBackup.setFolder(ctx, tree) }.onFailure { state.showToast(it.message ?: it.toString()) }.onSuccess { now() }
+    }
+    Card {
+        Heading(state.t("autoBackup"))
+        Txt(state.t("autoBackupHint"), muted = true, small = true)
+        if (folder != null) Txt(state.t("backupFolder", "name" to (folderName ?: "—")), Modifier.padding(top = 8.dp))
+        Txt(if (last > 0) state.t("lastBackup", "when" to backupWhen(state, last)) else state.t("noBackupYet"), Modifier.padding(top = 4.dp), small = true)
+        Actions {
+            if (folder == null) Btn(state.t("chooseFolder"), { picker.launch(null) }, kind = BtnKind.PRIMARY)
+            else {
+                Btn(state.t("backupNow"), { now() })
+                Btn(state.t("stopAutoBackup"), { AutoBackup.clearFolder(ctx); state.backupTick++ })
+            }
+        }
+        if (safety > 0) {
+            if (undoAsk) {
+                // Restoring it saves today's data as the new safety copy, so an undo can be undone too.
+                ConfirmCard(state, state.t("undoRestoreQ", "when" to backupWhen(state, safety)), state.t("undoRestore"), {
+                    undoAsk = false
+                    state.run({ AutoBackup.safetyCopy(ctx) ?: error(state.t("notBackup")) }) { restoreNow(it) }
+                }, { undoAsk = false })
+            } else LinkBtn(state.t("undoRestore"), { undoAsk = true })
+        }
+    }
+}
+
 /** Backup: export/restore through the system file picker (Storage Access Framework). */
 @Composable
 private fun BackupCard(state: AppState, ctx: Context) {
@@ -432,7 +477,8 @@ private fun BackupCard(state: AppState, ctx: Context) {
         state.run({ core ->
             val json = core.exportBackupJson(stamp)
             (ctx.contentResolver.openOutputStream(uri, "wt") ?: error("no output")).use { it.write(json.toByteArray(Charsets.UTF_8)) }
-        })
+            AutoBackup.markBackedUp(ctx)
+        }) { state.backupTick++ }
     }
     val opener = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -442,6 +488,13 @@ private fun BackupCard(state: AppState, ctx: Context) {
     fun restore(json: String) {
         restoreText = null
         state.scope.launch {
+            // A copy of the data as it is first (Q5); without it, nothing is restored.
+            val saved = withContext(Dispatchers.IO) { runCatching { AutoBackup.saveSafetyCopy(ctx) }.isSuccess }
+            if (!saved) {
+                state.showToast(state.t("safetyFailed"))
+                return@launch
+            }
+            state.backupTick++
             try {
                 withContext(Dispatchers.IO) { Core.get(ctx).importBackupJson(json) }
             } catch (e: CoreException.InvalidBackup) {
@@ -455,10 +508,11 @@ private fun BackupCard(state: AppState, ctx: Context) {
             RoutineStore.load(state)
             BodyStore.load(state)
             state.start()
-            state.showToast(state.t("restored"))
+            state.showToast(state.t("restoredSafety"))
         }
     }
 
+    AutoBackupCard(state, ctx) { restore(it) }
     Card {
         Heading(state.t("yourData"))
         Txt(state.t("storedOnDevice"), muted = true, small = true)

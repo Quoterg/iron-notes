@@ -48,6 +48,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Leaving the app after using it: the automatic backup, if a folder is chosen and one is due (Q5). */
+    override fun onStop() {
+        super.onStop()
+        val app = applicationContext
+        Thread {
+            if (AutoBackup.runIfDue(app)) runOnUiThread { state?.let { it.backupTick++ } }
+        }.start()
+    }
+
     /** The app was already open: a backup shared to it (the web's "Move to the Android app"). */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
