@@ -102,7 +102,7 @@ fun DayLog(state: AppState) {
             }
         }
         // First run: language and units before the first set (Q4).
-        if (!state.seen(HINT_SETUP) && date == today()) SetupCard(state)
+        if (showSetup(state.seen(HINT_SETUP), date == today(), dayEmpty = true)) SetupCard(state)
     } else {
         val duration = remember(day) { durationOfSets(day.sets, tzOffsetMin(day.date)) }
         val volume = if (day.volume > 0) " · ${state.i18n.weight(day.volume, s)} ${state.t("volume")}" else ""

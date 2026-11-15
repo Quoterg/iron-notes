@@ -128,6 +128,7 @@ fun parsePlate(text: String): Double? = text.trim().replace(',', '.').toDoubleOr
 // ---- Screen ----
 
 @Composable
+/** Chips for one choice; shared with the first-run card (FirstRun.kt). */
 internal fun <T> Choice(label: String, options: List<Pair<T, String>>, value: T, onPick: (T) -> Unit, hideLabel: Boolean = false) {
     if (!hideLabel) Txt(label, Modifier.padding(top = 8.dp, bottom = 4.dp), muted = true, small = true)
     FlowRow(

@@ -162,6 +162,8 @@ class AppState(context: Context, val scope: CoroutineScope) {
             applySettings(s)
             categories = lib.categories.sortedBy { it.order }
             exercises = lib.exercises
+            // An existing user (an update, a restore): the first-run card was never seen but isn't for them.
+            if (!seen(HINT_SETUP) && withContext(Dispatchers.IO) { core().hasAnySets() }) markSeen(HINT_SETUP)
             ready = true
             loadDay(date).join()
         }.also { startJob = it }
@@ -178,6 +180,8 @@ class AppState(context: Context, val scope: CoroutineScope) {
         if (day?.date != d) day = null
         val data = withContext(Dispatchers.IO) { core().day(d) }
         if (date == d) day = data
+        // Something is logged (by any route — a set, a copied workout, a routine): no first-run card again.
+        if (data.sets.isNotEmpty()) markSeen(HINT_SETUP)
     }
 
     fun reloadLibrary() = scope.launch {

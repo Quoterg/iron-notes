@@ -10,6 +10,9 @@ test('favourites and recent exercises at the top of the picker', async ({ page }
   const sheet = page.locator('div:not([hidden]) > .sheet');
   await page.getByRole('button', { name: 'Start a workout' }).click();
   await expect(sheet.getByText('Recent', { exact: true })).toHaveCount(0);
+  // The first search: nothing recent or favourite yet, so it says how to find one.
+  const hint = sheet.getByText('Type a name above, or pick a muscle group below.');
+  await expect(hint).toBeVisible();
   await page.getByRole('searchbox').fill('deadlift');
   // The row of exactly "Deadlift" (the search also finds Romanian Deadlift).
   await sheet.locator('.pick-row', { has: page.getByRole('button', { name: 'Deadlift', exact: true }) }).getByRole('button', { name: 'Favourite' }).click();
@@ -18,6 +21,7 @@ test('favourites and recent exercises at the top of the picker', async ({ page }
   await expect(sheet.getByRole('button', { name: 'Face Pull', exact: true })).toBeVisible();
   await page.getByRole('searchbox').fill('');
   await expect(sheet.getByText('Favourites', { exact: true })).toBeVisible();
+  await expect(hint).toHaveCount(0); // a favourite now: the hint has done its job
   await sheet.getByRole('button', { name: /Legs/ }).click();
   await sheet.getByRole('button', { name: 'Barbell Squat', exact: true }).click();
   await page.getByLabel('Weight (kg)', { exact: true }).fill('100');

@@ -287,6 +287,10 @@ impl Store {
     pub fn sets_on(&self, date: &str) -> Result<Vec<WorkoutSet>> {
         self.docs("SELECT data FROM sets WHERE date = ?1 ORDER BY ord, rowid", [date])
     }
+    /// Whether the sets table has any row.
+    pub fn has_sets(&self) -> Result<bool> {
+        Ok(self.conn.query_row("SELECT EXISTS(SELECT 1 FROM sets)", [], |r| r.get::<_, i64>(0))? != 0)
+    }
     pub fn sets_of(&self, exercise_id: &str) -> Result<Vec<WorkoutSet>> {
         self.docs("SELECT data FROM sets WHERE exercise_id = ?1 ORDER BY date, ord, rowid", [exercise_id])
     }
