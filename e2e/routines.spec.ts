@@ -71,9 +71,8 @@ test('mark sets complete: unticked sets still count, Save adds a new set, copies
   await page.getByLabel('Weight (kg)', { exact: true }).fill('80');
   await page.getByLabel('Reps', { exact: true }).fill('8');
   await page.getByRole('button', { name: 'Save' }).click();
-  // Untick it: still the record, still in history.
+  // Untick it: still in history.
   await sheet.getByLabel('Set done 1').uncheck();
-  await expect(sheet.locator('.sets li').first().getByRole('img', { name: 'Personal record' })).toBeVisible();
   await sheet.getByRole('button', { name: 'History' }).click();
   await expect(sheet.locator('.ex-card')).toHaveCount(1);
   await sheet.getByRole('button', { name: 'Track' }).click();
@@ -82,6 +81,10 @@ test('mark sets complete: unticked sets still count, Save adds a new set, copies
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(sheet.locator('.sets li')).toHaveCount(2);
   await expect(sheet.locator('.sets li').first()).toContainText('80 kg × 8');
+  // Untick the heavier one: still the record (the first-ever set never shows one: it beat nothing).
+  await sheet.getByLabel('Set done 2').uncheck();
+  await expect(sheet.locator('.sets li').nth(1).getByRole('img', { name: 'Personal record' })).toBeVisible();
+  await expect(sheet.locator('.sets li').first().getByRole('img', { name: 'Personal record' })).toHaveCount(0);
   await page.getByRole('button', { name: /Back/ }).click();
 
   // Copied into today (unticked copies): they still count, so the calendar shows today as trained.
