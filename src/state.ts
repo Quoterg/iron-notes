@@ -181,7 +181,7 @@ export async function loadRecords(ids: string[]): Promise<void> {
   const found = await Promise.all(
     todo.map(async (id) => {
       const stored = await db.getRecords(id);
-      if (stored?.v === db.RECORDS_V) return [id, new Set(stored.ids)] as const;
+      if ((stored?.v ?? 0) >= db.RECORDS_V) return [id, new Set(stored!.ids)] as const;
       const r = shownRecords(await loadedSetsOf(id), exById.value.get(id)!.type);
       void db.putRecordsIfAbsent({ exerciseId: id, ids: [...r], v: db.RECORDS_V }); // never over a fresher refresh
       return [id, r] as const;
