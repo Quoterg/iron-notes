@@ -396,7 +396,7 @@ private fun backupWhen(state: AppState, at: Long): String =
 private fun AutoBackupCard(state: AppState, ctx: Context, restoreNow: (String) -> Unit) {
     val tick = state.backupTick
     val folder = remember(tick) { AutoBackup.folder(ctx) }
-    val folderName = remember(folder) { folder?.let { AutoBackup.folderName(ctx, it) } }
+    val folderName = remember(folder) { folder?.let { runCatching { AutoBackup.folderName(ctx, it, state.t("phoneStorage")) }.getOrNull() } }
     val last = remember(tick) { AutoBackup.lastAt(ctx) }
     val safety = remember(tick) { AutoBackup.safetyAt(ctx) }
     var undoAsk by remember { mutableStateOf(false) }

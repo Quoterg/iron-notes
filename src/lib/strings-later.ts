@@ -495,6 +495,7 @@ export const later = {
   autoBackup: 'Automatic backup',
   autoBackupHint: 'A backup goes to a folder you choose when you leave the app after using it, one file a day; the last 7 are kept. Choose a folder that another app copies off the phone (e.g. Drive) to be safe if the phone is lost.',
   chooseFolder: 'Choose folder',
+  phoneStorage: 'Phone storage',
   backupFolder: 'Folder: {name}',
   lastBackup: 'Last backup: {when}',
   noBackupYet: 'No backup yet.',

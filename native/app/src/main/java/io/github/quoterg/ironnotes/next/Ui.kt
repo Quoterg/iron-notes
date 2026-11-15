@@ -191,15 +191,16 @@ fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifie
     }
 }
 
-/** `.actions`: a wrapping row of buttons with 8 dp gaps. */
+/** `.actions`: a wrapping row of buttons with 8 dp gaps (long Swedish labels go to the next line, not squeezed). */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun Actions(modifier: Modifier = Modifier, center: Boolean = false, content: @Composable RowScope.() -> Unit) {
-    Row(
+    androidx.compose.foundation.layout.FlowRow(
         modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, if (center) Alignment.CenterHorizontally else Alignment.Start),
-        verticalAlignment = Alignment.CenterVertically,
-        content = content,
-    )
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) { content() }
 }
 
 /** An input (`input[type=text|number]`): 44 dp, inner background, 12 dp radius. */

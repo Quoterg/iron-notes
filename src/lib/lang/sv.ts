@@ -540,6 +540,7 @@ const strings: Record<Key, string> = {
   autoBackup: 'Automatisk säkerhetskopia',
   autoBackupHint: 'En säkerhetskopia sparas i en mapp du väljer när du lämnar appen efter att ha använt den, en fil per dag; de 7 senaste sparas. Välj en mapp som en annan app kopierar från telefonen (t.ex. Drive) för att vara säker om telefonen försvinner.',
   chooseFolder: 'Välj mapp',
+  phoneStorage: 'Telefonens lagring',
   backupFolder: 'Mapp: {name}',
   lastBackup: 'Senaste säkerhetskopia: {when}',
   noBackupYet: 'Ingen säkerhetskopia än.',

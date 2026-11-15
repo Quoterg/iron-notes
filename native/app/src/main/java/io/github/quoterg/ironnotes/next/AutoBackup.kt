@@ -53,8 +53,23 @@ object AutoBackup {
         prefs(ctx).edit().remove(FOLDER).apply()
     }
 
+    /**
+     * How the folder is shown: on the phone's own storage its path ("Phone storage/Download" — the provider's
+     * display name there is the volume's, e.g. "0"), elsewhere (Drive, …) the name the picker shows.
+     */
+    fun folderLabel(authority: String?, docId: String, displayName: String?, phoneStorage: String): String {
+        if (authority == "com.android.externalstorage.documents" && docId.contains(':')) {
+            val path = docId.substringAfter(':').trim('/')
+            return if (path.isEmpty()) phoneStorage else "$phoneStorage/$path"
+        }
+        return displayName ?: docId
+    }
+
+    fun folderName(ctx: Context, tree: Uri, phoneStorage: String): String =
+        folderLabel(tree.authority, DocumentsContract.getTreeDocumentId(tree), displayName(ctx, tree), phoneStorage)
+
     /** The folder's name as the file picker shows it. */
-    fun folderName(ctx: Context, tree: Uri): String? = runCatching {
+    private fun displayName(ctx: Context, tree: Uri): String? = runCatching {
         val doc = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
         ctx.contentResolver.query(doc, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null

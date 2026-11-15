@@ -17,6 +17,13 @@ class AutoBackupTest {
         assertTrue(AutoBackup.due(true, now + 60 * min, now)) // the clock went back: write again
     }
 
+    @Test fun folderLabels() {
+        val ext = "com.android.externalstorage.documents"
+        assertEquals("Phone storage", AutoBackup.folderLabel(ext, "primary:", "0", "Phone storage"))
+        assertEquals("Phone storage/Download/Iron", AutoBackup.folderLabel(ext, "primary:Download/Iron", "Iron", "Phone storage"))
+        assertEquals("Backups", AutoBackup.folderLabel("com.google.android.apps.docs.storage", "acc=1;doc=xyz", "Backups", "Phone storage"))
+    }
+
     @Test fun keepsTheNewestSevenOfOurFilesOnly() {
         val ours = (1..9).map { "iron-notes-auto-2026-11-0$it.json" }
         val names = ours + listOf("iron-notes-2026-11-01.json", "iron-notes-before-restore-2026-11-01.json", "notes.txt")
