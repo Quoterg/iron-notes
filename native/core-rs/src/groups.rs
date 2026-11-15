@@ -63,6 +63,22 @@ pub fn pull_together(order: &[String], members: &HashSet<String>) -> Vec<String>
     out
 }
 
+/// `pullUnits`: like `pull_together`, but a superset moves as one unit: when any of its exercises is in
+/// `members`, the whole superset is pulled (in its own order), so pulling never splits an existing superset.
+pub fn pull_units(order: &[DayEntry], members: &HashSet<String>) -> Vec<String> {
+    let mut keys: Vec<String> = Vec::new();
+    let mut units: HashMap<String, Vec<String>> = HashMap::new();
+    for o in order {
+        let key = o.group.as_ref().map(|g| format!("g:{g}")).unwrap_or_else(|| format!("e:{}", o.exercise_id));
+        units.entry(key.clone()).or_insert_with(|| {
+            keys.push(key.clone());
+            Vec::new()
+        }).push(o.exercise_id.clone());
+    }
+    let pulled: HashSet<String> = keys.iter().filter(|k| units[*k].iter().any(|id| members.contains(id))).cloned().collect();
+    pull_together(&keys, &pulled).into_iter().flat_map(|k| units.remove(&k).unwrap_or_default()).collect()
+}
+
 /// `groupMembers`: the exercises of `exercise_id`'s group, in day order (empty if it isn't grouped).
 pub fn group_members(sets: &[WorkoutSet], exercise_id: &str) -> Vec<String> {
     let order = day_order(sets);
