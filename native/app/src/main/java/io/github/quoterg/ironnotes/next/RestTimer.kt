@@ -39,6 +39,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.quoterg.ironnotes.core.Category
@@ -263,7 +264,7 @@ class RestAlarmReceiver : BroadcastReceiver() {
  * notification permission the first time a timer starts (Android 13+).
  */
 @Composable
-fun RestTimerBar(state: AppState, timer: RestTimer, modifier: Modifier = Modifier) {
+fun RestTimerBar(state: AppState, timer: RestTimer, modifier: Modifier = Modifier, bottom: Dp = 86.dp) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (!ok) state.showToast(state.t("notifyDenied"))
     }
@@ -292,7 +293,7 @@ fun RestTimerBar(state: AppState, timer: RestTimer, modifier: Modifier = Modifie
     Row(
         modifier
             .navigationBarsPadding()
-            .padding(bottom = 86.dp)
+            .padding(bottom = bottom)
             .background(bg, CircleShape)
             .padding(start = 16.dp, top = 6.dp, end = 6.dp, bottom = 6.dp)
             .semantics { liveRegion = if (over) LiveRegionMode.Assertive else LiveRegionMode.Polite },

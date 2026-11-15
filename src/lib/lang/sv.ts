@@ -519,6 +519,8 @@ const strings: Record<Key, string> = {
   needBodyWeight: 'Logga din kroppsvikt på Kropp-skärmen: tills dess räknas bara den extra vikten här.',
   new_12a: 'Belastningstyper: hantlar per hand (volymen räknar båda), kroppsvikt + extra vikt, assisterad. Rekord, 1RM och grafer använder den verkliga belastningen.',
   setCopied: 'Setet kopierat till formuläret.',
+  setDeleted: 'Setet raderat.',
+  tapSetHint: 'Tips: tryck på ett set för att ändra eller radera det.',
   language: 'Språk',
   langAuto: 'Auto',
 };

@@ -213,7 +213,24 @@ class AppState(context: Context, val scope: CoroutineScope) {
         toast = null
     }
 
+    /** One-time hints already shown and closed (per device, like the theme). */
+    private val seenHints = mutableStateListOf<String>().apply {
+        addAll(app.getSharedPreferences(HINTS, Context.MODE_PRIVATE).getStringSet(HINTS, emptySet()).orEmpty())
+    }
+
+    fun seen(hint: String) = hint in seenHints
+
+    fun markSeen(hint: String) {
+        if (hint in seenHints) return
+        seenHints.add(hint)
+        app.getSharedPreferences(HINTS, Context.MODE_PRIVATE).edit().putStringSet(HINTS, seenHints.toSet()).apply()
+    }
+
     fun t(key: String, vararg vars: Pair<String, Any>) = i18n.t(key, *vars)
+
+    private companion object {
+        const val HINTS = "hints"
+    }
 }
 
 /** model.ts DEFAULT_SETTINGS (the core's `Settings::default()`). */
