@@ -3,6 +3,7 @@ package io.github.quoterg.ironnotes.next
 import android.content.Context
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -100,6 +101,9 @@ class AppState(context: Context, val scope: CoroutineScope) {
     /** A backup handed over by the web app's "Move to the Android app" (or opened as a file), awaiting the confirm. */
     var incomingBackup by mutableStateOf<String?>(null)
 
+    /** Bumped when a backup or safety copy was written, so Settings reads the dates again. */
+    var backupTick by mutableIntStateOf(0)
+
     /** A term being explained (Explain.kt), shown over everything. */
     var explaining by mutableStateOf<Topic?>(null)
 
@@ -120,13 +124,18 @@ class AppState(context: Context, val scope: CoroutineScope) {
         incomingBackup = null
         scope.launch {
             try {
-                withContext(Dispatchers.IO) { core().importBackupJson(text) }
+                // A copy of the data as it is first, kept only if the restore works (Q5).
+                withContext(Dispatchers.IO) { AutoBackup.restoreWithSafety(app, text) }
+                backupTick++
                 RoutineStore.load(this@AppState)
                 BodyStore.load(this@AppState)
                 stack.clear()
                 tab = Tab.LOG
                 start().join()
-                showToast(t("restored"))
+                showToast(t("restoredSafety"))
+            } catch (e: AutoBackup.SafetyFailed) {
+                showToast(t("safetyFailed"))
+                incomingBackup = text // still there to try again
             } catch (e: io.github.quoterg.ironnotes.core.CoreException.InvalidBackup) {
                 showToast(t("notBackup"))
             } catch (e: kotlinx.coroutines.CancellationException) {

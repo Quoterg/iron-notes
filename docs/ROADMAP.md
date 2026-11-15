@@ -179,7 +179,7 @@ is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names st
   planned sets added to a day that already has sets stay grouped.
 - [x] **Q4 First run for a friend** — Language and units offered on the empty first screen (they sit far down
   in Settings today); a hint in the first, empty exercise search. No tutorial.
-- [ ] **Q5 Automatic backups** — A scheduled backup to a folder the user chooses (Storage Access Framework, no
+- [x] **Q5 Automatic backups** — A scheduled backup to a folder the user chooses (Storage Access Framework, no
   new permission), the date of the last backup in Settings, and Restore saves a safety copy of the current
   data first.
 - [ ] **Q6 The CSV trap** — Importing the app's own CSV export must not damage data (the owner hit this
