@@ -6,6 +6,7 @@ import { allSets, clearAll, importRows } from '../lib/db';
 import { detectLang, type Key, lang, locale, setLang, t } from '../lib/i18n';
 import { CYCLE_WEEKS, cycleWeek, DEFAULT_CYCLE, RUN_UP } from '../lib/lyle';
 import type { DistUnit, TrainingMode, WeightUnit } from '../lib/model';
+import { isIos, needsIosInstallHint } from '../lib/ios';
 import { setTheme, themeChoice, type ThemeChoice } from '../lib/theme';
 import { open } from '../nav';
 import { categories, catById, exById, exercises, reloadAll, reserveOrders, saveSettings, settings, toast } from '../state';
@@ -85,8 +86,18 @@ function Check({ label, checked, onChange }: { label: Key; checked: boolean; onC
 
 export default function Settings() {
   const s = settings.value;
+  // iPhone/iPad: the install hint (Safari, not yet on the Home Screen); the Android-app move doesn't apply.
+  const ua = navigator.userAgent;
+  const standalone = (navigator as Navigator & { standalone?: boolean }).standalone === true || matchMedia('(display-mode: standalone)').matches;
+  const ios = isIos(ua);
   return (
     <div class="form">
+      {needsIosInstallHint(ua, standalone) && (
+        <section class="card">
+          <p>{t('iosInstall')}</p>
+        </section>
+      )}
+
       <section class="card">
         <h2>{t('units')}</h2>
         <Choice<WeightUnit> label={t('weightUnit')} options={[['kg', 'kg'], ['lb', 'lb']]} value={s.unit} onPick={(unit) => void saveSettings({ unit })} />
@@ -234,12 +245,16 @@ export default function Settings() {
             <input type="file" accept="application/json,.json" onChange={(e) => void restore(e.currentTarget)} />
           </label>
         </div>
-        <div class="actions">
-          <button class="btn" onClick={() => void moveToApp()}>
-            {t('moveToApp')}
-          </button>
-        </div>
-        <p class="muted small">{t('moveToAppHint')}</p>
+        {!ios && (
+          <>
+            <div class="actions">
+              <button class="btn" onClick={() => void moveToApp()}>
+                {t('moveToApp')}
+              </button>
+            </div>
+            <p class="muted small">{t('moveToAppHint')}</p>
+          </>
+        )}
         <div class="actions">
           <button class="btn" onClick={() => void exportCsv()}>
             {t('exportCsv')}

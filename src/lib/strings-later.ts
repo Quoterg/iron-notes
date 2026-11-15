@@ -192,6 +192,7 @@ export const later = {
   imported: '{n} sets imported.',
   deleteAll: 'Delete all data',
   moveToApp: 'Move to the Android app',
+  iosInstall: 'Install on iPhone: tap Share, then Add to Home Screen.',
   moveToAppHint: 'Saves your data as a backup file. Then in the Iron Notes app: Settings → Restore backup, and choose the file (in Downloads). Your data also stays here.',
   moveToAppDownloaded: 'Backup downloaded. In the Iron Notes app: Settings → Restore backup, and choose this file.',
   moveIncomingQ: 'Restore this backup into the app? It replaces the data in this app; the data in the browser stays as it is.',
