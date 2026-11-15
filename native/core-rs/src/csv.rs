@@ -85,7 +85,9 @@ pub fn parse_csv(text: &str) -> Vec<Vec<String>> {
     rows.into_iter().filter(|r| r.iter().any(|c| !js_trim(c).is_empty())).collect()
 }
 
-const HEADER: [&str; 10] = ["Date", "Exercise", "Category", "Weight", "Weight Unit", "Reps", "Distance", "Distance Unit", "Time", "Comment"];
+// After FitNotes' columns, the set's effort (RIR, reps after failure, warm-up): what effective reps are worked
+// out from, so a CSV round trip keeps them (Q6). FitNotes never writes these, so they also mark our own export.
+const HEADER: [&str; 13] = ["Date", "Exercise", "Category", "Weight", "Weight Unit", "Reps", "Distance", "Distance Unit", "Time", "Comment", "RIR", "After failure", "Warm-up"];
 
 /// JS `String(n)` for the finite numbers the export prints.
 fn js_str(x: f64) -> String {
@@ -129,6 +131,9 @@ pub fn to_csv(sets: &[WorkoutSet], exercises: &[Exercise], categories: &[Categor
             if has(Field::Distance) { d_unit.to_string() } else { String::new() },
             if has(Field::Time) { s.time.map_or(String::new(), fmt_time) } else { String::new() },
             safe_text(s.comment.as_deref().unwrap_or("")),
+            if has(Field::Reps) { s.rir.map_or(String::new(), js_str) } else { String::new() },
+            if has(Field::Reps) && s.after.unwrap_or(0.0) > 0.0 { js_str(s.after.unwrap()) } else { String::new() },
+            if has(Field::Reps) && s.warmup == Some(true) { "yes".to_string() } else { String::new() },
         ];
         lines.push(cells.iter().map(|c| csv_escape(c)).collect::<Vec<_>>().join(","));
     }
@@ -232,6 +237,9 @@ pub struct ImportPlan {
     pub first: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last: Option<String>,
+    /// The file is Iron Notes' own export (it has the effort columns): Restore backup brings back far more.
+    #[serde(rename = "ironNotes", skip_serializing_if = "Option::is_none")]
+    pub iron_notes: Option<bool>,
 }
 
 fn key(s: &WorkoutSet) -> String {
@@ -263,6 +271,9 @@ struct Row {
     distance: Option<f64>,
     time: Option<f64>,
     comment: Option<String>,
+    rir: Option<f64>,
+    after: Option<f64>,
+    warmup: bool,
 }
 
 impl Row {
@@ -303,6 +314,9 @@ pub fn plan_import(
     let c_distance_unit = col(&|h| h == "distance unit");
     let c_time = col(&|h| head_is(h, "time") || head_is(h, "duration"));
     let c_comment = col(&|h| matches!(h, "comment" | "note" | "notes"));
+    let c_rir = col(&|h| h == "rir");
+    let c_after = col(&|h| h == "after failure");
+    let c_warmup = col(&|h| h == "warm-up" || h == "warmup");
     let (Some(c_date), Some(c_exercise)) = (c_date, c_exercise) else {
         return Err("Not a FitNotes CSV (needs Date and Exercise columns)".into());
     };
@@ -341,6 +355,9 @@ pub fn plan_import(
             distance: dist.map(|d| to_km(d, &if c_distance_unit.is_some() { cell(r, c_distance_unit) } else { d_head.clone() })),
             time: if c_time.is_some() { parse_duration(&cell(r, c_time)) } else { None },
             comment: if c_comment.is_some() { Some(unsafe_text(js_trim(&cell(r, c_comment)))).filter(|c| !c.is_empty()) } else { None },
+            rir: if c_rir.is_some() { parse_num(&cell(r, c_rir)).map(js_round) } else { None },
+            after: if c_after.is_some() { parse_num(&cell(r, c_after)).filter(|a| *a > 0.0).map(js_round) } else { None },
+            warmup: c_warmup.is_some() && matches!(js_trim(&cell(r, c_warmup)).to_lowercase().as_str(), "yes" | "true" | "1" | "x"),
         };
         let vals: Vec<Field> = [Field::Weight, Field::Reps, Field::Distance, Field::Time].into_iter().filter(|f| row.get(*f).unwrap_or(0.0) > 0.0).collect();
         if vals.is_empty() {
@@ -394,6 +411,18 @@ pub fn plan_import(
                 }
             }
         }
+        // The effort, for exercises with reps (what effective reps are counted from).
+        if ex.kind.fields().contains(&Field::Reps) {
+            if row.rir.is_some() {
+                s.rir = row.rir;
+            }
+            if row.after.is_some() {
+                s.after = row.after;
+            }
+            if row.warmup {
+                s.warmup = Some(true);
+            }
+        }
         if !ex.kind.fields().iter().any(|f| s.field(*f).unwrap_or(0.0) > 0.0) {
             skipped += 1; // e.g. a time-only row for an existing reps exercise: nothing it records
             continue;
@@ -410,7 +439,8 @@ pub fn plan_import(
     let mut dates: Vec<&String> = out.iter().map(|s| &s.date).collect();
     dates.sort();
     let (first, last) = (dates.first().map(|d| (*d).clone()), dates.last().map(|d| (*d).clone()));
-    Ok(ImportPlan { categories: new_cats, exercises: new_exs, sets: out, duplicates, skipped, first, last })
+    let iron_notes = if c_warmup.is_some() && c_rir.is_some() { Some(true) } else { None };
+    Ok(ImportPlan { categories: new_cats, exercises: new_exs, sets: out, duplicates, skipped, first, last, iron_notes })
 }
 
 #[cfg(test)]

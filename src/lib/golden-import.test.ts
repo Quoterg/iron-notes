@@ -162,6 +162,12 @@ describe('golden: csv', () => {
       { id: 'a13', date: '2026-11-04', exerciseId: 'ex-bench', order: 48, weight: 0.0005, reps: 1 },
       { id: 'a14', date: '2026-11-04', exerciseId: 'ex-pushup', order: 49, reps: 20, weight: 30, comment: '\r\nlead' },
       { id: 'a15', date: '2026-11-04', exerciseId: 'ex-bench', order: 50 },
+      // Effort (Q6): exported for exercises with reps only.
+      { id: 'a16', date: '2026-11-05', exerciseId: 'ex-bench', order: 51, weight: 40, reps: 10, warmup: true },
+      { id: 'a17', date: '2026-11-05', exerciseId: 'ex-bench', order: 52, weight: 80, reps: 8, rir: 0, after: 2 },
+      { id: 'a18', date: '2026-11-05', exerciseId: 'ex-bench', order: 53, weight: 75, reps: 10, rir: 5, after: 0 },
+      { id: 'a19', date: '2026-11-05', exerciseId: 'ex-plank', order: 54, time: 60, rir: 2, warmup: true },
+      { id: 'a20', date: '2026-11-05', exerciseId: 'ex-rope', order: 55, reps: 2, time: 15, rir: 1.5 },
     ];
     for (const st of [{}, { unit: 'lb' as const }, { dist: 'mi' as const }, { unit: 'lb' as const, dist: 'm' as const }, { dist: 'm' as const }]) {
       const s = settings(st);
@@ -195,6 +201,13 @@ describe('golden: csv', () => {
     cases.push({ fn: 'planImport', ...planCase(old('Date,Exercise,Comment', ['2026-02-01,Squat,paused'])) });
     cases.push({ fn: 'planImport', ...planCase(old(' DATE , EXERCISE , WEIGHT UNIT , WEIGHT , REPS ', ['2026-02-01,Squat,lbs,225,5'])) });
     cases.push({ fn: 'planImport', ...planCase(old('Date,Exercise,Weight unit,Weight,Reps', ['2026-02-01,Squat,lbs,225,5'])) });
+
+    // planImport: the effort columns of Iron Notes' own export (Q6)
+    const effHead = 'Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment,RIR,After failure,Warm-up';
+    cases.push({ fn: 'planImport', ...planCase(old(effHead, ['2026-02-01,Flat Barbell Bench Press,Chest,40,kgs,10,,,,,,,yes', '2026-02-01,Flat Barbell Bench Press,Chest,80,kgs,8,,,,,0,2,', '2026-02-01,Flat Barbell Bench Press,Chest,75,kgs,10,,,,,3,,', '2026-02-01,Plank,Core,,,,,,1:00,,2,,yes', '2026-02-01,Squat,Legs,100,kgs,5,,,,,x,-1,no'])) });
+    cases.push({ fn: 'planImport', ...planCase(old(effHead, ['2026-02-01,Flat Barbell Bench Press,Chest,80,kgs,8,,,,,0,2,']), STORED) });
+    cases.push({ fn: 'planImport', ...planCase(old('Date,Exercise,Weight,Reps,rir,After Failure,Warmup', ['2026-02-01,Squat,100,5,1.4,1,TRUE', '2026-02-01,Squat,100,5,2.6,,1'])) });
+    cases.push({ fn: 'planImport', ...planCase(old('Date,Exercise,Weight,Reps,Warm-up', ['2026-02-01,Squat,100,5,yes'])) });
 
     // planImport: numbers and durations
     const nums = [

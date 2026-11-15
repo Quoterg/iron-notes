@@ -379,7 +379,7 @@ async function importCsv(input: HTMLInputElement) {
   }
   const summary = t('importSummary', {
     n: plan.sets.length, from: plan.first!, to: plan.last!, ex: plan.exercises.length, cat: plan.categories.length, dup: plan.duplicates, bad: plan.skipped,
-  });
+  }) + (plan.ironNotes ? `\n\n${t('ownCsvHint')}` : '');
   if (!confirm(summary)) return;
   await importRows(plan.categories, plan.exercises, plan.sets);
   await reloadAll();

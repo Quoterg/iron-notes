@@ -84,9 +84,9 @@ describe('CSV export', () => {
     ];
     const csv = toCsv(sets, (id) => (id === 'e1' ? bench : run), () => chest, DEFAULT_SETTINGS);
     expect(csv.split('\r\n')).toEqual([
-      'Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment',
-      '2024-01-08,Flat Barbell Bench Press,Chest,80,kgs,8,,,,"top ""set"""',
-      '2024-01-09,"Run, easy",Chest,,,,5,km,25:30,',
+      'Date,Exercise,Category,Weight,Weight Unit,Reps,Distance,Distance Unit,Time,Comment,RIR,After failure,Warm-up',
+      '2024-01-08,Flat Barbell Bench Press,Chest,80,kgs,8,,,,"top ""set""",,,',
+      '2024-01-09,"Run, easy",Chest,,,,5,km,25:30,,,,',
       '',
     ]);
     // Round trip: the export imports back to the same values.
@@ -95,6 +95,25 @@ describe('CSV export', () => {
       [80, 8, undefined, undefined],
       [undefined, undefined, 5, 1530],
     ]);
+  });
+
+  it('keeps the effort through a round trip and knows its own export (Q6)', () => {
+    const sets: WorkoutSet[] = [
+      { id: 'w', date: '2024-02-01', exerciseId: 'e1', order: 1, weight: 40, reps: 10, warmup: true },
+      { id: 'x', date: '2024-02-01', exerciseId: 'e1', order: 2, weight: 80, reps: 8, rir: 0, after: 2 },
+      { id: 'y', date: '2024-02-01', exerciseId: 'e1', order: 3, weight: 75, reps: 10, rir: 3 },
+    ];
+    const csv = toCsv(sets, () => bench, () => chest, DEFAULT_SETTINGS);
+    // Into an app without them (another phone, after a reinstall): the effort comes back with the sets.
+    const back = planImport(csv, { categories: [chest], exercises: [bench], sets: [] }, 1);
+    expect(back.sets.map((s) => [s.warmup, s.rir, s.after])).toEqual([
+      [true, undefined, undefined],
+      [undefined, 0, 2],
+      [undefined, 3, undefined],
+    ]);
+    expect(back.ironNotes).toBe(true);
+    // A FitNotes file has none of it.
+    expect(planImport('Date,Exercise,Weight,Reps\n2024-02-01,Squat,100,5', { categories: [], exercises: [], sets: [] }, 1).ironNotes).toBeUndefined();
   });
 });
 

@@ -183,7 +183,7 @@ export const later = {
   statWorkouts: 'Workouts',
   statSets: 'Sets',
   statVolume: 'Volume',
-  exportCsv: 'Export CSV',
+  exportCsv: 'Export CSV (spreadsheet)',
   importFitNotes: 'Import from FitNotes (CSV)',
   fitNotesHint: 'FitNotes: Settings → Spreadsheet export → Export workouts, then import the CSV file here. Sets you already have are skipped.',
   notFitNotes: "That file isn't a FitNotes CSV export.",
@@ -507,6 +507,7 @@ export const later = {
   safetyFailed: 'Couldn’t save a copy of your current data first, so nothing was restored.',
   undoRestore: 'Undo the last restore',
   undoRestoreQ: 'Put back your data from before the last restore ({when})? It replaces the data in this app.',
+  ownCsvHint: 'This is an Iron Notes export. The sets come back with their effort (RIR, warm-ups), but routines, body measures, settings and exercise details (muscles, load type, increments) only come back with Restore backup — use the backup (JSON) file to move everything.',
   tapSetHint: 'Tip: tap a set to change or delete it.',
   new_11a: 'Svenska: choose the language in Settings (Auto follows the phone).',
 } as const;

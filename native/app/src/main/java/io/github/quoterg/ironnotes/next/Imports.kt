@@ -40,7 +40,7 @@ internal fun AppState.fitNotesSummary(r: ImportReport): String = t(
     "importSummary",
     "n" to r.sets.toInt(), "from" to (r.first ?: ""), "to" to (r.last ?: ""),
     "ex" to r.exercises.toInt(), "cat" to r.categories.toInt(), "dup" to r.duplicates.toInt(), "bad" to r.skipped.toInt(),
-)
+) + if (r.ironNotes) "\n\n" + t("ownCsvHint") else ""
 
 /** The confirm question for an Iron Log backup, with the diet phase its target suggests (`importIronLogFile`). */
 internal fun AppState.ironLogQuestion(r: IronLogReport): String {
