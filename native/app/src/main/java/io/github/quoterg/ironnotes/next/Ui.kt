@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -233,7 +234,8 @@ fun Field(
     // A muted hint in an empty input (what goes there: "kg", "reps" …).
     val decoration: @Composable (@Composable () -> Unit) -> Unit = { inner ->
         Box {
-            if (placeholder != null && value.isEmpty()) Txt(placeholder, muted = true, size = 17.sp, maxLines = 1)
+            // Not read by TalkBack: the field says its label already.
+            if (placeholder != null && value.isEmpty()) Txt(placeholder, Modifier.clearAndSetSemantics {}, muted = true, size = 17.sp, maxLines = 1)
             inner()
         }
     }

@@ -12,6 +12,12 @@ import io.github.quoterg.ironnotes.core.WeightUnit
 const val HINT_SETUP = "setup"
 
 /**
+ * Whether the first-run card shows: on today's empty log until it was closed or anything was ever logged
+ * (`seen` covers both: AppState marks it when the history isn't empty, or a day with sets loads).
+ */
+fun showSetup(seen: Boolean, isToday: Boolean, dayEmpty: Boolean): Boolean = !seen && isToday && dayEmpty
+
+/**
  * First run for a friend (Q4): language and units on the empty first screen, where they are needed before
  * the first set — they sit far down in Settings otherwise. Shown until Done or the first saved set; no tutorial.
  */

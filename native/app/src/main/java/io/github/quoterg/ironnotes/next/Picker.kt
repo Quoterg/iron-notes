@@ -134,7 +134,7 @@ fun PickerScreen(state: AppState, date: String, manage: Boolean = false) {
     }
 
     Sheet(state.t(if (manage) "manageExercises" else "addExercise"), { state.back() }, state.t("back")) {
-        Field(q, { q = it }, state.t("searchExercises"), Modifier.fillMaxWidth().padding(16.dp, 12.dp), placeholder = state.t("searchExercises"))
+        Field(q, { q = it }, state.t("searchExercises"), Modifier.fillMaxWidth().padding(16.dp, 12.dp), placeholder = state.t("searchExercises") + "…")
         LazyColumn(Modifier.fillMaxWidth().navigationBarsPadding(), contentPadding = PaddingValues(bottom = 96.dp)) {
             items(items, key = { it.key }) { item ->
                 when (item) {
