@@ -164,11 +164,16 @@ is cheap. Logic stays in the Rust core with golden fixtures. **Exercise names st
   logged on the exercise screen or the buttons on the day screen (content scrolls clear of it). (b) Keyboard:
   Enter on weight moves to reps, Enter on reps saves; Save stays reachable with the keyboard open. (c) Deleting
   a set shows "Undo" (as deleting a workout does); a one-time hint that tapping a set edits it.
-- [ ] **Q2 Plain words** — Tap "≈ eff." (set, muscle chip, statistics) for a short explanation of effective
-  reps, including why one set shows 3 and another 8; the same for the trophy, estimated 1RM and RIR. Training
-  modes show a plain one-line description before one is chosen. Small fixes: singular/plural ("1 exercise",
-  "1 övning", "1 set"), no trophy on an exercise's first-ever set, a unit on the graph's y-axis, placeholders in
-  the empty weight/reps boxes.
+- **Q2 Plain words** (split in two PRs):
+  - [ ] **Q2a Small words** — singular/plural ("1 exercise", "1 övning", "1 set"), no trophy on an exercise's
+    first-ever set, a unit on the graph's y-axis, placeholders in the empty weight/reps boxes.
+  - [ ] **Q2b Explanations and mode names** — Tap "≈ eff." (set, muscle chip, statistics) for a short
+    explanation of effective reps, including why one set shows 3 and another 8; the same for the trophy,
+    estimated 1RM and RIR. Training modes show a plain one-line description before one is chosen. Rename the
+    guided modes in the UI (owner 2026-11-15): "Dorian HIT" → "HIT"; "Lyle effective reps" → a descriptive name
+    without a person's name ("Volume" / "Volym" unless docs/TRAINING-MODES.md suggests a clearly better word) —
+    every user-visible string in both apps (en + sv) and the docs' user-facing wording; internal identifiers,
+    stored setting values, backup fields, golden fixtures and code names (dorian/lyle) stay unchanged.
 - [ ] **Q3 Routines that read right** — Planned sets can be ticked off on the day screen (or the toast stops
   promising it); "Log to <date>" names the day clearly when it isn't today; routine day cards look tappable;
   planned sets added to a day that already has sets stay grouped.
